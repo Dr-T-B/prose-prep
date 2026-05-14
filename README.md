@@ -1,0 +1,1 @@
+Sandbox prototype for Pearson Edexcel A-Level English Literature Component 2: Prose app. Texts: Hard Times and Atonement. Mock-data prototype only. No Supabase, auth, migrations, RLS or deployment integration.
