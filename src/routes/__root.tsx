@@ -86,6 +86,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,
@@ -113,6 +119,26 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <nav className="sticky top-0 z-50 flex flex-wrap gap-1 border-b border-border bg-background/90 px-4 py-2 text-sm backdrop-blur print:hidden">
+        {[
+          { to: "/", label: "Dashboard" },
+          { to: "/theme-wheel-mock", label: "Theme Wheel" },
+          { to: "/comparative-matrix-mock", label: "Matrix" },
+          { to: "/quote-method-bank-mock", label: "Quote Bank" },
+          { to: "/timed-essay-builder-mock", label: "Essay Builder" },
+        ].map((l) => (
+          <Link
+            key={l.to}
+            to={l.to}
+            activeOptions={{ exact: true }}
+            activeProps={{ className: "bg-foreground text-background" }}
+            inactiveProps={{ className: "text-foreground hover:bg-muted" }}
+            className="rounded-md px-3 py-1.5 font-medium transition-colors"
+          >
+            {l.label}
+          </Link>
+        ))}
+      </nav>
       <Outlet />
     </QueryClientProvider>
   );
