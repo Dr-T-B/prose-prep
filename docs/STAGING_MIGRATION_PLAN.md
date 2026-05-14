@@ -126,4 +126,3 @@ staging schema preparation.
   or authorized.
 - A forward reconciliation migration is needed before staging can be prepared
   safely from this migration chain.
-
