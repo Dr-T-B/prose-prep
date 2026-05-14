@@ -21,7 +21,7 @@ table and must contain exactly these 24 keys:
   "method": "Method one; Method two",
   "effect_prompt": "2–4 sentences: how the method creates meaning. AO2 focused.",
   "meaning_prompt": "1–2 sentences: the exam question this quote best answers.",
-  "curation_status": "strong | good | draft",
+  "curation_status": "secure | strong | top_band",
   "best_themes": ["theme1", "theme2"],
   "speaker_or_narrator": "Character name",
   "location_reference": "Act X, Scene Y",
