@@ -103,6 +103,9 @@ export type Database = {
           divergence: string
           hard_times: string
           id: string
+          is_active: boolean
+          level_band: string | null
+          sort_order: number | null
           themes: string[]
           updated_at: string
         }
@@ -113,6 +116,9 @@ export type Database = {
           divergence: string
           hard_times: string
           id: string
+          is_active?: boolean
+          level_band?: string | null
+          sort_order?: number | null
           themes?: string[]
           updated_at?: string
         }
@@ -123,6 +129,9 @@ export type Database = {
           divergence?: string
           hard_times?: string
           id?: string
+          is_active?: boolean
+          level_band?: string | null
+          sort_order?: number | null
           themes?: string[]
           updated_at?: string
         }
@@ -1577,6 +1586,7 @@ export type Database = {
           exam_question_tags: string[] | null
           grade_priority: string | null
           id: string
+          is_active: boolean
           is_core_quote: boolean | null
           level_tag: string
           linked_context: string[] | null
@@ -1591,6 +1601,7 @@ export type Database = {
           quote_text: string
           recommended_for_questions: string[] | null
           retrieval_priority: number | null
+          sort_order: number | null
           source_row_key: string | null
           source_text: string
           speaker_or_narrator: string | null
@@ -1609,6 +1620,7 @@ export type Database = {
           exam_question_tags?: string[] | null
           grade_priority?: string | null
           id: string
+          is_active?: boolean
           is_core_quote?: boolean | null
           level_tag: string
           linked_context?: string[] | null
@@ -1623,6 +1635,7 @@ export type Database = {
           quote_text: string
           recommended_for_questions?: string[] | null
           retrieval_priority?: number | null
+          sort_order?: number | null
           source_row_key?: string | null
           source_text: string
           speaker_or_narrator?: string | null
@@ -1641,6 +1654,7 @@ export type Database = {
           exam_question_tags?: string[] | null
           grade_priority?: string | null
           id?: string
+          is_active?: boolean
           is_core_quote?: boolean | null
           level_tag?: string
           linked_context?: string[] | null
@@ -1655,6 +1669,7 @@ export type Database = {
           quote_text?: string
           recommended_for_questions?: string[] | null
           retrieval_priority?: number | null
+          sort_order?: number | null
           source_row_key?: string | null
           source_text?: string
           speaker_or_narrator?: string | null

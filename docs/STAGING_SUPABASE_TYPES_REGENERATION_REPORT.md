@@ -54,6 +54,13 @@ Generated TypeScript note:
   - Added `quote_methods.curation_status` to generated `Row`, `Insert`, and `Update` shapes as `string | null` / optional `string | null`.
 - Unexpected generated changes: None requiring code changes. The diff was large because Supabase types had not been regenerated after the full staging migration chain was applied.
 
+Follow-up correction after PR #2 review:
+
+- The PR review identified a real app/import/schema contract mismatch in the regenerated staging types: `quote_methods.is_active`, `quote_methods.sort_order`, `comparative_matrix.level_band`, `comparative_matrix.is_active`, and `comparative_matrix.sort_order` were still expected by app/prompt code but absent from staging.
+- This was resolved by the forward migration `supabase/migrations/20260514223610_add_content_contract_metadata_columns.sql`.
+- Types were regenerated again from staging after that migration, and the required metadata fields are now present in `Row`, `Insert`, and `Update` shapes.
+- See `docs/CONTENT_CONTRACT_SCHEMA_ALIGNMENT_REPORT.md` for the verification details.
+
 ## Local checks
 
 - `npm run test`: PASS, 64 passed / 3 skipped.
