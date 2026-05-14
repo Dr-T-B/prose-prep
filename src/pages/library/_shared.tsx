@@ -1,0 +1,110 @@
+import { Link } from "react-router-dom";
+import { ChevronLeft, Printer } from "lucide-react";
+import { forwardRef, type ReactNode } from "react";
+
+export function LibraryPageHeader({
+  eyebrow,
+  title,
+  description,
+  total,
+  shown,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  total?: number;
+  shown?: number;
+}) {
+  return (
+    <header className="mb-6">
+      <Link to="/library" className="inline-flex items-center gap-1 text-xs text-ink-muted hover:text-ink mb-3 font-mono">
+        <ChevronLeft className="h-3 w-3" />
+        Library
+      </Link>
+      <p className="label-eyebrow mb-1">{eyebrow}</p>
+      <h1 className="font-serif text-3xl lg:text-4xl mb-2">{title}</h1>
+      {description && <p className="text-sm text-ink-muted max-w-3xl leading-relaxed">{description}</p>}
+      {typeof total === "number" && (
+        <p className="meta-mono mt-3">
+          {typeof shown === "number" && shown !== total ? `${shown} of ${total}` : `${total}`} entries
+        </p>
+      )}
+    </header>
+  );
+}
+
+export function PrintButton() {
+  return (
+    <button
+      onClick={() => window.print()}
+      className="inline-flex items-center gap-1.5 text-xs font-mono text-ink-muted hover:text-ink border border-rule rounded-sm px-2.5 py-1.5 transition-colors print:hidden"
+      aria-label="Print revision sheet"
+    >
+      <Printer className="h-3.5 w-3.5" />
+      <span>Print revision sheet</span>
+    </button>
+  );
+}
+
+export function UseInBuilderButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center justify-center text-[10px] font-mono uppercase tracking-wider text-ink-muted hover:text-ink border border-rule rounded-sm px-2 py-1 transition-colors print:hidden"
+    >
+      Use in Builder
+    </button>
+  );
+}
+
+export const SearchInput = forwardRef<
+  HTMLInputElement,
+  { value: string; onChange: (v: string) => void; placeholder: string }
+>(({ value, onChange, placeholder }, ref) => (
+  <input
+    ref={ref}
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    placeholder={placeholder}
+    className="w-full border border-rule-strong bg-paper rounded-sm px-3 py-2 text-sm outline-none focus:border-primary focus:shadow-card"
+  />
+));
+SearchInput.displayName = "SearchInput";
+
+export function FilterPills<T extends string>({
+  options,
+  value,
+  onChange,
+  labelize,
+}: {
+  options: readonly T[];
+  value: T;
+  onChange: (v: T) => void;
+  labelize?: (v: T) => string;
+}) {
+  return (
+    <div className="inline-flex flex-wrap border border-rule rounded-sm overflow-hidden">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          onClick={() => onChange(opt)}
+          className={`px-3 py-2 text-xs font-mono border-r border-rule last:border-r-0 transition-colors ${
+            value === opt ? "bg-primary text-primary-foreground" : "bg-paper hover:bg-paper-dim"
+          }`}
+        >
+          {labelize ? labelize(opt) : opt}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function EmptyState({ children }: { children: ReactNode }) {
+  return <p className="text-sm text-ink-muted italic col-span-full py-8 text-center">{children}</p>;
+}
+
+export function sourceAccent(source: string) {
+  if (source === "Hard Times") return "accent-bar-hard-times";
+  if (source === "Atonement") return "accent-bar-atonement";
+  return "";
+}
