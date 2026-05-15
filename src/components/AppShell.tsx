@@ -18,6 +18,8 @@ const buildLinks = [
   { to: "/paragraph-engine", label: "Paragraph Engine" },
   { to: "/timed", label: "Timed Practice" },
   { to: "/toolkit", label: "Retrieval Toolkit" },
+  { to: "/theme-wheel", label: "Theme Wheel" },
+  { to: "/matrix", label: "Comparative Matrix" },
 ];
 
 const exploreLinks = [

@@ -34,6 +34,8 @@ import ComparisonRoutes from "./pages/ComparisonRoutes";
 import InterpretiveFlex from "./pages/InterpretiveFlex";
 import TimedWrite from "./pages/TimedWrite";
 import ParagraphBuilderPage from "./pages/ParagraphBuilderPage";
+import ThemeWheel from "./components/ThemeWheel";
+import ComparativeMatrix from "./components/ComparativeMatrix";
 import { ContentProvider } from "./lib/ContentProvider";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -76,6 +78,8 @@ const App = () => (
                   <Route path="/architecture" element={<TextArchitecture />} />
                   <Route path="/routes" element={<ComparisonRoutes />} />
                   <Route path="/flex" element={<InterpretiveFlex />} />
+                  <Route path="/theme-wheel" element={<ThemeWheel />} />
+                  <Route path="/matrix" element={<ComparativeMatrix />} />
                   <Route path="/session" element={<TimedWrite />} />
                   <Route path="/learn" element={<Learn />} />
                   <Route path="/modules" element={<Modules />} />
