@@ -15,7 +15,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "import-quotes": "npx tsx scripts/importQuotes.ts"
+    "typecheck": "tsc --noEmit",
+    "import-quotes": "npx tsx scripts/importQuotes.ts",
+    "import-quotes:write": "npx tsx scripts/importQuotes.ts --write"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -13,6 +13,13 @@ Production Supabase ref `szdgsmpxtifrcmwelqfo` is retained here only as a
 deny-list/safety identifier. It is not authorised for development work from
 this repository.
 
+## Package manager
+
+**npm is canonical.** `package.json` declares `"packageManager": "npm@11.6.2"`
+and the deploy configs (`netlify.toml`, `vercel.json`) assume `npm run build`.
+The previous `bun.lock` has been removed; do not re-introduce Bun or Yarn
+lockfiles. Always install with `npm install`.
+
 ## Required environment variables
 
 - `VITE_SUPABASE_URL`

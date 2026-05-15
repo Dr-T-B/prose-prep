@@ -7,40 +7,36 @@
  *   ~/Downloads/HT_AT_ChatGPT_App_Files/AT_EXAM_QUESTION_STEMS/  — AT metadata files
  *
  * Usage:
- *   npm run import-quotes
+ *   npm run import-quotes          # DRY RUN (default) — no DB writes
+ *   npm run import-quotes:write    # WRITE MODE — mutates staging Supabase
  *
- * Requires in .env:
+ * Safety: the script defaults to dry-run. It must be invoked with the explicit
+ * `--write` flag to perform inserts/updates. Dry-run reports what would change
+ * without calling any write method on the Supabase client.
+ *
+ * Requires in .env (both modes — dry-run still reads existing rows from staging):
  *   VITE_SUPABASE_URL=STAGING_SUPABASE_URL_HERE
  *   SUPABASE_SERVICE_ROLE_KEY=STAGING_SERVICE_ROLE_KEY_HERE
  *
  * Re-running is safe: existing rows (matched by source_text + quote_text) are
- * updated in-place; new rows are inserted. Counts of each are printed at the end.
+ * classified as would-update; new rows as would-insert; within-batch duplicates
+ * as would-skip. In write mode, would-insert rows are batch-inserted and
+ * would-update rows are updated by id.
  */
 
 import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
 // ---------------------------------------------------------------------------
-// Env / Supabase client
+// CLI argument parsing
 // ---------------------------------------------------------------------------
 
-const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !serviceRoleKey) {
-  console.error('\nMissing environment variables. Add to your .env file:\n');
-  if (!supabaseUrl)       console.error('  VITE_SUPABASE_URL=STAGING_SUPABASE_URL_HERE');
-  if (!serviceRoleKey)    console.error('  SUPABASE_SERVICE_ROLE_KEY=STAGING_SERVICE_ROLE_KEY_HERE');
-  console.error('\nUse staging credentials only. Do not run imports against production.\n');
-  process.exit(1);
+export function parseArgs(argv: string[]): { write: boolean } {
+  return { write: argv.includes('--write') };
 }
-
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { persistSession: false },
-});
 
 // ---------------------------------------------------------------------------
 // File paths
@@ -55,7 +51,7 @@ const AT_META_DIR = path.join(BASE_DIR, 'AT_EXAM_QUESTION_STEMS');
 // Types
 // ---------------------------------------------------------------------------
 
-interface MainQuoteFile {
+export interface MainQuoteFile {
   text_name: string;
   quote_text: string;
   speaker_or_narrator?: string;
@@ -73,7 +69,7 @@ interface MainQuoteFile {
   b_mode_rank?: number;
 }
 
-interface MetadataFile {
+export interface MetadataFile {
   exam_question_tags?: string[];
   recommended_for_questions?: string[];
   question_types?: string[];
@@ -83,7 +79,12 @@ interface MetadataFile {
   best_used_for?: string[];
 }
 
-type MergedQuote = MainQuoteFile & MetadataFile;
+export type MergedQuote = MainQuoteFile & MetadataFile;
+
+export interface ValidationError {
+  source: string;
+  reason: string;
+}
 
 // ---------------------------------------------------------------------------
 // File helpers
@@ -104,11 +105,7 @@ function fileRank(filename: string): number {
   return m ? parseInt(m[1], 10) : -1;
 }
 
-/**
- * Load one directory of quotes, merging metadata from a separate metadata dir if provided.
- * Returns merged quote objects and counts.
- */
-function loadQuotes(
+export function loadQuotes(
   mainDir: string,
   metaDir?: string,
 ): { quotes: MergedQuote[]; mainCount: number; metaCount: number } {
@@ -119,11 +116,8 @@ function loadQuotes(
 
   const allFiles = fs.readdirSync(mainDir).filter((f) => f.endsWith('.json'));
   const mainFiles = allFiles.filter((f) => !isMetadataFilename(f));
-
-  // HT metadata lives alongside main files in the same dir; AT metadata is in a separate dir
   const htMetaFiles = allFiles.filter((f) => isMetadataFilename(f));
 
-  // Build rank → metadata maps
   const htMetaMap = new Map<number, MetadataFile>();
   for (const f of htMetaFiles) {
     const rank = fileRank(f);
@@ -152,31 +146,26 @@ function loadQuotes(
 }
 
 // ---------------------------------------------------------------------------
-// Field mapping
+// Field mapping (unchanged from prior version)
 // ---------------------------------------------------------------------------
 
-/**
- * Map grade_priority to the app's level_tag.
- * Actual values seen in files: "B", "all", "higher", "foundation"
- * "B" (and anything else) → "strong" (safe mid-tier default)
- */
-function toLevel(gp?: string): string {
+export function toLevel(gp?: string): string {
   switch (gp?.toLowerCase()) {
     case 'higher':     return 'top_band';
     case 'foundation': return 'secure';
     case 'a':          return 'top_band';
     case 'c':          return 'secure';
-    default:           return 'strong';  // "B", "all", missing
+    default:           return 'strong';
   }
 }
 
-function toRowKey(q: MergedQuote): string {
+export function toRowKey(q: MergedQuote): string {
   const prefix = q.text_name?.toLowerCase().includes('atonement') ? 'at' : 'ht';
   const rank = String(q.b_mode_rank ?? 0).padStart(2, '0');
   return `qm_${prefix}_${rank}`;
 }
 
-function toDbRow(q: MergedQuote) {
+export function toDbRow(q: MergedQuote) {
   const rowKey = toRowKey(q);
   return {
     id:                        rowKey,
@@ -185,10 +174,9 @@ function toDbRow(q: MergedQuote) {
     quote_text:                q.quote_text,
     method:                    q.linked_methods?.[0] ?? '',
     best_themes:               q.linked_themes ?? [],
-    effect_prompt:             '',   // not in source JSON; fill via Studio later
+    effect_prompt:             '',
     meaning_prompt:            '',
     level_tag:                 toLevel(q.grade_priority),
-    // enriched fields
     speaker_or_narrator:       q.speaker_or_narrator       ?? null,
     location_reference:        q.location_reference        ?? null,
     plain_english_meaning:     q.plain_english_meaning     ?? null,
@@ -211,45 +199,142 @@ function toDbRow(q: MergedQuote) {
 }
 
 // ---------------------------------------------------------------------------
-// Upsert: fetch existing rows first, then split into inserts vs updates
+// Validation
 // ---------------------------------------------------------------------------
 
-async function upsertQuotes(rows: ReturnType<typeof toDbRow>[]): Promise<{ inserted: number; updated: number; errors: number }> {
-  // Fetch all existing (id, source_text, quote_text) to determine insert vs update
-  const { data: existing, error: fetchErr } = await supabase
-    .from('quote_methods')
-    .select('id, source_text, quote_text');
-
-  if (fetchErr) {
-    console.error('Failed to fetch existing rows:', fetchErr.message);
-    console.error('Check that SUPABASE_SERVICE_ROLE_KEY is correct and has sufficient privileges.');
-    process.exit(1);
+export function validateQuote(q: Partial<MergedQuote>, source = '<unknown>'): ValidationError[] {
+  const errors: ValidationError[] = [];
+  if (!q.quote_text || typeof q.quote_text !== 'string' || q.quote_text.trim() === '') {
+    errors.push({ source, reason: 'missing or empty quote_text' });
   }
+  if (!q.text_name || typeof q.text_name !== 'string' || q.text_name.trim() === '') {
+    errors.push({ source, reason: 'missing or empty text_name' });
+  }
+  return errors;
+}
 
-  // Key: "${source_text}||${quote_text}" → existing row id
+// ---------------------------------------------------------------------------
+// Classification — pure: no DB calls
+// ---------------------------------------------------------------------------
+
+export type DbRow = ReturnType<typeof toDbRow>;
+
+export interface ExistingRow {
+  id: string;
+  source_text: string;
+  quote_text: string;
+}
+
+export interface ClassifyResult {
+  toInsert: DbRow[];
+  toUpdate: Array<{ id: string; row: DbRow }>;
+  skipped: Array<{ row: DbRow; reason: string }>;
+}
+
+export function classifyRows(rows: DbRow[], existing: ExistingRow[]): ClassifyResult {
   const existingMap = new Map<string, string>();
-  for (const row of existing ?? []) {
-    existingMap.set(`${row.source_text}||${row.quote_text}`, row.id);
-  }
+  for (const r of existing) existingMap.set(`${r.source_text}||${r.quote_text}`, r.id);
 
-  const toInsert: typeof rows = [];
-  const toUpdate: Array<{ id: string; row: typeof rows[0] }> = [];
+  const seenInBatch = new Set<string>();
+  const toInsert: DbRow[] = [];
+  const toUpdate: ClassifyResult['toUpdate'] = [];
+  const skipped: ClassifyResult['skipped'] = [];
 
   for (const row of rows) {
     const key = `${row.source_text}||${row.quote_text}`;
-    const existingId = existingMap.get(key);
-    if (existingId) {
-      toUpdate.push({ id: existingId, row });
-    } else {
-      toInsert.push(row);
+    if (seenInBatch.has(key)) {
+      skipped.push({ row, reason: 'duplicate within import batch' });
+      continue;
     }
+    seenInBatch.add(key);
+    const existingId = existingMap.get(key);
+    if (existingId) toUpdate.push({ id: existingId, row });
+    else toInsert.push(row);
   }
 
+  return { toInsert, toUpdate, skipped };
+}
+
+// ---------------------------------------------------------------------------
+// Dry-run summary printing
+// ---------------------------------------------------------------------------
+
+export interface SummaryInput {
+  htMain: number;
+  htMeta: number;
+  atMain: number;
+  atMeta: number;
+  totalRows: number;
+  classify: ClassifyResult;
+  validationErrors: ValidationError[];
+}
+
+export function formatDryRunSummary(s: SummaryInput): string {
+  const lines: string[] = [];
+  lines.push('─'.repeat(48));
+  lines.push('DRY RUN — no writes performed');
+  lines.push('─'.repeat(48));
+  lines.push(`  HT main files:        ${s.htMain}`);
+  lines.push(`  HT metadata files:    ${s.htMeta}`);
+  lines.push(`  AT main files:        ${s.atMain}`);
+  lines.push(`  AT metadata files:    ${s.atMeta}`);
+  lines.push(`  Total source rows:    ${s.totalRows}`);
+  lines.push('');
+  lines.push(`  Would insert:         ${s.classify.toInsert.length}`);
+  lines.push(`  Would update:         ${s.classify.toUpdate.length}`);
+  lines.push(`  Would skip (dupes):   ${s.classify.skipped.length}`);
+  lines.push(`  Validation errors:    ${s.validationErrors.length}`);
+  if (s.validationErrors.length > 0) {
+    lines.push('');
+    lines.push('  Validation errors:');
+    for (const e of s.validationErrors.slice(0, 20)) {
+      lines.push(`    - [${e.source}] ${e.reason}`);
+    }
+    if (s.validationErrors.length > 20) {
+      lines.push(`    … and ${s.validationErrors.length - 20} more`);
+    }
+  }
+  lines.push('─'.repeat(48));
+  lines.push('To perform writes, re-run with --write (npm run import-quotes:write).');
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Upsert — WRITE PATH (guarded)
+// ---------------------------------------------------------------------------
+
+/**
+ * ┌──────────────────────────────────────────────────────────────────────────┐
+ * │ WRITE PATH — DO NOT CALL IN DRY-RUN MODE                                 │
+ * │                                                                          │
+ * │ This is the ONLY function in this script that calls Supabase write       │
+ * │ methods (.insert / .update). It is gated three ways:                     │
+ * │   1. main() only invokes it when parseArgs().write === true              │
+ * │   2. The explicit `writeMode` parameter is asserted at the top           │
+ * │   3. The function throws if writeMode === false                          │
+ * │                                                                          │
+ * │ Dry-run mode goes through classifyRows() + formatDryRunSummary() only.   │
+ * │ Reviewer: if you change this, also update the dry-run gate tests in      │
+ * │ src/test/importQuotes.test.ts.                                           │
+ * └──────────────────────────────────────────────────────────────────────────┘
+ */
+export async function upsertQuotes(
+  supabase: SupabaseClient,
+  classified: ClassifyResult,
+  writeMode: boolean,
+): Promise<{ inserted: number; updated: number; errors: number }> {
+  if (!writeMode) {
+    throw new Error(
+      'upsertQuotes called without writeMode=true. This is a programming error: '
+      + 'dry-run mode must never reach the write path.',
+    );
+  }
+
+  const { toInsert, toUpdate } = classified;
   let inserted = 0;
   let updated = 0;
   let errors = 0;
 
-  // Batch INSERT new rows (50 at a time)
   const BATCH = 50;
   for (let i = 0; i < toInsert.length; i += BATCH) {
     const batch = toInsert.slice(i, i + BATCH);
@@ -262,12 +347,8 @@ async function upsertQuotes(rows: ReturnType<typeof toDbRow>[]): Promise<{ inser
     }
   }
 
-  // UPDATE existing rows one-by-one (40 quotes total, so no need for batching)
   for (const { id, row } of toUpdate) {
-    const { error } = await supabase
-      .from('quote_methods')
-      .update(row)
-      .eq('id', id);
+    const { error } = await supabase.from('quote_methods').update(row).eq('id', id);
     if (error) {
       console.error(`  Update error for "${row.quote_text.slice(0, 50)}": ${error.message}`);
       errors++;
@@ -280,12 +361,51 @@ async function upsertQuotes(rows: ReturnType<typeof toDbRow>[]): Promise<{ inser
 }
 
 // ---------------------------------------------------------------------------
-// Main
+// Existing-rows fetch (read-only)
 // ---------------------------------------------------------------------------
 
-async function main() {
-  console.log('Loading quote files…\n');
+export async function fetchExistingRows(supabase: SupabaseClient): Promise<ExistingRow[]> {
+  const { data, error } = await supabase
+    .from('quote_methods')
+    .select('id, source_text, quote_text');
+  if (error) {
+    console.error('Failed to fetch existing rows:', error.message);
+    console.error('Check that SUPABASE_SERVICE_ROLE_KEY is correct and has sufficient privileges.');
+    process.exit(1);
+  }
+  return (data ?? []) as ExistingRow[];
+}
 
+// ---------------------------------------------------------------------------
+// Main orchestration
+// ---------------------------------------------------------------------------
+
+function buildSupabaseClient(): SupabaseClient {
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error('\nMissing environment variables. Add to your .env file:\n');
+    if (!supabaseUrl)    console.error('  VITE_SUPABASE_URL=STAGING_SUPABASE_URL_HERE');
+    if (!serviceRoleKey) console.error('  SUPABASE_SERVICE_ROLE_KEY=STAGING_SERVICE_ROLE_KEY_HERE');
+    console.error('\nUse staging credentials only. Do not run imports against production.\n');
+    process.exit(1);
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+}
+
+async function main() {
+  const { write: writeMode } = parseArgs(process.argv.slice(2));
+
+  if (writeMode) {
+    console.log('⚠️  WRITE MODE: this will mutate staging Supabase.');
+    console.log('   (To preview without writing, re-run without --write.)\n');
+  } else {
+    console.log('🔒 DRY RUN: no writes will be performed. Pass --write to mutate staging.\n');
+  }
+
+  console.log('Loading quote files…\n');
   const ht = loadQuotes(HT_DIR);
   const at = loadQuotes(AT_DIR, AT_META_DIR);
 
@@ -300,23 +420,75 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`\nUpserting ${allQuotes.length} quotes into Supabase…\n`);
+  const validationErrors: ValidationError[] = [];
+  const validQuotes: MergedQuote[] = [];
+  for (let i = 0; i < allQuotes.length; i++) {
+    const q = allQuotes[i];
+    const src = q.text_name
+      ? `${q.text_name} #${q.b_mode_rank ?? i}`
+      : `(quote index ${i})`;
+    const errs = validateQuote(q, src);
+    if (errs.length > 0) validationErrors.push(...errs);
+    else validQuotes.push(q);
+  }
 
-  const rows = allQuotes.map(toDbRow);
-  const { inserted, updated, errors } = await upsertQuotes(rows);
+  const rows = validQuotes.map(toDbRow);
 
-  console.log('─'.repeat(40));
+  const supabase = buildSupabaseClient();
+  const existing = await fetchExistingRows(supabase);
+  const classified = classifyRows(rows, existing);
+
+  if (!writeMode) {
+    console.log(
+      formatDryRunSummary({
+        htMain: ht.mainCount,
+        htMeta: ht.metaCount,
+        atMain: at.mainCount,
+        atMeta: at.metaCount,
+        totalRows: allQuotes.length,
+        classify: classified,
+        validationErrors,
+      }),
+    );
+    return;
+  }
+
+  console.log(`\nUpserting ${rows.length} valid quotes into Supabase…`);
+  console.log(`  Would insert: ${classified.toInsert.length}`);
+  console.log(`  Would update: ${classified.toUpdate.length}`);
+  console.log(`  Skipped (within-batch dupes): ${classified.skipped.length}`);
+  console.log(`  Validation errors: ${validationErrors.length}\n`);
+
+  const { inserted, updated, errors } = await upsertQuotes(supabase, classified, writeMode);
+
+  console.log('─'.repeat(48));
   console.log('Import complete');
   console.log(`  HT quotes:    ${ht.mainCount}`);
   console.log(`  AT quotes:    ${at.mainCount}`);
   console.log(`  Total:        ${allQuotes.length}`);
   console.log(`  Inserted:     ${inserted}  (new rows)`);
   console.log(`  Updated:      ${updated}   (existing rows)`);
-  if (errors > 0) console.warn(`  Errors:       ${errors} (see above)`);
-  console.log('─'.repeat(40));
+  if (errors > 0)            console.warn(`  DB errors:    ${errors} (see above)`);
+  if (validationErrors.length > 0) {
+    console.warn(`  Skipped (validation): ${validationErrors.length}`);
+  }
+  console.log('─'.repeat(48));
 }
 
-main().catch((err) => {
-  console.error('Fatal error:', err);
-  process.exit(1);
-});
+// Only run when invoked directly (not when imported by tests)
+const invokedDirectly = (() => {
+  try {
+    const entry = process.argv[1] ? path.resolve(process.argv[1]) : '';
+    const self = new URL(import.meta.url).pathname;
+    return entry === self;
+  } catch {
+    return false;
+  }
+})();
+
+if (invokedDirectly) {
+  main().catch((err) => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });
+}
