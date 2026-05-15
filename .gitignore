@@ -34,3 +34,4 @@ supabase/.temp/
 
 # Generated quote bank output — do not commit, Supabase is source of truth
 prompts/out/
+
