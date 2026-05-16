@@ -5,7 +5,6 @@ export interface AoScores {
   ao2: number
   ao3: number
   ao4: number
-  ao5: number
 }
 
 export interface AoSelfMarkProps {
@@ -52,13 +51,6 @@ const AO_DEFS: AoDef[] = [
     badgeClass: 'text-ao4',
     blurb: 'Comparison of texts threaded through the argument',
   },
-  {
-    key: 'ao5',
-    label: 'AO5',
-    ceiling: 10,
-    badgeClass: 'text-ao5',
-    blurb: 'Different interpretations evaluated and judged',
-  },
 ]
 
 const LEVEL_DESCRIPTORS = [
@@ -82,7 +74,6 @@ export default function AoSelfMark({ onSubmit }: AoSelfMarkProps) {
     ao2: 10,
     ao3: 10,
     ao4: 5,
-    ao5: 5,
   })
 
   const totalCeiling = AO_DEFS.reduce((sum, d) => sum + d.ceiling, 0)

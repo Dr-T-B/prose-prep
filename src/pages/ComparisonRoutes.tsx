@@ -31,13 +31,13 @@ type TabId = 'routes' | 'matrix'
 const ROUTE_LEVEL: Record<string, { label: string; cls: string }> = {
   secure:     { label: 'Secure → A',  cls: 'text-ao2 bg-paper' },
   strong:     { label: 'Strong → A*', cls: 'text-ao3 bg-paper' },
-  perceptive: { label: 'Perceptive',  cls: 'text-ao5 bg-paper' },
+  perceptive: { label: 'Perceptive',  cls: 'text-ao4 bg-paper' },
 }
 
 const MATRIX_TIER: Record<string, { label: string; cls: string; badgeCls: string; borderCls: string }> = {
   secure:   { label: 'Primary',   cls: 'text-ao2', badgeCls: 'text-ao2 bg-paper', borderCls: 'border-rule' },
   strong:   { label: 'Secondary', cls: 'text-ao3', badgeCls: 'text-ao3 bg-paper', borderCls: 'border-rule' },
-  top_band: { label: 'Advanced',  cls: 'text-ao5', badgeCls: 'text-ao5 bg-paper', borderCls: 'border-rule' },
+  top_band: { label: 'Advanced',  cls: 'text-ao4', badgeCls: 'text-ao4 bg-paper', borderCls: 'border-rule' },
 }
 
 const TIER_ORDER = ['secure', 'strong', 'top_band']
@@ -357,7 +357,7 @@ function MatrixCard({ row, tier, isOpen, onToggle }: {
               </span>
             )}
             {(row.themes || []).map(t => (
-              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-ao5 border border-rule flex-shrink-0">
+              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-ao4 border border-rule flex-shrink-0">
                 {t}
               </span>
             ))}

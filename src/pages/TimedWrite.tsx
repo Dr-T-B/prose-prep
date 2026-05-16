@@ -55,7 +55,7 @@ const AUDIT = [
 const DIFF_META: Record<string, { cls: string }> = {
   'L4 core':       { cls: 'text-ao2 bg-paper' },
   'L4-L5 bridge':  { cls: 'text-ao3 bg-paper' },
-  'L5 stretch':    { cls: 'text-ao5 bg-paper' },
+  'L5 stretch':    { cls: 'text-ao4 bg-paper' },
 }
 
 function fmt(secs: number): string {
@@ -466,7 +466,7 @@ export default function TimedWrite() {
           </button>
 
           <div className="mt-8">
-            <h2 className="font-serif text-ink text-xl mb-3">Time's up — how did you do?</h2>
+            <h2 className="font-serif text-ink text-xl mb-3">Self-mark your essay</h2>
             <AoSelfMark onSubmit={handleSelfMark} />
           </div>
         </div>

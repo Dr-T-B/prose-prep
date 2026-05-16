@@ -4,8 +4,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useGradeBMode } from "@/contexts/GradeBModeContext";
+import { useDevMode } from "@/hooks/useDevMode";
 
 type AppMode = "build" | "explore";
+
+const STUDENT_NAV = [
+  { to: "/", label: "Dashboard", end: true },
+  { to: "/theme-wheel", label: "Theme Wheel" },
+  { to: "/library/quote-bank", label: "Quote Bank" },
+  { to: "/routes", label: "Comparison Routes" },
+  { to: "/timed", label: "Timed Write" },
+] as const;
 
 const modeLinks = [
   { to: "/", label: "Build", mode: "build" as AppMode },
@@ -62,7 +71,10 @@ export default function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const appMode = getAppMode(location.pathname);
-  const sectionLinks = appMode === "explore" ? exploreLinks : buildLinks;
+  const isDevMode = useDevMode();
+  const sectionLinks = isDevMode
+    ? (appMode === "explore" ? exploreLinks : buildLinks)
+    : STUDENT_NAV;
 
   const handleSignOut = async () => {
     await signOut();
@@ -92,23 +104,25 @@ export default function AppShell() {
                   className="h-5 w-9 data-[state=checked]:bg-primary"
                 />
               </label>
-              <nav className="inline-flex border border-rule rounded-sm overflow-hidden" aria-label="Product mode">
-                {modeLinks.map((l) => {
-                  const isActive = appMode === l.mode;
-                  return (
-                    <NavLink
-                      key={l.to}
-                      to={l.to}
-                      end={l.to === "/"}
-                      className={`px-4 py-1.5 text-sm font-medium border-r border-rule last:border-r-0 transition-colors ${
-                        isActive ? "bg-primary text-primary-foreground" : "bg-paper hover:bg-paper-dim text-ink-muted"
-                      }`}
-                    >
-                      {l.label}
-                    </NavLink>
-                  );
-                })}
-              </nav>
+              {isDevMode && (
+                <nav className="inline-flex border border-rule rounded-sm overflow-hidden" aria-label="Product mode">
+                  {modeLinks.map((l) => {
+                    const isActive = appMode === l.mode;
+                    return (
+                      <NavLink
+                        key={l.to}
+                        to={l.to}
+                        end={l.to === "/"}
+                        className={`px-4 py-1.5 text-sm font-medium border-r border-rule last:border-r-0 transition-colors ${
+                          isActive ? "bg-primary text-primary-foreground" : "bg-paper hover:bg-paper-dim text-ink-muted"
+                        }`}
+                      >
+                        {l.label}
+                      </NavLink>
+                    );
+                  })}
+                </nav>
+              )}
               {!loading && (
                 user ? (
                   <Button
@@ -134,7 +148,7 @@ export default function AppShell() {
             </div>
           </div>
 
-          <nav className="mt-3 flex items-center gap-1 sm:gap-2 overflow-x-auto" aria-label={appMode === "explore" ? "Explore navigation" : "Build navigation"}>
+          <nav className="mt-3 flex items-center gap-1 sm:gap-2 overflow-x-auto" aria-label={isDevMode ? (appMode === "explore" ? "Explore navigation" : "Build navigation") : "Primary navigation"}>
             {sectionLinks.map((l) => (
               <NavLink
                 key={l.to}

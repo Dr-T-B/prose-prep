@@ -30,7 +30,6 @@ const AO_TEXT: Record<string, string> = {
   AO2: "text-ao2",
   AO3: "text-ao3",
   AO4: "text-ao4",
-  AO5: "text-ao5",
 };
 
 const ALL = "All";
@@ -74,7 +73,7 @@ export default function QuoteBank() {
   const opts = useMemo(
     () => ({
       theme: unique(quotes.flatMap((q) => q.theme_tags)),
-      ao: [ALL, "AO1", "AO2", "AO3", "AO4", "AO5"],
+      ao: [ALL, "AO1", "AO2", "AO3", "AO4"],
     }),
     [quotes]
   );
@@ -309,7 +308,7 @@ export default function QuoteBank() {
                   <Row label="Theme link" value={q.theme_tags.join(" · ")} />
                 )}
                 {q.a_star_insight && (
-                  <Row label="A/A* insight (AO5)" value={q.a_star_insight} />
+                  <Row label="A/A* insight" value={q.a_star_insight} />
                 )}
                 {q.paired_anchor_id && (
                   <Row label="Paired anchor" value={q.paired_anchor_id} />
