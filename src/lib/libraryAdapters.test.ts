@@ -17,7 +17,6 @@ import {
   toLibraryTheses,
   toLibraryQuotes,
 } from "./libraryAdapters";
-import { getAppMode } from "@/components/AppShell";
 
 describe("library quote adapters", () => {
   it("normalises partial quote rows without throwing", () => {
@@ -90,13 +89,6 @@ describe("library quote adapters", () => {
     expect(quoteMatchesText(quote, "narrative control")).toBe(true);
   });
 
-  it("classifies Explore mode only for library routes", () => {
-    expect(getAppMode("/library")).toBe("explore");
-    expect(getAppMode("/library/quotes")).toBe("explore");
-    expect(getAppMode("/compare")).toBe("build");
-    expect(getAppMode("/learn")).toBe("build");
-    expect(getAppMode("/builder")).toBe("build");
-  });
 });
 
 describe("library question adapters", () => {

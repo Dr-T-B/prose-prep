@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useGradeBMode } from "@/contexts/GradeBModeContext";
 
 /**
  * Component2Dashboard
@@ -106,6 +107,7 @@ function connectionLabel(ht: number, at: number): string {
 }
 
 export function Component2Dashboard() {
+  const { gradeBMode } = useGradeBMode();
   const days = daysUntil(EXAM_DATE_ISO);
 
   const [readiness, setReadiness] = useState<AoReadinessRow[]>([]);
@@ -238,13 +240,21 @@ export function Component2Dashboard() {
     const top = [...WEAKNESSES].sort(
       (a, b) => sevWeight(b.severity) - sevWeight(a.severity),
     )[0];
+    if (gradeBMode) {
+      return {
+        title: "Build one comparative paragraph in 4 steps",
+        reason: `Step 1: write a claim that fits both novels. Step 2: quote from Atonement and name the method. Step 3: quote from Hard Times and name the method. Step 4: end with one sentence saying how they're similar or different. Focus: ${top.aos.join(", ")}.`,
+        action: "Use this starter: 'Both novels show… however, while McEwan…, Dickens…'",
+        minutes: 20,
+      };
+    }
     return {
       title: "Draft a 25-min comparative ¶ on Memory & Truth",
       reason: `Targets ${top.aos.join(", ")} — addresses: ${top.title}.`,
       action: "Use Atonement Part Three opening + Sissy/Stephen exchange (HT Bk II Ch. 6).",
       minutes: 25,
     };
-  }, []);
+  }, [gradeBMode]);
 
   if (loading) {
     return (

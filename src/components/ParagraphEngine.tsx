@@ -35,6 +35,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useGradeBMode } from "@/contexts/GradeBModeContext";
 import {
   ArrowDown,
   ArrowUp,
@@ -51,6 +52,7 @@ interface Props {
 }
 
 export default function ParagraphEngine({ embedded = false }: Props) {
+  const { gradeBMode } = useGradeBMode();
   const { plan, update } = useCurrentPlan();
   const content = useContent();
   const question = getQuestion(plan.question_id, content);
@@ -342,6 +344,17 @@ export default function ParagraphEngine({ embedded = false }: Props) {
 
   return (
     <Wrapper question={question?.stem} thesisText={thesis?.thesis_text} routeName={route?.name}>
+      {gradeBMode && (
+        <div className="mb-4 rounded-sm border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          <div className="font-mono uppercase tracking-wider text-[10px] mb-1">Grade B scaffold</div>
+          <ul className="list-disc pl-5 space-y-0.5">
+            <li>Claim: 'Both novels show… however, while McEwan…, Dickens…'</li>
+            <li>Comparative direction: 'Whereas Dickens externalises this as…, McEwan internalises it as…'</li>
+            <li>Method focus: name the method first (metaphor, free indirect discourse, focalisation).</li>
+            <li>Context anchor: pick one fact (1854 Coketown / Dunkirk 1940 / 1999 coda) and link it to the quote.</li>
+          </ul>
+        </div>
+      )}
       {/* Context bar */}
       <header className="border-b border-rule pb-4 mb-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">

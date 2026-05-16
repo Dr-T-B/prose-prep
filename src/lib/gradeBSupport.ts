@@ -1,6 +1,17 @@
 import { getLibraryThemeLabel, type LibraryParagraphFrame, type LibraryQuote } from "@/lib/libraryAdapters";
 import type { BuilderHandoffItem } from "@/lib/builderHandoff";
 
+export const GRADE_B_SYSTEM_PROMPT_SUFFIX =
+  "Target grade B; use accessible language; provide sentence starters and scaffolded guidance.";
+
+export function withGradeBSystemPrompt(systemPrompt: string, gradeBMode: boolean): string {
+  if (!gradeBMode) return systemPrompt;
+  const trimmed = systemPrompt.trim();
+  return trimmed.length === 0
+    ? GRADE_B_SYSTEM_PROMPT_SUFFIX
+    : `${trimmed}\n\n${GRADE_B_SYSTEM_PROMPT_SUFFIX}`;
+}
+
 export interface GradeBSupportBlock {
   label: string;
   items: string[];

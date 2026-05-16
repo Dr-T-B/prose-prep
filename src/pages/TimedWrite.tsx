@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import AoSelfMark, { type AoScores } from '@/components/AoSelfMark'
+import { useGradeBMode } from '@/contexts/GradeBModeContext'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -71,6 +72,7 @@ function countWords(text: string): number {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function TimedWrite() {
+  const { gradeBMode } = useGradeBMode()
   const [phase, setPhase]       = useState<Phase>('select')
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading]   = useState(true)
@@ -363,9 +365,21 @@ export default function TimedWrite() {
             <p className="text-xs text-ink-muted font-serif italic">"{question.question_stem}"</p>
           </div>
 
+          {gradeBMode && (
+            <div className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+              <div className="font-mono uppercase tracking-wider text-[10px] mb-1">Sentence starters</div>
+              <ul className="list-disc pl-5 space-y-0.5">
+                <li>Intro: 'Both Hard Times and Atonement explore… however, while McEwan…, Dickens…'</li>
+                <li>Paragraph opener: 'Dickens uses [method] in [quote] to suggest…'</li>
+                <li>Comparison: 'By contrast, McEwan…'</li>
+                <li>Conclusion: 'Ultimately, both novels reveal…'</li>
+              </ul>
+            </div>
+          )}
+
           <textarea
             className="flex-1 min-h-96 bg-paper border border-rule rounded-xl p-5 text-sm text-ink resize-none focus:outline-none focus:border-rule leading-relaxed font-serif"
-            placeholder="Write your comparative essay here…"
+            placeholder={gradeBMode ? "Start: 'Both Hard Times and Atonement explore…'" : "Write your comparative essay here…"}
             value={essayText}
             onChange={e => setEssayText(e.target.value)}
             autoFocus

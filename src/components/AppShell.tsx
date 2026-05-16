@@ -1,31 +1,17 @@
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Settings, LogOut, LogIn } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useGradeBMode } from "@/contexts/GradeBModeContext";
-import { useDevMode } from "@/hooks/useDevMode";
 
-type AppMode = "build" | "explore";
+type NavItem = { to: string; label: string; end?: boolean };
 
-const STUDENT_NAV = [
+const STUDENT_NAV: readonly NavItem[] = [
   { to: "/", label: "Dashboard", end: true },
-  { to: "/theme-wheel", label: "Theme Wheel" },
-  { to: "/library/quote-bank", label: "Quote Bank" },
-  { to: "/routes", label: "Comparison Routes" },
-  { to: "/timed", label: "Timed Write" },
-] as const;
-
-const modeLinks = [
-  { to: "/", label: "Build", mode: "build" as AppMode },
-  { to: "/library", label: "Explore", mode: "explore" as AppMode },
-];
-
-const buildLinks = [
-  { to: "/", label: "Build home", end: true },
   { to: "/builder", label: "Essay Builder" },
-  { to: "/paragraph-engine", label: "Paragraph Engine" },
   { to: "/paragraph-builder", label: "Paragraph Builder" },
+  { to: "/paragraph-engine", label: "Paragraph Engine" },
   { to: "/timed", label: "Timed Practice" },
   { to: "/session", label: "Timed Write" },
   { to: "/practise", label: "Practise" },
@@ -38,43 +24,23 @@ const buildLinks = [
   { to: "/compare", label: "Compare" },
   { to: "/theme-wheel", label: "Theme Wheel" },
   { to: "/matrix", label: "Comparative Matrix" },
-];
-
-const exploreLinks = [
-  { to: "/library", label: "Library", end: true },
-  { to: "/learn", label: "Learn" },
+  { to: "/library", label: "Library" },
   { to: "/library/quotes", label: "Quotes" },
   { to: "/library/quote-bank", label: "Quote Bank" },
   { to: "/library/questions", label: "Questions" },
   { to: "/library/stems", label: "Paragraph Stems" },
-  { to: "/library/comparison", label: "Comparison" },
   { to: "/library/thesis", label: "Thesis & Paragraph" },
+  { to: "/library/comparison", label: "Comparison" },
   { to: "/library/context", label: "Context" },
   { to: "/library/glossary", label: "Glossary" },
+  { to: "/learn", label: "Learn" },
   { to: "/modules", label: "Modules" },
 ];
-
-function cleanPath(pathname: string) {
-  if (pathname.length > 1 && pathname.endsWith("/")) return pathname.slice(0, -1);
-  return pathname;
-}
-
-export function getAppMode(pathname: string): AppMode {
-  const path = cleanPath(pathname);
-  if (path === "/library" || path.startsWith("/library/") || path === "/modules" || path.startsWith("/modules/") || path === "/learn") return "explore";
-  return "build";
-}
 
 export default function AppShell() {
   const { user, isAdmin, signOut, loading } = useAuth();
   const { gradeBMode, setGradeBMode } = useGradeBMode();
   const navigate = useNavigate();
-  const location = useLocation();
-  const appMode = getAppMode(location.pathname);
-  const isDevMode = useDevMode();
-  const sectionLinks = isDevMode
-    ? (appMode === "explore" ? exploreLinks : buildLinks)
-    : STUDENT_NAV;
 
   const handleSignOut = async () => {
     await signOut();
@@ -104,25 +70,6 @@ export default function AppShell() {
                   className="h-5 w-9 data-[state=checked]:bg-primary"
                 />
               </label>
-              {isDevMode && (
-                <nav className="inline-flex border border-rule rounded-sm overflow-hidden" aria-label="Product mode">
-                  {modeLinks.map((l) => {
-                    const isActive = appMode === l.mode;
-                    return (
-                      <NavLink
-                        key={l.to}
-                        to={l.to}
-                        end={l.to === "/"}
-                        className={`px-4 py-1.5 text-sm font-medium border-r border-rule last:border-r-0 transition-colors ${
-                          isActive ? "bg-primary text-primary-foreground" : "bg-paper hover:bg-paper-dim text-ink-muted"
-                        }`}
-                      >
-                        {l.label}
-                      </NavLink>
-                    );
-                  })}
-                </nav>
-              )}
               {!loading && (
                 user ? (
                   <Button
@@ -148,14 +95,14 @@ export default function AppShell() {
             </div>
           </div>
 
-          <nav className="mt-3 flex items-center gap-1 sm:gap-2 overflow-x-auto" aria-label={isDevMode ? (appMode === "explore" ? "Explore navigation" : "Build navigation") : "Primary navigation"}>
-            {sectionLinks.map((l) => (
+          <nav className="mt-3 flex items-center gap-1 sm:gap-2 overflow-x-auto" aria-label="Primary navigation">
+            {STUDENT_NAV.map((l) => (
               <NavLink
                 key={l.to}
                 to={l.to}
                 end={l.end}
                 className={({ isActive }) =>
-                  `px-3 py-1.5 text-xs sm:text-sm font-medium rounded-sm border-b-2 transition-colors ${
+                  `whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-medium rounded-sm border-b-2 transition-colors ${
                     isActive
                       ? "border-primary text-ink"
                       : "border-transparent text-ink-muted hover:text-ink hover:bg-paper-dim"
@@ -169,7 +116,7 @@ export default function AppShell() {
               <NavLink
                 to="/admin"
                 className={({ isActive }) =>
-                  `inline-flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-medium rounded-sm border-b-2 transition-colors ${
+                  `inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 text-xs sm:text-sm font-medium rounded-sm border-b-2 transition-colors ${
                     isActive
                       ? "border-primary text-ink"
                       : "border-transparent text-ink-muted hover:text-ink hover:bg-paper-dim"
@@ -196,6 +143,14 @@ export default function AppShell() {
           </nav>
         </div>
       </header>
+      {gradeBMode && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 text-xs sm:text-sm no-print">
+          <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-2 flex items-center gap-2">
+            <span className="font-mono font-medium uppercase tracking-wider text-[10px] px-1.5 py-0.5 bg-amber-200/60 rounded-sm">Grade B Mode</span>
+            <span>Scaffolded view: sentence starters, accessible language, and structured prompts replace A/A* insight rows.</span>
+          </div>
+        </div>
+      )}
       <main className="flex-1 print-area">
         <Outlet />
       </main>

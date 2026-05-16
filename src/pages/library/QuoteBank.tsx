@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useGradeBMode } from "@/contexts/GradeBModeContext";
 
 type Quote = {
   id: string;
@@ -46,6 +47,7 @@ type Filters = {
 };
 
 export default function QuoteBank() {
+  const { gradeBMode } = useGradeBMode();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -307,8 +309,18 @@ export default function QuoteBank() {
                 {q.theme_tags.length > 0 && (
                   <Row label="Theme link" value={q.theme_tags.join(" · ")} />
                 )}
-                {q.a_star_insight && (
+                {q.a_star_insight && !gradeBMode && (
                   <Row label="A/A* insight" value={q.a_star_insight} />
+                )}
+                {gradeBMode && (
+                  <Row
+                    label="What to notice"
+                    value={
+                      q.word_analysis
+                        ? `Pick one word from the quote (try a noun or verb). Ask: what feeling or idea does it create? Link it to ${q.theme_tags[0] ?? "the theme"}.`
+                        : `Read the quote slowly. Find one word that stands out. Ask: what mood or idea does it create? Link it to ${q.theme_tags[0] ?? "the theme"}.`
+                    }
+                  />
                 )}
                 {q.paired_anchor_id && (
                   <Row label="Paired anchor" value={q.paired_anchor_id} />
