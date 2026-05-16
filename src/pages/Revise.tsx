@@ -88,7 +88,7 @@ function QuoteDrill({ quotes }: { quotes: QuoteMethod[] }) {
           className={cn(
             "px-3 py-1 text-xs font-mono uppercase tracking-wider rounded-sm border transition-colors",
             srcFilter === "all"
-              ? "bg-primary text-white border-primary"
+              ? "bg-primary text-ink border-rule"
               : "border-rule text-ink-muted hover:text-ink",
           )}
         >
@@ -101,7 +101,7 @@ function QuoteDrill({ quotes }: { quotes: QuoteMethod[] }) {
             className={cn(
               "px-3 py-1 text-xs font-mono uppercase tracking-wider rounded-sm border transition-colors",
               srcFilter === s
-                ? "bg-primary text-white border-primary"
+                ? "bg-primary text-ink border-rule"
                 : "border-rule text-ink-muted hover:text-ink",
             )}
           >
@@ -162,7 +162,7 @@ function QuoteDrill({ quotes }: { quotes: QuoteMethod[] }) {
           </button>
           <button
             onClick={next}
-            className="px-5 py-2 bg-primary text-white rounded-sm text-xs font-mono uppercase tracking-wider hover:opacity-90 transition-opacity"
+            className="px-5 py-2 bg-primary text-ink rounded-sm text-xs font-mono uppercase tracking-wider hover:opacity-90 transition-opacity"
           >
             Next quote
           </button>

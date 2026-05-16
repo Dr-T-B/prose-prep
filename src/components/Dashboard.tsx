@@ -1,85 +1,67 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Component2DashboardMock
- * -----------------------
- * Sandbox prototype only. All data is mocked inline below — no fetches,
- * no Supabase, no auth. Safe to copy into the real app later if approved.
+ * Component2Dashboard
+ * -------------------
+ * Wired panels (AO readiness, theme readiness, quote recall) read from
+ * Supabase. Essay history and weakness diagnosis remain mock pending real
+ * data — flagged with per-panel "Sample data" pills.
  *
  * Pearson Edexcel A-Level English Literature
- * Component 2: Prose · 9ET0/02
- * Texts: Hard Times (Dickens) · Atonement (McEwan)
+ * Component 2: Prose · 9ET0/02 — assesses AO1–AO4 only.
  */
-
-// ------------------------------------------------------------------
-// Mock data
-// ------------------------------------------------------------------
 
 const EXAM_DATE_ISO = "2026-06-01";
 
-type AO = "AO1" | "AO2" | "AO3" | "AO4" | "AO5";
+type AO = "AO1" | "AO2" | "AO3" | "AO4";
 
-const AO_META: Record<AO, { label: string; weight: number }> = {
-  AO1: { label: "Argument, terminology, expression", weight: 28 },
-  AO2: { label: "Analysis of methods", weight: 24 },
-  AO3: { label: "Contextual understanding", weight: 16 },
-  AO4: { label: "Connections between texts", weight: 16 },
-  AO5: { label: "Different interpretations", weight: 16 },
-};
+interface AoReadinessRow {
+  ao: AO;
+  label: string;
+  weight: number;
+  score: number;
+  trend: number;
+  note: string;
+}
 
-const AO_READINESS: Record<AO, { score: number; trend: number; note: string }> = {
-  AO1: { score: 78, trend: +4, note: "Thesis statements sharper; expression still occasionally informal." },
-  AO2: { score: 71, trend: +2, note: "Naming methods precisely — avoid 'uses imagery'." },
-  AO3: { score: 64, trend: -1, note: "Atonement context (postwar, metafiction) thinner than Dickens." },
-  AO4: { score: 58, trend: +6, note: "Comparative hinges improving; still text-by-text in ¶3." },
-  AO5: { score: 52, trend: +1, note: "Add a counter-reading per paragraph; cite a critic by name." },
-};
-
-type Text = "Hard Times" | "Atonement";
-
-type ThemeRow = {
+interface ThemeRow {
   id: string;
   title: string;
   hardTimes: number;
   atonement: number;
   connection: string;
-};
+}
 
-const THEMES: ThemeRow[] = [
-  { id: "class", title: "Class & social hierarchy", hardTimes: 82, atonement: 74, connection: "Externalised industry vs. internalised class misreading" },
-  { id: "education", title: "Education & imagination", hardTimes: 88, atonement: 60, connection: "Suppressed fancy vs. unchecked fancy" },
-  { id: "guilt", title: "Guilt & atonement", hardTimes: 55, atonement: 72, connection: "Partial redemption vs. denied absolution" },
-  { id: "narrative", title: "Narrative authority & form", hardTimes: 48, atonement: 81, connection: "Intrusive Victorian narrator vs. metafictional author-God" },
-  { id: "gender", title: "Gender & power", hardTimes: 62, atonement: 68, connection: "Louisa's commodification vs. Cecilia's self-determination" },
-  { id: "memory", title: "Memory & truth", hardTimes: 30, atonement: 70, connection: "Weakest comparative axis — needs work" },
-];
-
-const QUOTE_PROGRESS: Array<{ text: Text; learned: number; total: number }> = [
-  { text: "Hard Times", learned: 22, total: 30 },
-  { text: "Atonement", learned: 17, total: 30 },
-];
+interface QuoteProgressRow {
+  text: "Hard Times" | "Atonement";
+  learned: number;
+  total: number;
+}
 
 type Essay = {
   id: string;
   date: string;
   question: string;
   themeId: string;
-  mark: number; // out of 40
+  mark: number;
   band: "C" | "B" | "A" | "A*";
   weakest: AO;
 };
 
+// TODO: wire to essay_plans or timed_sessions when real data accrues
 const ESSAYS: Essay[] = [
-  { id: "e1", date: "12 Apr", question: "Compare presentations of guilt and the possibility of atonement.", themeId: "guilt", mark: 26, band: "B", weakest: "AO5" },
+  { id: "e1", date: "12 Apr", question: "Compare presentations of guilt and the possibility of atonement.", themeId: "guilt", mark: 26, band: "B", weakest: "AO4" },
   { id: "e2", date: "26 Apr", question: "'Imagination is more dangerous than ignorance.'", themeId: "education", mark: 29, band: "B", weakest: "AO4" },
   { id: "e3", date: "08 May", question: "Compare the corrupting effects of social class.", themeId: "class", mark: 31, band: "A", weakest: "AO3" },
   { id: "e4", date: "13 May", question: "Compare uses of narrative form to shape moral response.", themeId: "narrative", mark: 28, band: "B", weakest: "AO2" },
 ];
 
+// TODO: wire to essay_plans or timed_sessions when real data accrues
 const WEAKNESSES: Array<{ id: string; title: string; severity: "high" | "med" | "low"; detail: string; aos: AO[] }> = [
   { id: "w1", title: "AO4 paragraph drift", severity: "high", aos: ["AO4"], detail: "Paragraphs 3–4 default to single-text analysis. Open every ¶ with a comparative claim." },
   { id: "w2", title: "Atonement context shallow", severity: "high", aos: ["AO3"], detail: "Postwar Britain, metafiction debates, McEwan on Lola's silence — currently 2 quotable references." },
-  { id: "w3", title: "Critic citations missing", severity: "med", aos: ["AO5"], detail: "Bring in Leavis (HT) and Currie / Head (Atonement) by name to anchor counter-readings." },
+  { id: "w3", title: "Critic citations missing", severity: "med", aos: ["AO3"], detail: "Bring in Leavis (HT) and Currie / Head (Atonement) by name to anchor critical context." },
   { id: "w4", title: "Method vocabulary repetitive", severity: "med", aos: ["AO2"], detail: "Rotate: free indirect discourse, prolepsis, syndeton, synecdoche, focalisation." },
   { id: "w5", title: "Memory & truth thin on HT side", severity: "low", aos: ["AO4"], detail: "Only 30% theme readiness for Hard Times — pull Sissy / Stephen exchanges." },
 ];
@@ -101,10 +83,6 @@ const PRINT_SUMMARY = {
   ],
 };
 
-// ------------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------------
-
 function daysUntil(iso: string) {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000));
 }
@@ -116,20 +94,143 @@ function bandFor(score: number): "C" | "B" | "A" | "A*" {
   return "C";
 }
 
-// ------------------------------------------------------------------
-// Component
-// ------------------------------------------------------------------
+function connectionLabel(ht: number, at: number): string {
+  const hasHt = ht > 0;
+  const hasAt = at > 0;
+  if (hasHt && hasAt) {
+    return ht >= 2 && at >= 2 ? "Strong both" : "Underdeveloped both sides";
+  }
+  if (hasHt) return "Hard Times only";
+  if (hasAt) return "Atonement only";
+  return "Underdeveloped";
+}
 
-export function Component2DashboardMock() {
+export function Component2Dashboard() {
   const days = daysUntil(EXAM_DATE_ISO);
 
+  const [readiness, setReadiness] = useState<AoReadinessRow[]>([]);
+  const [themes, setThemes] = useState<ThemeRow[]>([]);
+  const [quoteProgress, setQuoteProgress] = useState<QuoteProgressRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    const readinessPromise = (supabase.from as unknown as (t: string) => ReturnType<typeof supabase.from>)(
+      "ao_readiness",
+    )
+      .select("*")
+      .order("ao", { ascending: true });
+
+    const themesPromise = (supabase.from as unknown as (t: string) => ReturnType<typeof supabase.from>)(
+      "themes",
+    )
+      .select("id, label, sort_order")
+      .order("sort_order", { ascending: true });
+
+    const quotesPromise = supabase
+      .from("quotes")
+      .select("id, source, theme_tags, is_verified");
+
+    Promise.all([readinessPromise, themesPromise, quotesPromise]).then(
+      ([rRes, tRes, qRes]) => {
+        if (cancelled) return;
+        if (rRes.error) {
+          setError(rRes.error.message);
+          setLoading(false);
+          return;
+        }
+        if (tRes.error) {
+          setError(tRes.error.message);
+          setLoading(false);
+          return;
+        }
+        if (qRes.error) {
+          setError(qRes.error.message);
+          setLoading(false);
+          return;
+        }
+
+        const aoRows: AoReadinessRow[] = (rRes.data ?? []).map((r) => {
+          const row = r as Record<string, unknown>;
+          return {
+            ao: row.ao as AO,
+            label: (row.label as string) ?? "",
+            weight: Number(row.weight ?? 0),
+            score: Number(row.score ?? 0),
+            trend: Number(row.trend ?? 0),
+            note: (row.note as string) ?? "",
+          };
+        });
+
+        const quoteRows = (qRes.data ?? []) as Array<{
+          id: string;
+          source: string | null;
+          theme_tags: string[] | null;
+          is_verified: boolean | null;
+        }>;
+
+        const themeRows: ThemeRow[] = (tRes.data ?? []).map((r) => {
+          const row = r as Record<string, unknown>;
+          const id = row.id as string;
+          const label = (row.label as string) ?? id;
+          const ht = quoteRows.filter(
+            (q) =>
+              q.source === "hard-times" &&
+              Array.isArray(q.theme_tags) &&
+              q.theme_tags.includes(id),
+          ).length;
+          const at = quoteRows.filter(
+            (q) =>
+              q.source === "atonement" &&
+              Array.isArray(q.theme_tags) &&
+              q.theme_tags.includes(id),
+          ).length;
+          return {
+            id,
+            title: label,
+            hardTimes: ht,
+            atonement: at,
+            connection: connectionLabel(ht, at),
+          };
+        });
+
+        const htTotal = quoteRows.filter((q) => q.source === "hard-times").length;
+        const htLearned = quoteRows.filter(
+          (q) => q.source === "hard-times" && q.is_verified === true,
+        ).length;
+        const atTotal = quoteRows.filter((q) => q.source === "atonement").length;
+        const atLearned = quoteRows.filter(
+          (q) => q.source === "atonement" && q.is_verified === true,
+        ).length;
+
+        setReadiness(aoRows);
+        setThemes(themeRows);
+        setQuoteProgress([
+          { text: "Hard Times", learned: htLearned, total: htTotal },
+          { text: "Atonement", learned: atLearned, total: atTotal },
+        ]);
+        setLoading(false);
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
   const overall = useMemo(() => {
-    const aos = Object.keys(AO_READINESS) as AO[];
+    if (readiness.length === 0) return 0;
+    const totalWeight = readiness.reduce((s, r) => s + r.weight, 0);
+    if (totalWeight === 0) return 0;
     const weighted =
-      aos.reduce((sum, a) => sum + AO_READINESS[a].score * AO_META[a].weight, 0) /
-      aos.reduce((sum, a) => sum + AO_META[a].weight, 0);
+      readiness.reduce((s, r) => s + r.score * r.weight, 0) / totalWeight;
     return Math.round(weighted);
-  }, []);
+  }, [readiness]);
 
   const overallBand = bandFor(overall);
 
@@ -145,13 +246,31 @@ export function Component2DashboardMock() {
     };
   }, []);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-paper text-ink flex items-center justify-center">
+        <p className="text-sm text-ink-muted">Loading dashboard…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-paper text-ink flex flex-col items-center justify-center gap-4 px-6">
+        <p className="text-sm text-ink">Could not load the revision dashboard.</p>
+        <p className="text-xs text-ink-muted max-w-md text-center">{error}</p>
+        <button
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="rounded-md border border-rule px-3 py-2 text-xs font-medium hover:bg-rule"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-paper text-ink relative">
-      {/* Preview badge */}
-      <span className="absolute top-4 right-4 z-50 bg-ink text-paper text-[10px] font-mono uppercase tracking-[0.2em] px-2 py-1 select-none print:hidden">
-        Preview — mock data
-      </span>
-
       {/* Top bar */}
       <header className="border-b border-rule bg-paper-dim print:hidden">
         <div className="mx-auto max-w-6xl px-6 py-5 flex items-center justify-between">
@@ -179,9 +298,9 @@ export function Component2DashboardMock() {
 
         {/* Row 2: AO tracker */}
         <Section title="AO Readiness" eyebrow="Assessment Objectives">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            {(Object.keys(AO_READINESS) as AO[]).map((ao) => (
-              <AOCard key={ao} ao={ao} />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {readiness.map((r) => (
+              <AOCard key={r.ao} row={r} />
             ))}
           </div>
         </Section>
@@ -195,19 +314,22 @@ export function Component2DashboardMock() {
               <div className="px-4 py-3">Atonement</div>
               <div className="px-4 py-3">AO4 hinge</div>
             </div>
-            {THEMES.map((t) => (
+            {themes.map((t) => (
               <div
                 key={t.id}
                 className="grid grid-cols-[1fr_120px_120px_1.4fr] items-center border-b border-rule last:border-b-0 text-sm"
               >
                 <div className="px-4 py-3 font-serif">{t.title}</div>
-                <div className="px-4 py-3"><Bar value={t.hardTimes} /></div>
-                <div className="px-4 py-3"><Bar value={t.atonement} /></div>
+                <div className="px-4 py-3 text-xs text-ink-muted">{t.hardTimes} quote{t.hardTimes === 1 ? "" : "s"}</div>
+                <div className="px-4 py-3 text-xs text-ink-muted">{t.atonement} quote{t.atonement === 1 ? "" : "s"}</div>
                 <div className="px-4 py-3 text-ink-muted text-xs leading-relaxed">
                   {t.connection}
                 </div>
               </div>
             ))}
+            {themes.length === 0 && (
+              <div className="px-4 py-6 text-xs text-ink-muted">No themes loaded.</div>
+            )}
           </div>
         </Section>
 
@@ -215,8 +337,8 @@ export function Component2DashboardMock() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Section title="Quote Recall" eyebrow="Memorisation">
             <div className="space-y-4">
-              {QUOTE_PROGRESS.map((q) => {
-                const pct = Math.round((q.learned / q.total) * 100);
+              {quoteProgress.map((q) => {
+                const pct = q.total > 0 ? Math.round((q.learned / q.total) * 100) : 0;
                 return (
                   <div key={q.text} className="border border-rule p-4">
                     <div className="flex items-baseline justify-between">
@@ -226,10 +348,6 @@ export function Component2DashboardMock() {
                       </div>
                     </div>
                     <Bar value={pct} className="mt-3" />
-                    <div className="mt-3 flex gap-2 text-[10px] uppercase tracking-wider">
-                      <Tag>Due review: {Math.round(q.learned * 0.3)}</Tag>
-                      <Tag>New today: 4</Tag>
-                    </div>
                   </div>
                 );
               })}
@@ -237,7 +355,8 @@ export function Component2DashboardMock() {
           </Section>
 
           <Section title="Comparative Essay Practice" eyebrow="Build → Test → Refine">
-            <div className="border border-rule">
+            <SampleDataPill />
+            <div className="border border-rule mt-3">
               <div className="grid grid-cols-[60px_1fr_60px_50px] text-[10px] uppercase tracking-[0.2em] text-ink-muted bg-paper-dim border-b border-rule">
                 <div className="px-3 py-2">Date</div>
                 <div className="px-3 py-2">Question</div>
@@ -273,7 +392,8 @@ export function Component2DashboardMock() {
 
         {/* Row 5: Weakness diagnosis */}
         <Section title="Weakness Diagnosis" eyebrow="Where marks are leaking">
-          <ul className="divide-y divide-rule border-y border-rule">
+          <SampleDataPill />
+          <ul className="divide-y divide-rule border-y border-rule mt-3">
             {WEAKNESSES.map((w) => (
               <li key={w.id} className="py-4 grid md:grid-cols-[100px_1fr_auto] gap-4 items-start">
                 <SeverityPill severity={w.severity} />
@@ -356,7 +476,6 @@ export function Component2DashboardMock() {
                 <li>Name the method precisely.</li>
                 <li>Embed micro-quotation.</li>
                 <li>One context detail per ¶.</li>
-                <li>One named critic / counter-reading.</li>
                 <li>Close on the AO4 hinge.</li>
               </ul>
             </SummaryBlock>
@@ -366,19 +485,23 @@ export function Component2DashboardMock() {
 
       <footer className="border-t border-rule mt-10 print:hidden">
         <div className="mx-auto max-w-6xl px-6 py-5 text-xs text-ink-muted flex justify-between">
-          <span>Sandbox prototype · mock data only</span>
-          <span>Component2DashboardMock</span>
+          <span>Component 2 · Prose · 9ET0/02</span>
+          <span>Component2Dashboard</span>
         </div>
       </footer>
     </div>
   );
 }
 
-export default Component2DashboardMock;
+export default Component2Dashboard;
 
-// ------------------------------------------------------------------
-// Sub-components
-// ------------------------------------------------------------------
+function SampleDataPill() {
+  return (
+    <span className="text-ao1 border border-rule px-2 py-0.5 rounded text-xs">
+      Sample data
+    </span>
+  );
+}
 
 function CountdownPanel({
   days,
@@ -450,33 +573,31 @@ function NextTaskPanel({
   );
 }
 
-function AOCard({ ao }: { ao: AO }) {
-  const r = AO_READINESS[ao];
-  const meta = AO_META[ao];
-  const trendStr = r.trend > 0 ? `+${r.trend}` : `${r.trend}`;
+function AOCard({ row }: { row: AoReadinessRow }) {
+  const trendStr = row.trend > 0 ? `+${row.trend}` : `${row.trend}`;
   return (
     <div className="border border-rule p-4 bg-paper">
       <div className="flex items-baseline justify-between">
-        <div className="font-serif text-xl">{ao}</div>
+        <div className="font-serif text-xl">{row.ao}</div>
         <div className="text-[10px] uppercase tracking-wider text-ink-muted">
-          {meta.weight}% weight
+          {row.weight}% weight
         </div>
       </div>
       <div className="text-[11px] text-ink-muted mt-1 leading-snug min-h-[28px]">
-        {meta.label}
+        {row.label}
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <div className="font-serif text-3xl">{r.score}</div>
+        <div className="font-serif text-3xl">{row.score}</div>
         <div
           className={`text-xs ${
-            r.trend >= 0 ? "text-ink" : "text-ink-muted"
+            row.trend >= 0 ? "text-ink" : "text-ink-muted"
           }`}
         >
           {trendStr} this week
         </div>
       </div>
-      <Bar value={r.score} className="mt-2" />
-      <p className="text-[11px] text-ink-muted mt-3 leading-snug">{r.note}</p>
+      <Bar value={row.score} className="mt-2" />
+      <p className="text-[11px] text-ink-muted mt-3 leading-snug">{row.note}</p>
     </div>
   );
 }
@@ -489,12 +610,6 @@ function Bar({ value, className = "" }: { value: number; className?: string }) {
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
     </div>
-  );
-}
-
-function Tag({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="border border-rule px-2 py-1 text-ink-muted">{children}</span>
   );
 }
 

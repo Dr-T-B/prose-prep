@@ -328,8 +328,8 @@ export default function RetrievalToolkit() {
                 <p className="label-eyebrow">Comparative axis</p>
                 {m.level_band && (
                   <span className={`text-[9px] font-mono px-1.5 py-0.5 border rounded-sm ${
-                    m.level_band === "top_band" ? "border-amber-300 bg-amber-50 text-amber-700"
-                    : m.level_band === "strong" ? "border-blue-200 bg-blue-50 text-blue-700"
+                    m.level_band === "top_band" ? "border-rule bg-paper text-ao4"
+                    : m.level_band === "strong" ? "border-rule bg-paper text-ao3"
                     : "border-rule bg-paper-dim/60 text-ink-muted"
                   }`}>
                     {m.level_band === "top_band" ? "Top Band" : m.level_band === "strong" ? "Strong" : "Secure"}

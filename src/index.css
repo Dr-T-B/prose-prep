@@ -151,12 +151,14 @@
 /* ---------------------------------------------------------------- */
 /* Library print styles — clean revision sheets / save-as-PDF       */
 /* Scoped via .library-print on each Library page root.             */
+/* TOKEN-EXCEPTION: print media uses raw colours for physical paper */
+/* output — these are not screen tokens and must use #fff/#111 etc. */
 /* ---------------------------------------------------------------- */
 @media print {
   .library-print {
     padding: 0 !important;
     max-width: none !important;
-    color: #111 !important;
+    color: #111 !important; /* TOKEN-EXCEPTION: print ink */
   }
 
   /* Hide the "Library" back-link in the page header */
@@ -193,9 +195,9 @@
   /* Card-like surfaces: white paper, simple borders, no shadows */
   .library-print article,
   .library-print details {
-    background: #fff !important;
+    background: #fff !important; /* TOKEN-EXCEPTION: print paper */
     box-shadow: none !important;
-    border: 1px solid #bbb !important;
+    border: 1px solid #bbb !important; /* TOKEN-EXCEPTION: print rule */
     break-inside: avoid;
     page-break-inside: avoid;
     margin-bottom: 8pt;
@@ -215,13 +217,13 @@
   .library-print h1,
   .library-print h2,
   .library-print h3 {
-    color: #000 !important;
+    color: #000 !important; /* TOKEN-EXCEPTION: print headings */
     page-break-after: avoid;
   }
   .library-print .text-ink-muted,
   .library-print .meta-mono,
   .library-print .label-eyebrow {
-    color: #444 !important;
+    color: #444 !important; /* TOKEN-EXCEPTION: print muted */
   }
   .library-print p,
   .library-print dd,
@@ -234,8 +236,8 @@
   .library-print span.border,
   .library-print span[class*="border-rule"] {
     background: transparent !important;
-    border-color: #bbb !important;
-    color: #222 !important;
+    border-color: #bbb !important; /* TOKEN-EXCEPTION: print rule */
+    color: #222 !important; /* TOKEN-EXCEPTION: print ink */
   }
 
   /* Ensure colour-adjust is honoured */

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
+import AoSelfMark, { type AoScores } from '@/components/AoSelfMark'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,10 +52,10 @@ const AUDIT = [
 
 // ─── Display config ───────────────────────────────────────────────────────────
 
-const DIFF_META: Record<string, { color: string; bg: string }> = {
-  'L4 core':       { color: '#2dd4bf', bg: 'rgba(45,212,191,0.10)' },
-  'L4-L5 bridge':  { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
-  'L5 stretch':    { color: '#a78bfa', bg: 'rgba(167,139,250,0.10)' },
+const DIFF_META: Record<string, { cls: string }> = {
+  'L4 core':       { cls: 'text-ao2 bg-paper' },
+  'L4-L5 bridge':  { cls: 'text-ao3 bg-paper' },
+  'L5 stretch':    { cls: 'text-ao5 bg-paper' },
 }
 
 function fmt(secs: number): string {
@@ -143,7 +144,7 @@ export default function TimedWrite() {
   const timerPct  = phase === 'plan'
     ? (timer / PLAN_SECONDS) * 100
     : (timer / WRITE_SECONDS) * 100
-  const timerColor = timer < 120 ? '#ef4444' : timer < 300 ? '#f59e0b' : '#2dd4bf'
+  const timerColor = timer < 120 ? 'hsl(var(--ao1))' : timer < 300 ? 'hsl(var(--ao3))' : 'hsl(var(--ao2))'
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const startPlan = useCallback((q: Question) => {
@@ -170,6 +171,10 @@ export default function TimedWrite() {
     setChecklist(prev => ({ ...prev, [id]: !prev[id] }))
   const toggleAudit = (id: string) =>
     setAudit(prev => ({ ...prev, [id]: !prev[id] }))
+
+  const handleSelfMark = (scores: AoScores) => {
+    console.log('AoSelfMark submitted', scores)
+  }
 
   const saveSession = useCallback(async () => {
     if (!question) return
@@ -303,7 +308,7 @@ export default function TimedWrite() {
                 <ol className="space-y-2">
                   {question.suggested_paragraph_angles.map((a, i) => (
                     <li key={i} className="flex gap-2 text-xs text-ink-muted">
-                      <span className="text-amber-400 font-bold flex-shrink-0">{i + 1}.</span>
+                      <span className="text-ao3 font-bold flex-shrink-0">{i + 1}.</span>
                       <span className="leading-relaxed">{a}</span>
                     </li>
                   ))}
@@ -320,7 +325,7 @@ export default function TimedWrite() {
                   'Best method-rich evidence for each paragraph',
                 ].map((step, i) => (
                   <p key={i} className="flex gap-2">
-                    <span className="text-amber-400 font-bold flex-shrink-0">{i + 1}.</span>
+                    <span className="text-ao3 font-bold flex-shrink-0">{i + 1}.</span>
                     <span>{step}</span>
                   </p>
                 ))}
@@ -330,17 +335,17 @@ export default function TimedWrite() {
             {/* Right: planning notes */}
             <div className="flex flex-col gap-3">
               <textarea
-                className="flex-1 min-h-64 bg-paper border border-rule rounded-xl p-4 text-sm text-ink resize-none focus:outline-none focus:border-amber-400/50 leading-relaxed"
+                className="flex-1 min-h-64 bg-paper border border-rule rounded-xl p-4 text-sm text-ink resize-none focus:outline-none focus:border-rule leading-relaxed"
                 placeholder="Thesis · Para 1 job · Para 2 job · Para 3 job · Best evidence per paragraph…"
                 value={planNotes}
                 onChange={e => setPlanNotes(e.target.value)}
               />
               <button onClick={startWrite}
-                className="w-full py-3.5 rounded-xl bg-amber-400 text-slate-900 font-semibold text-sm hover:bg-amber-300 transition-colors">
+                className="w-full py-3.5 rounded-xl bg-hard-times text-ink font-semibold text-sm hover:opacity-90 transition-opacity">
                 Start writing →
               </button>
               {timer === 0 && (
-                <p className="text-center text-xs text-amber-400">Planning time up — move to writing.</p>
+                <p className="text-center text-xs text-ao3">Planning time up — move to writing.</p>
               )}
             </div>
           </div>
@@ -359,7 +364,7 @@ export default function TimedWrite() {
           </div>
 
           <textarea
-            className="flex-1 min-h-96 bg-paper border border-rule rounded-xl p-5 text-sm text-ink resize-none focus:outline-none focus:border-amber-400/30 leading-relaxed font-serif"
+            className="flex-1 min-h-96 bg-paper border border-rule rounded-xl p-5 text-sm text-ink resize-none focus:outline-none focus:border-rule leading-relaxed font-serif"
             placeholder="Write your comparative essay here…"
             value={essayText}
             onChange={e => setEssayText(e.target.value)}
@@ -371,12 +376,12 @@ export default function TimedWrite() {
               {wordCount} words · Target: 600–750 for 3 paragraphs
             </p>
             <button onClick={finishWrite}
-              className="px-6 py-2.5 rounded-xl bg-amber-400 text-slate-900 font-semibold text-sm hover:bg-amber-300 transition-colors">
+              className="px-6 py-2.5 rounded-xl bg-hard-times text-ink font-semibold text-sm hover:opacity-90 transition-opacity">
               Finish & self-assess →
             </button>
           </div>
           {timer === 0 && (
-            <p className="text-center text-xs text-red-400 mt-2">Time up — please finish your sentence and move to self-assessment.</p>
+            <p className="text-center text-xs text-ao1 mt-2">Time up — please finish your sentence and move to self-assessment.</p>
           )}
         </div>
       )}
@@ -399,11 +404,11 @@ export default function TimedWrite() {
                   <button key={w.id} onClick={() => toggleCheck(w.id)}
                     className={`w-full text-left p-3.5 rounded-xl border flex items-start gap-3 transition-all ${
                       checked
-                        ? 'border-emerald-400/40 bg-emerald-400/05'
-                        : 'border-rule hover:border-ink/20'
+                        ? 'border-rule bg-paper'
+                        : 'border-rule hover:border-rule'
                     }`}>
                     <span className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center text-xs mt-0.5 ${
-                      checked ? 'bg-emerald-400 border-emerald-400 text-slate-900' : 'border-rule text-ink-muted'
+                      checked ? 'bg-atonement border-rule text-ink' : 'border-rule text-ink-muted'
                     }`}>
                       {checked ? '✓' : ''}
                     </span>
@@ -424,11 +429,11 @@ export default function TimedWrite() {
                   <button key={a.id} onClick={() => toggleAudit(a.id)}
                     className={`w-full text-left p-3.5 rounded-xl border flex items-start gap-3 transition-all ${
                       checked
-                        ? 'border-amber-400/40 bg-amber-400/05'
-                        : 'border-rule hover:border-ink/20'
+                        ? 'border-rule bg-paper'
+                        : 'border-rule hover:border-rule'
                     }`}>
                     <span className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center text-xs mt-0.5 ${
-                      checked ? 'bg-amber-400 border-amber-400 text-slate-900' : 'border-rule text-ink-muted'
+                      checked ? 'bg-hard-times border-rule text-ink' : 'border-rule text-ink-muted'
                     }`}>
                       {checked ? '✓' : ''}
                     </span>
@@ -442,11 +447,11 @@ export default function TimedWrite() {
           {/* Score summary */}
           <div className="p-4 border border-rule rounded-xl mb-5 flex gap-6">
             <div className="text-center">
-              <p className="text-2xl font-bold text-emerald-400">{Object.values(checklist).filter(Boolean).length}<span className="text-sm text-ink-muted font-normal"> /12</span></p>
+              <p className="text-2xl font-bold text-ao2">{Object.values(checklist).filter(Boolean).length}<span className="text-sm text-ink-muted font-normal"> /12</span></p>
               <p className="text-xs text-ink-muted mt-0.5">Warnings avoided</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-amber-400">{Object.values(audit).filter(Boolean).length}<span className="text-sm text-ink-muted font-normal"> /5</span></p>
+              <p className="text-2xl font-bold text-ao3">{Object.values(audit).filter(Boolean).length}<span className="text-sm text-ink-muted font-normal"> /5</span></p>
               <p className="text-xs text-ink-muted mt-0.5">Audit passes</p>
             </div>
             <div className="text-center">
@@ -456,9 +461,14 @@ export default function TimedWrite() {
           </div>
 
           <button onClick={saveSession} disabled={saving}
-            className="w-full py-3.5 rounded-xl bg-amber-400 text-slate-900 font-semibold text-sm hover:bg-amber-300 transition-colors disabled:opacity-50">
+            className="w-full py-3.5 rounded-xl bg-hard-times text-ink font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
             {saving ? 'Saving…' : 'Save session & finish'}
           </button>
+
+          <div className="mt-8">
+            <h2 className="font-serif text-ink text-xl mb-3">Time's up — how did you do?</h2>
+            <AoSelfMark onSubmit={handleSelfMark} />
+          </div>
         </div>
       )}
 
@@ -466,7 +476,7 @@ export default function TimedWrite() {
       {phase === 'complete' && question && (
         <div className="px-4 py-12 md:px-8 max-w-lg">
           <div className="mb-8">
-            <p className="text-emerald-400 font-semibold mb-1">Session saved ✓</p>
+            <p className="text-ao2 font-semibold mb-1">Session saved ✓</p>
             <h2 className="text-xl font-bold text-ink">Done.</h2>
           </div>
 
@@ -493,14 +503,14 @@ export default function TimedWrite() {
               'Drill the quotes and routes most relevant to this question in the Quote Bank and Comparison Routes screens.',
             ].filter(Boolean).map((tip, i) => (
               <p key={i} className="text-xs text-ink-muted leading-relaxed mb-1.5 flex gap-2">
-                <span className="text-amber-400 flex-shrink-0">→</span>
+                <span className="text-ao3 flex-shrink-0">→</span>
                 <span>{tip}</span>
               </p>
             ))}
           </div>
 
           <button onClick={reset}
-            className="w-full py-3.5 rounded-xl bg-paper border border-rule text-ink text-sm font-medium hover:border-amber-400/50 transition-colors">
+            className="w-full py-3.5 rounded-xl bg-paper border border-rule text-ink text-sm font-medium hover:border-rule transition-colors">
             Start another session
           </button>
         </div>
@@ -512,23 +522,22 @@ export default function TimedWrite() {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function QuestionCard({ q, onSelect }: { q: Question; onSelect: (q: Question) => void }) {
-  const dm = DIFF_META[q.difficulty_band] ?? { color: '#94a3b8', bg: 'rgba(148,163,184,0.10)' }
+  const dm = DIFF_META[q.difficulty_band] ?? { cls: 'text-ink-muted bg-paper' }
   return (
     <button onClick={() => onSelect(q)}
-      className="w-full text-left p-5 border border-rule rounded-xl hover:border-amber-400/40 transition-colors group">
+      className="w-full text-left p-5 border border-rule rounded-xl hover:border-rule transition-colors group">
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2 flex-wrap">
           {q.is_real_paper
-            ? <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-400/10 text-teal-400">Edexcel {q.exam_year}</span>
-            : <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-400/10 text-slate-400">Synthetic</span>
+            ? <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-atonement text-ink">Edexcel {q.exam_year}</span>
+            : <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-paper text-ink-muted">Synthetic</span>
           }
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-            style={{ color: dm.color, background: dm.bg }}>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${dm.cls}`}>
             {q.difficulty_band}
           </span>
           <span className="text-[10px] text-ink-muted">{q.ao_emphasis}</span>
         </div>
-        <span className="text-ink-muted group-hover:text-amber-400 text-sm flex-shrink-0 transition-colors">→</span>
+        <span className="text-ink-muted group-hover:text-ao3 text-sm flex-shrink-0 transition-colors">→</span>
       </div>
       <p className="text-sm text-ink font-serif italic leading-relaxed">"{q.question_stem}"</p>
     </button>
@@ -542,6 +551,7 @@ function TimerBar({ pct, color, label }: { pct: number; color: string; label: st
         <span className="label-eyebrow text-ink-muted">{label}</span>
       </div>
       <div className="h-2 bg-rule rounded-full overflow-hidden">
+        {/* TOKEN-EXCEPTION: dynamic width and timer color (CSS var reference) for progress animation */}
         <div className="h-full rounded-full transition-all duration-1000 ease-linear"
           style={{ width: `${Math.max(0, pct)}%`, background: color }} />
       </div>
@@ -569,8 +579,8 @@ function StateScreen({ text }: { text: string }) {
 function ErrorScreen({ message }: { message: string }) {
   return (
     <div className="min-h-screen bg-paper flex items-center justify-center px-4">
-      <div className="border border-red-500/30 rounded-xl p-6 max-w-md text-center">
-        <p className="text-red-400 font-medium mb-1">Failed to load</p>
+      <div className="border border-rule rounded-xl p-6 max-w-md text-center">
+        <p className="text-ink font-medium mb-1">Failed to load</p>
         <p className="text-ink-muted text-sm">{message}</p>
       </div>
     </div>

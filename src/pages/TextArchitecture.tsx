@@ -40,27 +40,27 @@ type PrimaryTab = 'structure' | 'characters' | 'symbols'
 // ─── HT structural panels ────────────────────────────────────────────────────
 
 const HT_BOOKS = [
-  { label: 'Sowing', subtitle: 'Book One', color: '#2dd4bf', bg: 'rgba(45,212,191,0.08)', border: 'rgba(45,212,191,0.25)', desc: 'Ideology planted — Fact, repression, class hardness' },
-  { label: 'Reaping', subtitle: 'Book Two', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', desc: 'Consequences emerge — Louisa collapses, Stephen suffers' },
-  { label: 'Garnering', subtitle: 'Book Three', color: '#a78bfa', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.25)', desc: 'Reckoning — recognition arrives, but too late' },
+  { label: 'Sowing',    subtitle: 'Book One',   cls: 'text-ao2 bg-paper', borderCls: 'border-rule', desc: 'Ideology planted — Fact, repression, class hardness' },
+  { label: 'Reaping',   subtitle: 'Book Two',   cls: 'text-ao3 bg-paper', borderCls: 'border-rule', desc: 'Consequences emerge — Louisa collapses, Stephen suffers' },
+  { label: 'Garnering', subtitle: 'Book Three', cls: 'text-ao5 bg-paper', borderCls: 'border-rule', desc: 'Reckoning — recognition arrives, but too late' },
 ]
 
 const AT_PARTS = [
-  { label: 'Part One', subtitle: '1935 estate', color: '#fb7185', bg: 'rgba(251,113,133,0.08)', border: 'rgba(251,113,133,0.25)', desc: 'The misreading — perception, class, accusation' },
-  { label: 'Part Two', subtitle: 'Dunkirk 1940', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', desc: 'Historical catastrophe — private injustice inside mass suffering' },
-  { label: 'Part Three', subtitle: 'London 1940', color: '#2dd4bf', bg: 'rgba(45,212,191,0.08)', border: 'rgba(45,212,191,0.25)', desc: 'Nursing — penance without repair' },
-  { label: 'Coda', subtitle: 'London 1999', color: '#a78bfa', bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.25)', desc: 'Revelation — Briony as author; repair as fiction' },
+  { label: 'Part One',   subtitle: '1935 estate',  cls: 'text-ao1 bg-paper', borderCls: 'border-rule', desc: 'The misreading — perception, class, accusation' },
+  { label: 'Part Two',   subtitle: 'Dunkirk 1940', cls: 'text-ao3 bg-paper', borderCls: 'border-rule', desc: 'Historical catastrophe — private injustice inside mass suffering' },
+  { label: 'Part Three', subtitle: 'London 1940',  cls: 'text-ao2 bg-paper', borderCls: 'border-rule', desc: 'Nursing — penance without repair' },
+  { label: 'Coda',       subtitle: 'London 1999',  cls: 'text-ao5 bg-paper', borderCls: 'border-rule', desc: 'Revelation — Briony as author; repair as fiction' },
 ]
 
-const LEVEL_META: Record<string, { label: string; color: string; bg: string }> = {
-  secure:   { label: 'Secure',   color: '#2dd4bf', bg: 'rgba(45,212,191,0.12)' },
-  strong:   { label: 'Strong',   color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  top_band: { label: 'Top band', color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
+const LEVEL_META: Record<string, { label: string; cls: string }> = {
+  secure:   { label: 'Secure',   cls: 'text-ao2 bg-paper' },
+  strong:   { label: 'Strong',   cls: 'text-ao3 bg-paper' },
+  top_band: { label: 'Top band', cls: 'text-ao5 bg-paper' },
 }
 
 const TEXT_META = {
-  'Hard Times': { short: 'HT', color: '#2dd4bf', bg: 'rgba(45,212,191,0.12)' },
-  'Atonement':  { short: 'AT', color: '#fb7185', bg: 'rgba(251,113,133,0.12)' },
+  'Hard Times': { short: 'HT', cls: 'text-ink bg-hard-times' },
+  'Atonement':  { short: 'AT', cls: 'text-ink bg-atonement' },
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ function MarkdownBody({ content }: { content: string }) {
         if (t.startsWith('> ')) {
           const lines = t.split('\n').map(l => l.replace(/^>\s?/, '')).join(' ')
           return (
-            <blockquote key={i} className="border-l-2 border-amber-400/50 pl-3 italic text-sm text-ink-muted my-2">
+            <blockquote key={i} className="border-l-2 border-rule pl-3 italic text-sm text-ink-muted my-2">
               {inlineFormat(lines)}
             </blockquote>
           )
@@ -151,7 +151,7 @@ function MarkdownBody({ content }: { content: string }) {
             <ul key={i} className="space-y-1 my-2">
               {items.map((item, j) => (
                 <li key={j} className="flex gap-2 text-sm text-ink-muted">
-                  <span className="text-amber-400 mt-0.5 flex-shrink-0">—</span>
+                  <span className="text-ao3 mt-0.5 flex-shrink-0">—</span>
                   <span>{inlineFormat(item.slice(item.indexOf('-') + 1).trim())}</span>
                 </li>
               ))}
@@ -265,8 +265,8 @@ export default function TextArchitecture() {
   )
   if (error) return (
     <div className="min-h-screen bg-paper flex items-center justify-center px-4">
-      <div className="bg-paper border border-red-500/30 rounded-xl p-6 max-w-md text-center">
-        <p className="text-red-400 font-medium mb-1">Failed to load</p>
+      <div className="bg-paper border border-rule rounded-xl p-6 max-w-md text-center">
+        <p className="text-ink font-medium mb-1">Failed to load</p>
         <p className="text-ink-muted text-sm">{error}</p>
       </div>
     </div>
@@ -291,7 +291,7 @@ export default function TextArchitecture() {
             onClick={() => setTab(t)}
             className={`py-3 px-4 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${
               tab === t
-                ? 'border-amber-400 text-ink'
+                ? 'border-rule text-ink'
                 : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
@@ -314,8 +314,8 @@ export default function TextArchitecture() {
                   className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
                     textFocus === txt
                       ? txt === 'Hard Times'
-                        ? 'bg-teal-500/10 border-teal-400/60 text-teal-400'
-                        : 'bg-rose-500/10 border-rose-400/60 text-rose-400'
+                        ? 'bg-hard-times border-rule text-ink'
+                        : 'bg-atonement border-rule text-ink'
                       : 'border-rule text-ink-muted hover:text-ink'
                   }`}
                 >
@@ -331,9 +331,8 @@ export default function TextArchitecture() {
                 <div className="grid grid-cols-3 gap-3 mb-6">
                   {HT_BOOKS.map(b => (
                     <div key={b.label}
-                      className="rounded-xl p-4 border"
-                      style={{ background: b.bg, borderColor: b.border }}>
-                      <p className="label-eyebrow mb-0.5" style={{ color: b.color }}>{b.label}</p>
+                      className={`rounded-xl p-4 border ${b.cls} ${b.borderCls}`}>
+                      <p className="label-eyebrow mb-0.5">{b.label}</p>
                       <p className="text-xs font-medium text-ink mb-1">{b.subtitle}</p>
                       <p className="text-xs text-ink-muted leading-relaxed">{b.desc}</p>
                     </div>
@@ -360,9 +359,8 @@ export default function TextArchitecture() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                   {AT_PARTS.map(p => (
                     <div key={p.label}
-                      className="rounded-xl p-4 border"
-                      style={{ background: p.bg, borderColor: p.border }}>
-                      <p className="label-eyebrow mb-0.5" style={{ color: p.color }}>{p.label}</p>
+                      className={`rounded-xl p-4 border ${p.cls} ${p.borderCls}`}>
+                      <p className="label-eyebrow mb-0.5">{p.label}</p>
                       <p className="text-xs font-medium text-ink mb-1">{p.subtitle}</p>
                       <p className="text-xs text-ink-muted leading-relaxed">{p.desc}</p>
                     </div>
@@ -411,11 +409,9 @@ export default function TextArchitecture() {
                     onClick={() => setCharLevel(v)}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                       charLevel === v
-                        ? 'bg-paper border border-rule text-ink'
+                        ? `bg-paper border border-rule ${v !== 'ALL' ? LEVEL_META[v]?.cls : 'text-ink'}`
                         : 'text-ink-muted hover:text-ink'
-                    }`}
-                    style={charLevel === v && v !== 'ALL' ? { color: LEVEL_META[v]?.color } : undefined}
-                  >
+                    }`}>
                     {v === 'ALL' ? 'All bands' : LEVEL_META[v]?.label}
                   </button>
                 ))}
@@ -439,14 +435,12 @@ export default function TextArchitecture() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5">
                             {tm && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                                style={{ color: tm.color, background: tm.bg }}>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${tm.cls}`}>
                                 {tm.short}
                               </span>
                             )}
                             {lm && (
-                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                                style={{ color: lm.color, background: lm.bg }}>
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${lm.cls}`}>
                                 {lm.label}
                               </span>
                             )}
@@ -475,9 +469,8 @@ export default function TextArchitecture() {
                           </div>
                         )}
                         {c.comparative_link && (
-                          <div className="p-3 rounded-lg"
-                            style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                            <p className="label-eyebrow mb-1" style={{ color: '#f59e0b' }}>AO4 — Comparative link</p>
+                          <div className="p-3 rounded-lg bg-paper border border-rule">
+                            <p className="label-eyebrow mb-1 text-ao3">AO4 — Comparative link</p>
                             <p className="text-xs text-ink-muted leading-relaxed">{c.comparative_link}</p>
                           </div>
                         )}
@@ -539,25 +532,22 @@ export default function TextArchitecture() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                             {tm && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                                style={{ color: tm.color, background: tm.bg }}>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${tm.cls}`}>
                                 {tm.short}
                               </span>
                             )}
                             {lm && (
-                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                                style={{ color: lm.color, background: lm.bg }}>
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${lm.cls}`}>
                                 {lm.label}
                               </span>
                             )}
                             {hasAo4 && (
-                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                                style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.10)' }}>
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-ao3 bg-paper">
                                 AO4
                               </span>
                             )}
                             {(s.themes || []).map(t => (
-                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-ao5 border border-rule">
                                 {t}
                               </span>
                             ))}

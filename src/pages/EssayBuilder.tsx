@@ -605,7 +605,7 @@ export default function EssayBuilder() {
       </section>
 
       {/* RIGHT: LIVE OUTPUT */}
-      <aside className="lg:w-[42%] xl:w-[45%] bg-white print:bg-white">
+      <aside className="lg:w-[42%] xl:w-[45%] bg-paper print:bg-paper">
         <LiveOutput plan={plan} />
       </aside>
     </div>
@@ -743,7 +743,7 @@ function ParagraphFallback({ labels }: { labels: string[] }) {
   return (
     <div className="flex flex-col gap-3">
       {labels.map((lbl, i) => (
-        <article key={i} className="border border-rule bg-white p-3">
+        <article key={i} className="border border-rule bg-paper p-3">
           <p className="label-eyebrow mb-1">§{i + 1}</p>
           <p className="text-sm">{lbl}</p>
         </article>

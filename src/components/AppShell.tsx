@@ -16,16 +16,28 @@ const buildLinks = [
   { to: "/", label: "Build home", end: true },
   { to: "/builder", label: "Essay Builder" },
   { to: "/paragraph-engine", label: "Paragraph Engine" },
+  { to: "/paragraph-builder", label: "Paragraph Builder" },
   { to: "/timed", label: "Timed Practice" },
+  { to: "/session", label: "Timed Write" },
+  { to: "/practise", label: "Practise" },
+  { to: "/revise", label: "Revise" },
   { to: "/toolkit", label: "Retrieval Toolkit" },
+  { to: "/drill", label: "Retrieval Drill" },
+  { to: "/architecture", label: "Text Architecture" },
+  { to: "/routes", label: "Comparison Routes" },
+  { to: "/flex", label: "Interpretive Flex" },
+  { to: "/compare", label: "Compare" },
   { to: "/theme-wheel", label: "Theme Wheel" },
   { to: "/matrix", label: "Comparative Matrix" },
 ];
 
 const exploreLinks = [
   { to: "/library", label: "Library", end: true },
+  { to: "/learn", label: "Learn" },
   { to: "/library/quotes", label: "Quotes" },
+  { to: "/library/quote-bank", label: "Quote Bank" },
   { to: "/library/questions", label: "Questions" },
+  { to: "/library/stems", label: "Paragraph Stems" },
   { to: "/library/comparison", label: "Comparison" },
   { to: "/library/thesis", label: "Thesis & Paragraph" },
   { to: "/library/context", label: "Context" },
@@ -40,7 +52,7 @@ function cleanPath(pathname: string) {
 
 export function getAppMode(pathname: string): AppMode {
   const path = cleanPath(pathname);
-  if (path === "/library" || path.startsWith("/library/") || path === "/modules" || path.startsWith("/modules/")) return "explore";
+  if (path === "/library" || path.startsWith("/library/") || path === "/modules" || path.startsWith("/modules/") || path === "/learn") return "explore";
   return "build";
 }
 

@@ -125,7 +125,7 @@ export default function ResetPassword() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="w-full max-w-md text-center space-y-4">
-          <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
+          <CheckCircle2 className="mx-auto h-12 w-12 text-ao2" />
           <h1 className="text-2xl font-semibold tracking-tight">
             Password updated!
           </h1>

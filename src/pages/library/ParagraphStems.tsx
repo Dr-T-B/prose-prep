@@ -30,17 +30,17 @@ const LEVEL_LABELS: Record<string, string> = {
 };
 
 const LEVEL_CLASS: Record<string, string> = {
-  top_band:   "border-amber-300 text-amber-700",
-  strong:     "border-blue-200 text-blue-700",
+  top_band:   "border-rule text-ao4",
+  strong:     "border-rule text-ao3",
   secure:     "border-rule text-ink-muted",
-  foundation: "border-green-200 text-green-700",
+  foundation: "border-rule text-ao2",
 };
 
 const AO_CLASS: Record<string, string> = {
-  AO1: "bg-rose-50 border-rose-200 text-rose-700",
-  AO2: "bg-blue-50 border-blue-200 text-blue-700",
-  AO3: "bg-emerald-50 border-emerald-200 text-emerald-700",
-  AO4: "bg-purple-50 border-purple-200 text-purple-700",
+  AO1: "bg-paper border-rule text-ao1",
+  AO2: "bg-paper border-rule text-ao2",
+  AO3: "bg-paper border-rule text-ao3",
+  AO4: "bg-paper border-rule text-ao4",
 };
 
 // ── StemCard ──────────────────────────────────────────────────────────────

@@ -72,10 +72,10 @@ const ASSESSMENT_OBJECTIVES: AssessmentObjective[] = [
 ];
 
 const AO_COLOUR: Record<string, string> = {
-  AO1: "border-blue-300 text-blue-700",
-  AO2: "border-green-300 text-green-700",
-  AO3: "border-amber-300 text-amber-700",
-  AO4: "border-purple-300 text-purple-700",
+  AO1: "border-rule text-ao1",
+  AO2: "border-rule text-ao2",
+  AO3: "border-rule text-ao3",
+  AO4: "border-rule text-ao4",
 };
 
 export default function Practise() {
@@ -150,8 +150,8 @@ export default function Practise() {
         {/* A* extension — visually separated from the official AO list */}
         <div className="mt-10 pt-8 border-t border-dashed border-rule">
           <p className="label-eyebrow text-ink-muted mb-4">Beyond the official AOs</p>
-          <div className="border-l-2 border-rose-200 pl-5 bg-rose-50/40 rounded-r-sm py-4 pr-4 max-w-2xl">
-            <dt className="font-mono text-[10px] uppercase tracking-wider text-rose-600">
+          <div className="border-l-2 border-rule pl-5 bg-paper rounded-r-sm py-4 pr-4 max-w-2xl">
+            <dt className="font-mono text-[10px] uppercase tracking-wider text-ao5">
               A* Extension · Alternative readings for AO1 sophistication
             </dt>
             <dd className="mt-2 text-sm text-ink-muted leading-relaxed">

@@ -1572,6 +1572,54 @@ export type Database = {
           },
         ]
       }
+      quotes: {
+        Row: {
+          id: string
+          text: string
+          attribution: string
+          location: string | null
+          source: string
+          word_analysis: string | null
+          a_star_insight: string | null
+          anchor_id: string | null
+          paired_anchor_id: string | null
+          is_verified: boolean
+          ao_tags: string[]
+          theme_tags: string[]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          text: string
+          attribution: string
+          location?: string | null
+          source: string
+          word_analysis?: string | null
+          a_star_insight?: string | null
+          anchor_id?: string | null
+          paired_anchor_id?: string | null
+          is_verified?: boolean
+          ao_tags?: string[]
+          theme_tags?: string[]
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          text?: string
+          attribution?: string
+          location?: string | null
+          source?: string
+          word_analysis?: string | null
+          a_star_insight?: string | null
+          anchor_id?: string | null
+          paired_anchor_id?: string | null
+          is_verified?: boolean
+          ao_tags?: string[]
+          theme_tags?: string[]
+          created_at?: string
+        }
+        Relationships: []
+      }
       quote_methods: {
         Row: {
           ao_priority: string[] | null

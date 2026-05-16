@@ -14,7 +14,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        serif: ["Fraunces", "ui-serif", "Georgia", "serif"],
+        serif: ['"Cormorant Garamond"', "Georgia", "serif"],
         mono: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       colors: {

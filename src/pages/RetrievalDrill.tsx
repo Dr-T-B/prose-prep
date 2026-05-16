@@ -302,7 +302,8 @@ export default function RetrievalDrill() {
           <span className="label-eyebrow text-ink-faint">{cardIndex + 1} / {deck.length}</span>
         </div>
         <div className="h-1.5 bg-rule rounded-full overflow-hidden">
-          <div className="h-full bg-amber-400 rounded-full transition-all duration-300"
+          {/* TOKEN-EXCEPTION: dynamic width for progress bar */}
+          <div className="h-full bg-hard-times rounded-full transition-all duration-300"
             style={{ width: `${(cardIndex / deck.length) * 100}%` }} />
         </div>
       </div>
@@ -327,9 +328,9 @@ function ModeSelector({ onStart, quoteCount, pairCount }: {
   onStart: (m: DrillMode) => void; quoteCount: number; pairCount: number
 }) {
   const modes = [
-    { id: 'recognition' as DrillMode, label: 'Recognition', desc: 'Read the method/effect. Pick the correct quote from four options.', count: `${quoteCount} quotes`, border: 'border-amber-400/40 hover:border-amber-400' },
-    { id: 'pair_match' as DrillMode, label: 'Pair Match', desc: 'See an HT quote. Identify its Atonement counterpart. Builds AO4 reflex.', count: `${pairCount} pairs`, border: 'border-sky-400/40 hover:border-sky-400' },
-    { id: 'free_recall' as DrillMode, label: 'Free Recall', desc: 'Given method and themes only. Recall the quote from memory, then self-rate.', count: `${quoteCount} quotes`, border: 'border-violet-400/40 hover:border-violet-400' },
+    { id: 'recognition' as DrillMode, label: 'Recognition', desc: 'Read the method/effect. Pick the correct quote from four options.', count: `${quoteCount} quotes`, border: 'border-rule hover:border-rule' },
+    { id: 'pair_match' as DrillMode, label: 'Pair Match', desc: 'See an HT quote. Identify its Atonement counterpart. Builds AO4 reflex.', count: `${pairCount} pairs`, border: 'border-rule hover:border-rule' },
+    { id: 'free_recall' as DrillMode, label: 'Free Recall', desc: 'Given method and themes only. Recall the quote from memory, then self-rate.', count: `${quoteCount} quotes`, border: 'border-rule hover:border-rule' },
   ]
   return (
     <div className="min-h-screen bg-paper px-4 py-12 md:px-8">
@@ -373,7 +374,7 @@ function RecognitionCard({ card, chosen, onChoose, isPairMode }: {
         {(card.meta.themes ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {card.meta.themes!.map(t => (
-              <span key={t} className="text-[11px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{t}</span>
+              <span key={t} className="text-[11px] px-2 py-0.5 rounded bg-paper text-ao5 border border-rule">{t}</span>
             ))}
           </div>
         )}
@@ -384,8 +385,8 @@ function RecognitionCard({ card, chosen, onChoose, isPairMode }: {
           const isChosen = chosen === opt, isCorrect = opt === card.correctOption
           let cls = 'text-left w-full p-4 rounded-xl border text-sm font-serif italic leading-relaxed transition-all '
           if (!chosen)       cls += 'bg-surface border-rule hover:border-ink/30 text-ink cursor-pointer'
-          else if (isCorrect) cls += 'bg-emerald-500/10 border-emerald-400/60 text-emerald-300'
-          else if (isChosen)  cls += 'bg-red-500/10 border-red-400/60 text-red-300'
+          else if (isCorrect) cls += 'bg-paper border-rule text-ao2'
+          else if (isChosen)  cls += 'bg-paper border-rule text-ao1'
           else                cls += 'bg-surface border-rule text-ink-faint opacity-40'
           return (
             <button key={i} className={cls} onClick={() => onChoose(opt)} disabled={!!chosen}>
@@ -431,7 +432,7 @@ function FreeRecallCard({ card, revealed, onReveal, onScore }: {
         {(card.meta.themes ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {card.meta.themes!.map(t => (
-              <span key={t} className="text-[11px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{t}</span>
+              <span key={t} className="text-[11px] px-2 py-0.5 rounded bg-paper text-ao5 border border-rule">{t}</span>
             ))}
           </div>
         )}
@@ -439,7 +440,7 @@ function FreeRecallCard({ card, revealed, onReveal, onScore }: {
 
       {!revealed ? (
         <button onClick={onReveal}
-          className="w-full p-6 rounded-xl border-2 border-dashed border-rule hover:border-amber-400/50 text-ink-faint hover:text-amber-400 transition-colors text-sm">
+          className="w-full p-6 rounded-xl border-2 border-dashed border-rule hover:border-rule text-ink-faint hover:text-ao3 transition-colors text-sm">
           Recall the quote — tap to reveal ↓
         </button>
       ) : (
@@ -451,15 +452,15 @@ function FreeRecallCard({ card, revealed, onReveal, onScore }: {
           <p className="text-center text-sm text-ink-faint mb-3">How well did you recall it?</p>
           <div className="grid grid-cols-3 gap-2.5">
             <button onClick={() => onScore(true, QUALITY_MAP.got_it)}
-              className="py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-medium hover:bg-emerald-500/20 transition-colors">
+              className="py-3 rounded-xl bg-paper border border-rule text-ao2 text-sm font-medium hover:opacity-90 transition-opacity">
               ✓ Got it
             </button>
             <button onClick={() => onScore(true, QUALITY_MAP.almost)}
-              className="py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm font-medium hover:bg-amber-500/20 transition-colors">
+              className="py-3 rounded-xl bg-paper border border-rule text-ao3 text-sm font-medium hover:opacity-90 transition-opacity">
               ~ Almost
             </button>
             <button onClick={() => onScore(false, QUALITY_MAP.missed)}
-              className="py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors">
+              className="py-3 rounded-xl bg-paper border border-rule text-ao1 text-sm font-medium hover:opacity-90 transition-opacity">
               ✗ Missed
             </button>
           </div>
@@ -475,7 +476,7 @@ function SummaryScreen({ stats, onRestart }: { stats: SessionStats; onRestart: (
   const mins  = Math.floor(stats.durationMs / 60000)
   const secs  = Math.round((stats.durationMs % 60000) / 1000)
   const grade = pct >= 85 ? 'Excellent' : pct >= 65 ? 'Good' : 'Keep practising'
-  const clr   = pct >= 85 ? 'text-emerald-400' : pct >= 65 ? 'text-amber-400' : 'text-red-400'
+  const clr   = pct >= 85 ? 'text-ao2' : pct >= 65 ? 'text-ao3' : 'text-ao1'
   return (
     <div className="min-h-screen bg-paper px-4 py-12 md:px-8">
       <div className="max-w-2xl mx-auto">
@@ -491,8 +492,8 @@ function SummaryScreen({ stats, onRestart }: { stats: SessionStats; onRestart: (
             <p className="label-eyebrow text-ink-faint mb-3">Missed — review these</p>
             <div className="flex flex-col gap-2">
               {stats.missedCards.map((c, i) => (
-                <div key={i} className="p-4 bg-surface border border-red-500/20 rounded-xl">
-                  <p className="text-xs text-red-400/70 mb-1">{c.meta.source ?? 'Pair'}</p>
+                <div key={i} className="p-4 bg-surface border border-rule rounded-xl">
+                  <p className="text-xs text-ao1 mb-1">{c.meta.source ?? 'Pair'}</p>
                   <p className="font-serif italic text-ink text-sm">{c.answer}</p>
                   {c.meta.method && <p className="text-xs text-ink-faint mt-1">{c.meta.method}</p>}
                 </div>
@@ -501,7 +502,7 @@ function SummaryScreen({ stats, onRestart }: { stats: SessionStats; onRestart: (
           </div>
         )}
         <button onClick={onRestart}
-          className="w-full py-3.5 rounded-xl bg-amber-400 text-slate-900 font-semibold text-sm hover:bg-amber-300 transition-colors">
+          className="w-full py-3.5 rounded-xl bg-hard-times text-ink font-semibold text-sm hover:opacity-90 transition-opacity">
           Start another session
         </button>
       </div>
@@ -520,8 +521,8 @@ function LoadingState() {
 function ErrorState({ message }: { message: string }) {
   return (
     <div className="min-h-screen bg-paper flex items-center justify-center px-4">
-      <div className="bg-surface border border-red-500/30 rounded-xl p-6 max-w-md text-center">
-        <p className="text-red-400 font-medium mb-1">Something went wrong</p>
+      <div className="bg-surface border border-rule rounded-xl p-6 max-w-md text-center">
+        <p className="text-ink font-medium mb-1">Something went wrong</p>
         <p className="text-ink-faint text-sm">{message}</p>
       </div>
     </div>

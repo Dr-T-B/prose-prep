@@ -31,16 +31,19 @@ type ToolkitSection = 'thesis' | 'stems' | 'transitions' | 'dtc'
 
 // ─── Display config ───────────────────────────────────────────────────────────
 
-const LEVEL_META: Record<string, { label: string; color: string; bg: string }> = {
-  secure:     { label: 'Secure',   color: '#2dd4bf', bg: 'rgba(45,212,191,0.10)' },
-  strong:     { label: 'Strong',   color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
-  top_band:   { label: 'Top band', color: '#a78bfa', bg: 'rgba(167,139,250,0.10)' },
-  perceptive: { label: 'Perceptive', color: '#a78bfa', bg: 'rgba(167,139,250,0.10)' },
+const LEVEL_META: Record<string, { label: string; cls: string }> = {
+  secure:     { label: 'Secure',     cls: 'text-ao2 bg-paper' },
+  strong:     { label: 'Strong',     cls: 'text-ao3 bg-paper' },
+  top_band:   { label: 'Top band',   cls: 'text-ao5 bg-paper' },
+  perceptive: { label: 'Perceptive', cls: 'text-ao5 bg-paper' },
 }
 
-const DOM_CLR = { color: '#2dd4bf', bg: 'rgba(45,212,191,0.07)', border: 'rgba(45,212,191,0.20)' }
-const ALT_CLR = { color: '#fb7185', bg: 'rgba(251,113,133,0.07)', border: 'rgba(251,113,133,0.20)' }
-const STEM_CLR = { color: '#f59e0b', bg: 'rgba(245,158,11,0.07)', border: 'rgba(245,158,11,0.25)' }
+const DOM_BG  = 'bg-hard-times'
+const ALT_BG  = 'bg-atonement'
+const STEM_BG = 'bg-paper'
+const DOM_TXT = 'text-ink'
+const ALT_TXT = 'text-ink'
+const STEM_TXT = 'text-ao3'
 
 // Glossary ID prefix patterns → toolkit sections
 const isThesis      = (id: string) => id.startsWith('wp4_thesis_')
@@ -128,8 +131,8 @@ export default function InterpretiveFlex() {
   )
   if (error) return (
     <div className="min-h-screen bg-paper flex items-center justify-center px-4">
-      <div className="border border-red-500/30 rounded-xl p-6 max-w-md text-center">
-        <p className="text-red-400 font-medium mb-1">Failed to load</p>
+      <div className="border border-rule rounded-xl p-6 max-w-md text-center">
+        <p className="text-ink font-medium mb-1">Failed to load</p>
         <p className="text-ink-muted text-sm">{error}</p>
       </div>
     </div>
@@ -157,7 +160,7 @@ export default function InterpretiveFlex() {
         ] as [PrimaryTab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className={`py-3 px-4 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === t ? 'border-amber-400 text-ink' : 'border-transparent text-ink-muted hover:text-ink'
+              tab === t ? 'border-rule text-ink' : 'border-transparent text-ink-muted hover:text-ink'
             }`}>
             {label}
           </button>
@@ -173,7 +176,7 @@ export default function InterpretiveFlex() {
               <p className="text-xs text-ink-muted leading-relaxed">
                 These are <span className="text-ink font-medium">AO1 alternative readings</span> — not bolted-on critical theory,
                 but argued positions that complicate your dominant reading.
-                Use the <span className="text-amber-400 font-medium">safe stem</span> to introduce the alternative,
+                Use the <span className="text-ao3 font-medium">safe stem</span> to introduce the alternative,
                 then evaluate: does it have force, or does your dominant reading hold?
               </p>
             </div>
@@ -186,9 +189,8 @@ export default function InterpretiveFlex() {
                   return (
                     <button key={v} onClick={() => setReadLevel(v)}
                       className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                        readLevel === v ? 'bg-paper border border-rule text-ink' : 'text-ink-muted hover:text-ink'
-                      }`}
-                      style={readLevel === v && m ? { color: m.color } : undefined}>
+                        readLevel === v ? `bg-paper border border-rule ${m ? m.cls : 'text-ink'}` : 'text-ink-muted hover:text-ink'
+                      }`}>
                       {v === 'ALL' ? 'All levels' : m!.label}
                     </button>
                   )
@@ -215,12 +217,12 @@ export default function InterpretiveFlex() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                            {lm && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ color: lm.color, background: lm.bg }}>{lm.label}</span>}
+                            {lm && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lm.cls}`}>{lm.label}</span>}
                             {topicTags.map(t => (
-                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{t}</span>
+                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-ao5 border border-rule">{t}</span>
                             ))}
                             {examTags.map(t => (
-                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-500/10 text-slate-400">{t}</span>
+                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-ink-muted">{t}</span>
                             ))}
                           </div>
                           <p className="font-semibold text-ink text-sm capitalize">{r.focus}</p>
@@ -232,18 +234,18 @@ export default function InterpretiveFlex() {
                     {isOpen && (
                       <div className="border-t border-rule divide-y divide-rule">
                         {/* Dominant */}
-                        <div className="p-4" style={{ background: DOM_CLR.bg }}>
-                          <p className="label-eyebrow mb-1.5" style={{ color: DOM_CLR.color }}>Dominant reading</p>
+                        <div className={`p-4 ${DOM_BG}`}>
+                          <p className={`label-eyebrow mb-1.5 ${DOM_TXT}`}>Dominant reading</p>
                           <p className="text-sm text-ink leading-relaxed">{r.dominant_reading}</p>
                         </div>
                         {/* Alternative */}
-                        <div className="p-4" style={{ background: ALT_CLR.bg }}>
-                          <p className="label-eyebrow mb-1.5" style={{ color: ALT_CLR.color }}>Alternative reading</p>
+                        <div className={`p-4 ${ALT_BG}`}>
+                          <p className={`label-eyebrow mb-1.5 ${ALT_TXT}`}>Alternative reading</p>
                           <p className="text-sm text-ink leading-relaxed">{r.alternative_reading}</p>
                         </div>
                         {/* Safe stem */}
-                        <div className="p-4" style={{ background: STEM_CLR.bg }}>
-                          <p className="label-eyebrow mb-1.5" style={{ color: STEM_CLR.color }}>Safe stem — use this in your paragraph</p>
+                        <div className={`p-4 ${STEM_BG}`}>
+                          <p className={`label-eyebrow mb-1.5 ${STEM_TXT}`}>Safe stem — use this in your paragraph</p>
                           <p className="text-sm text-ink italic leading-relaxed">"{r.safe_stem}"</p>
                         </div>
                       </div>
@@ -269,7 +271,7 @@ export default function InterpretiveFlex() {
                 <button key={s} onClick={() => setToolkitSection(s)}
                   className={`px-4 py-2 rounded-lg text-xs font-medium border transition-colors ${
                     toolkitSection === s
-                      ? 'border-amber-400/60 bg-amber-400/10 text-amber-400'
+                      ? 'border-rule bg-paper text-ao3'
                       : 'border-rule text-ink-muted hover:text-ink'
                   }`}>
                   {label}
@@ -307,7 +309,7 @@ export default function InterpretiveFlex() {
                 <button key={s} onClick={() => setVocabSection(s)}
                   className={`px-4 py-2 rounded-lg text-xs font-medium border transition-colors ${
                     vocabSection === s
-                      ? 'border-amber-400/60 bg-amber-400/10 text-amber-400'
+                      ? 'border-rule bg-paper text-ao3'
                       : 'border-rule text-ink-muted hover:text-ink'
                   }`}>
                   {label}
@@ -328,8 +330,7 @@ export default function InterpretiveFlex() {
                       <div className="flex items-start gap-3 mb-2">
                         <p className="font-mono text-sm text-ink flex-1">{g.term}</p>
                         {g.level_band && LEVEL_META[g.level_band] && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
-                            style={{ color: LEVEL_META[g.level_band].color, background: LEVEL_META[g.level_band].bg }}>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${LEVEL_META[g.level_band].cls}`}>
                             {LEVEL_META[g.level_band].label}
                           </span>
                         )}
@@ -338,7 +339,7 @@ export default function InterpretiveFlex() {
                         <p className="text-xs text-ink-muted mb-2">{g.student_friendly_definition}</p>
                       )}
                       {g.sentence_stem && (
-                        <p className="text-xs font-mono italic text-amber-400 border-l-2 border-amber-400/30 pl-2">
+                        <p className="text-xs font-mono italic text-ao3 border-l-2 border-rule pl-2">
                           e.g. {g.sentence_stem}
                         </p>
                       )}
@@ -362,16 +363,15 @@ export default function InterpretiveFlex() {
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <p className="font-medium text-ink text-sm">{g.term}</p>
                           {lm && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
-                              style={{ color: lm.color, background: lm.bg }}>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${lm.cls}`}>
                               {lm.label}
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-ink-muted mb-3 leading-relaxed">{g.student_friendly_definition || g.definition}</p>
                         {g.sentence_stem && (
-                          <div className="rounded-lg px-3 py-2" style={{ background: STEM_CLR.bg, border: `1px solid ${STEM_CLR.border}` }}>
-                            <p className="text-[10px] font-bold mb-1" style={{ color: STEM_CLR.color }}>Stem</p>
+                          <div className={`rounded-lg px-3 py-2 border border-rule ${STEM_BG}`}>
+                            <p className={`text-[10px] font-bold mb-1 ${STEM_TXT}`}>Stem</p>
                             <p className="text-xs italic text-ink">{g.sentence_stem}</p>
                           </div>
                         )}
@@ -385,9 +385,9 @@ export default function InterpretiveFlex() {
             {/* Interpretive lenses */}
             {vocabSection === 'lenses' && (
               <div>
-                <div className="mb-4 p-4 rounded-xl border border-amber-400/20 bg-amber-400/05">
+                <div className="mb-4 p-4 rounded-xl border border-rule bg-paper">
                   <p className="text-xs text-ink-muted leading-relaxed">
-                    <span className="text-amber-400 font-medium">AO1 — Interpretive lenses.</span>{' '}
+                    <span className="text-ao3 font-medium">AO1 — Interpretive lenses.</span>{' '}
                     These lenses are tools for building a more sophisticated AO1 personal response
                     by introducing a named critical perspective as an argued position — not as a
                     label or bolted-on paragraph.
@@ -403,13 +403,11 @@ export default function InterpretiveFlex() {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                                  style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.10)' }}>
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded text-ao3 bg-paper">
                                   {LENS_LABEL}
                                 </span>
                                 {lm && (
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                                    style={{ color: lm.color, background: lm.bg }}>
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lm.cls}`}>
                                     {lm.label}
                                   </span>
                                 )}
@@ -432,8 +430,8 @@ export default function InterpretiveFlex() {
                               </div>
                             )}
                             {g.sentence_stem && (
-                              <div className="rounded-lg px-3 py-2.5" style={{ background: STEM_CLR.bg, border: `1px solid ${STEM_CLR.border}` }}>
-                                <p className="text-[10px] font-bold mb-1" style={{ color: STEM_CLR.color }}>Sentence stem</p>
+                              <div className={`rounded-lg px-3 py-2.5 border border-rule ${STEM_BG}`}>
+                                <p className={`text-[10px] font-bold mb-1 ${STEM_TXT}`}>Sentence stem</p>
                                 <p className="text-xs italic text-ink">{g.sentence_stem}</p>
                               </div>
                             )}
@@ -477,8 +475,7 @@ function ToolkitCard({ term, isOpen, onToggle }: {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               {lm && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                  style={{ color: lm.color, background: lm.bg }}>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lm.cls}`}>
                   {lm.label}
                 </span>
               )}
@@ -507,8 +504,8 @@ function ToolkitCard({ term, isOpen, onToggle }: {
 
           {/* Sentence stem — most important, shown prominently */}
           {term.sentence_stem && (
-            <div className="rounded-lg px-4 py-3" style={{ background: STEM_CLR.bg, border: `1px solid ${STEM_CLR.border}` }}>
-              <p className="label-eyebrow mb-1.5" style={{ color: STEM_CLR.color }}>
+            <div className={`rounded-lg px-4 py-3 border border-rule ${STEM_BG}`}>
+              <p className={`label-eyebrow mb-1.5 ${STEM_TXT}`}>
                 {isDTCTerm ? 'A* sentence stem' : 'Sentence stem'}
               </p>
               <p className="text-sm text-ink italic leading-relaxed">{term.sentence_stem}</p>

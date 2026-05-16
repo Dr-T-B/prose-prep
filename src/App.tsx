@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "./components/AppShell";
 import Dashboard from "./pages/Dashboard";
@@ -11,8 +10,10 @@ import TimedPractice from "./pages/TimedPractice";
 import RetrievalToolkit from "./pages/RetrievalToolkit";
 import Library from "./pages/Library";
 import LibraryQuotes from "./pages/library/Quotes";
+import LibraryQuoteBank from "./pages/library/QuoteBank";
 import LibraryQuestions from "./pages/library/Questions";
 import LibraryThesisParagraph from "./pages/library/ThesisParagraph";
+import ThesisRouteDetailPage from "./pages/ThesisRouteDetailPage";
 import LibraryComparison from "./pages/library/Comparison";
 import LibraryContext from "./pages/library/Context";
 import LibraryGlossary from "./pages/library/Glossary";
@@ -46,7 +47,6 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
       <Sonner />
       <ContentProvider>
         <GradeBModeProvider>
@@ -68,8 +68,10 @@ const App = () => (
                   <Route path="/toolkit" element={<RetrievalToolkit />} />
                   <Route path="/library" element={<Library />} />
                   <Route path="/library/quotes" element={<LibraryQuotes />} />
+                  <Route path="/library/quote-bank" element={<LibraryQuoteBank />} />
                   <Route path="/library/questions" element={<LibraryQuestions />} />
                   <Route path="/library/thesis" element={<LibraryThesisParagraph />} />
+                  <Route path="/library/thesis/:routeCode" element={<ThesisRouteDetailPage />} />
                   <Route path="/library/comparison" element={<LibraryComparison />} />
                   <Route path="/library/context" element={<LibraryContext />} />
                   <Route path="/library/glossary" element={<LibraryGlossary />} />

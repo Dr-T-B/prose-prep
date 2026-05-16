@@ -808,6 +808,7 @@ function AOPill({
   colorVar: string;
   optional?: boolean;
 }) {
+  // TOKEN-EXCEPTION: dynamic CSS variable reference to defined design token
   const dotStyle = { backgroundColor: `hsl(var(${colorVar}))` };
   return (
     <span

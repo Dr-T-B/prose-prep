@@ -16,8 +16,8 @@ const LEVEL_BAND_ORDER: Record<string, number> = { secure: 0, strong: 1, top_ban
 const LEVEL_BAND_LABELS: Record<string, string> = { secure: "Secure", strong: "Strong", top_band: "Top Band" };
 
 function levelBandClass(band: string | null | undefined) {
-  if (band === "top_band") return "border-amber-300 bg-amber-50 text-amber-700";
-  if (band === "strong") return "border-blue-200 bg-blue-50 text-blue-700";
+  if (band === "top_band") return "border-rule bg-paper text-ao4";
+  if (band === "strong") return "border-rule bg-paper text-ao3";
   return "border-rule bg-paper-dim/60 text-ink-muted";
 }
 
@@ -37,10 +37,12 @@ function ComparativePairingCard({ pairing, onUse }: { pairing: LibraryComparativ
       </div>
       <h2 className="font-serif text-xl mb-4">{pairing.title}</h2>
       <div className="grid md:grid-cols-2 gap-4 mb-4">
+        {/* TOKEN-EXCEPTION: dynamic CSS variable reference to defined --hard-times design token */}
         <div className="border-l-2 pl-3" style={{ borderColor: "hsl(var(--hard-times))" }}>
           <p className="font-mono uppercase tracking-wider text-[10px] text-ink mb-1">Hard Times</p>
           <p className="text-sm text-ink-muted leading-relaxed">{pairing.hardTimesIdea}</p>
         </div>
+        {/* TOKEN-EXCEPTION: dynamic CSS variable reference to defined --atonement design token */}
         <div className="border-l-2 pl-3" style={{ borderColor: "hsl(var(--atonement))" }}>
           <p className="font-mono uppercase tracking-wider text-[10px] text-ink mb-1">Atonement</p>
           <p className="text-sm text-ink-muted leading-relaxed">{pairing.atonementIdea}</p>

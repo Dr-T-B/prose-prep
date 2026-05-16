@@ -16,8 +16,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 const LEVEL_BAND_LABELS: Record<string, string> = { secure: "Secure", strong: "Strong", top_band: "Top Band" };
 
 function levelBandClass(band: string | null | undefined) {
-  if (band === "top_band") return "border-amber-300 bg-amber-50 text-amber-700";
-  if (band === "strong") return "border-blue-200 bg-blue-50 text-blue-700";
+  if (band === "top_band") return "border-rule bg-paper text-ao4";
+  if (band === "strong") return "border-rule bg-paper text-ao3";
   return "border-rule bg-paper-dim/60 text-ink-muted";
 }
 
@@ -73,9 +73,9 @@ function GlossaryCard({ term }: { term: GlossaryTerm }) {
       )}
 
       {term.common_misuse_warning && (
-        <div className="mt-3 border-l-2 border-amber-300 pl-3 py-1 bg-amber-50/60">
-          <p className="font-mono uppercase tracking-wider text-[9px] text-amber-700 mb-0.5">Common misuse</p>
-          <p className="text-xs text-amber-800 leading-relaxed">{term.common_misuse_warning}</p>
+        <div className="mt-3 border-l-2 border-rule pl-3 py-1 bg-paper-dim/60">
+          <p className="font-mono uppercase tracking-wider text-[9px] text-ao4 mb-0.5">Common misuse</p>
+          <p className="text-xs text-ink leading-relaxed">{term.common_misuse_warning}</p>
         </div>
       )}
     </article>

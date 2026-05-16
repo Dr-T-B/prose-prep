@@ -1090,7 +1090,7 @@ export default function ImportHistory({ onLoadedCountChange }: ImportHistoryProp
                     ? `Saved views synced to your account · ${format(lastSyncedAt, "HH:mm:ss")}`
                     : "Saved views synced to your account",
                   icon: <Cloud className="h-3 w-3" />,
-                  className: "border-emerald-500/40 text-emerald-600 dark:text-emerald-400",
+                  className: "border-rule text-ao2",
                 },
                 syncing: {
                   label: "Syncing…",
@@ -1116,7 +1116,7 @@ export default function ImportHistory({ onLoadedCountChange }: ImportHistoryProp
                   label: "Migrate",
                   tip: "Local saved views detected. Migrate them to your account to sync across devices.",
                   icon: <ArrowUpFromLine className="h-3 w-3" />,
-                  className: "border-amber-500/40 text-amber-600 dark:text-amber-400",
+                  className: "border-rule text-ao3",
                 },
               };
               const c = cfg[syncStatus];

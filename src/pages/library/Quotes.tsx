@@ -21,9 +21,9 @@ const VIEWS = ["By quote", "By theme"] as const;
 type View = (typeof VIEWS)[number];
 
 const AO_COLOURS: Record<string, string> = {
-  AO1: "bg-blue-50 border-blue-200 text-blue-700",
-  AO2: "bg-green-50 border-green-200 text-green-700",
-  AO3: "bg-amber-50 border-amber-200 text-amber-700",
+  AO1: "bg-paper border-rule text-ao1",
+  AO2: "bg-paper border-rule text-ao2",
+  AO3: "bg-paper border-rule text-ao3",
 };
 
 function QuoteCard({
@@ -48,7 +48,7 @@ function QuoteCard({
         <div className="flex items-center gap-1.5">
           <span className="label-eyebrow">{quote.sourceText}</span>
           {quote.isCoreQuote && (
-            <span className="text-[9px] font-mono px-1.5 py-0.5 border border-amber-300 bg-amber-50 text-amber-700 rounded-sm">
+            <span className="text-[9px] font-mono px-1.5 py-0.5 border border-rule bg-hard-times text-ink rounded-sm">
               Core
             </span>
           )}

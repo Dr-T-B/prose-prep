@@ -28,16 +28,16 @@ type TabId = 'routes' | 'matrix'
 
 // ─── Display config ───────────────────────────────────────────────────────────
 
-const ROUTE_LEVEL: Record<string, { label: string; color: string; bg: string }> = {
-  secure:     { label: 'Secure → A',  color: '#2dd4bf', bg: 'rgba(45,212,191,0.10)' },
-  strong:     { label: 'Strong → A*', color: '#f59e0b', bg: 'rgba(245,158,11,0.10)' },
-  perceptive: { label: 'Perceptive',  color: '#a78bfa', bg: 'rgba(167,139,250,0.10)' },
+const ROUTE_LEVEL: Record<string, { label: string; cls: string }> = {
+  secure:     { label: 'Secure → A',  cls: 'text-ao2 bg-paper' },
+  strong:     { label: 'Strong → A*', cls: 'text-ao3 bg-paper' },
+  perceptive: { label: 'Perceptive',  cls: 'text-ao5 bg-paper' },
 }
 
-const MATRIX_TIER: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  secure:   { label: 'Primary',  color: '#2dd4bf', bg: 'rgba(45,212,191,0.06)',  border: 'rgba(45,212,191,0.20)' },
-  strong:   { label: 'Secondary', color: '#f59e0b', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.20)' },
-  top_band: { label: 'Advanced', color: '#a78bfa', bg: 'rgba(167,139,250,0.06)', border: 'rgba(167,139,250,0.20)' },
+const MATRIX_TIER: Record<string, { label: string; cls: string; badgeCls: string; borderCls: string }> = {
+  secure:   { label: 'Primary',   cls: 'text-ao2', badgeCls: 'text-ao2 bg-paper', borderCls: 'border-rule' },
+  strong:   { label: 'Secondary', cls: 'text-ao3', badgeCls: 'text-ao3 bg-paper', borderCls: 'border-rule' },
+  top_band: { label: 'Advanced',  cls: 'text-ao5', badgeCls: 'text-ao5 bg-paper', borderCls: 'border-rule' },
 }
 
 const TIER_ORDER = ['secure', 'strong', 'top_band']
@@ -47,9 +47,9 @@ const TIER_DESC: Record<string, string> = {
   top_band: 'Abstract and conceptual — for top-band AO4 and AO1 sophistication',
 }
 
-const HT_CLR  = { color: '#2dd4bf', bg: 'rgba(45,212,191,0.08)', border: 'rgba(45,212,191,0.20)' }
-const AT_CLR  = { color: '#fb7185', bg: 'rgba(251,113,133,0.08)', border: 'rgba(251,113,133,0.20)' }
-const DIV_CLR = { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)' }
+const HT_CLS  = 'text-ink bg-hard-times'
+const AT_CLS  = 'text-ink bg-atonement'
+const DIV_CLS = 'text-ao3 bg-paper'
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -123,8 +123,8 @@ export default function ComparisonRoutes() {
   )
   if (error) return (
     <div className="min-h-screen bg-paper flex items-center justify-center px-4">
-      <div className="border border-red-500/30 rounded-xl p-6 max-w-md text-center">
-        <p className="text-red-400 font-medium mb-1">Failed to load</p>
+      <div className="border border-rule rounded-xl p-6 max-w-md text-center">
+        <p className="text-ink font-medium mb-1">Failed to load</p>
         <p className="text-ink-muted text-sm">{error}</p>
       </div>
     </div>
@@ -148,7 +148,7 @@ export default function ComparisonRoutes() {
           <button key={t} onClick={() => setTab(t)}
             className={`py-3 px-4 text-sm font-medium capitalize border-b-2 -mb-px transition-colors ${
               tab === t
-                ? 'border-amber-400 text-ink'
+                ? 'border-rule text-ink'
                 : 'border-transparent text-ink-muted hover:text-ink'
             }`}>
             {t === 'routes' ? 'Essay Routes' : 'Comparative Matrix'}
@@ -166,7 +166,7 @@ export default function ComparisonRoutes() {
               <p className="text-xs text-ink-muted leading-relaxed">
                 Each route is a complete essay argument framework — not a topic list, but a conceptual line
                 that works across any question on that theme. Use the{' '}
-                <span className="text-amber-400 font-medium">comparative insight</span> as the spine of your
+                <span className="text-ao3 font-medium">comparative insight</span> as the spine of your
                 introduction and the{' '}
                 <span className="font-medium text-ink">HT · AT emphasis</span> as the paragraph-level evidence plan.
               </p>
@@ -179,9 +179,8 @@ export default function ComparisonRoutes() {
                 return (
                   <button key={v} onClick={() => setRouteLevel(v)}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      routeLevel === v ? 'bg-paper border border-rule text-ink' : 'text-ink-muted hover:text-ink'
-                    }`}
-                    style={routeLevel === v && meta ? { color: meta.color } : undefined}>
+                      routeLevel === v ? `bg-paper border border-rule ${meta ? meta.cls : 'text-ink'}` : 'text-ink-muted hover:text-ink'
+                    }`}>
                     {v === 'ALL' ? 'All routes' : meta!.label}
                   </button>
                 )
@@ -200,8 +199,7 @@ export default function ComparisonRoutes() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5">
                             {lm && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded"
-                                style={{ color: lm.color, background: lm.bg }}>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${lm.cls}`}>
                                 {lm.label}
                               </span>
                             )}
@@ -219,16 +217,14 @@ export default function ComparisonRoutes() {
                         <div className="grid md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-rule">
                           <div className="p-5">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                                style={{ color: HT_CLR.color, background: HT_CLR.bg }}>HT</span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${HT_CLS}`}>HT</span>
                               <span className="label-eyebrow text-ink-muted">Hard Times emphasis</span>
                             </div>
                             <p className="text-xs text-ink-muted leading-relaxed">{r.hard_times_emphasis}</p>
                           </div>
                           <div className="p-5">
                             <div className="flex items-center gap-2 mb-2">
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                                style={{ color: AT_CLR.color, background: AT_CLR.bg }}>AT</span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${AT_CLS}`}>AT</span>
                               <span className="label-eyebrow text-ink-muted">Atonement emphasis</span>
                             </div>
                             <p className="text-xs text-ink-muted leading-relaxed">{r.atonement_emphasis}</p>
@@ -236,9 +232,8 @@ export default function ComparisonRoutes() {
                         </div>
 
                         {/* Comparative insight */}
-                        <div className="p-5 border-t border-rule"
-                          style={{ background: DIV_CLR.bg, borderTop: `1px solid ${DIV_CLR.border}` }}>
-                          <p className="label-eyebrow mb-2" style={{ color: DIV_CLR.color }}>
+                        <div className={`p-5 border-t border-rule ${DIV_CLS}`}>
+                          <p className="label-eyebrow mb-2 text-ao3">
                             Comparative insight — use as essay spine
                           </p>
                           <p className="text-sm text-ink leading-relaxed">{r.comparative_insight}</p>
@@ -265,7 +260,7 @@ export default function ComparisonRoutes() {
             <div className="mb-5 p-4 rounded-xl border border-rule bg-paper">
               <p className="text-xs text-ink-muted leading-relaxed">
                 Every row is a comparative axis. The{' '}
-                <span className="font-medium text-amber-400">divergence</span> is the AO4 move —
+                <span className="font-medium text-ao3">divergence</span> is the AO4 move —
                 how the texts approach the same concern differently. That divergence, not the similarity,
                 is what earns marks at A and above.
               </p>
@@ -279,9 +274,8 @@ export default function ComparisonRoutes() {
                   return (
                     <button key={v} onClick={() => setMatrixTier(v)}
                       className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                        matrixTier === v ? 'bg-paper border border-rule text-ink' : 'text-ink-muted hover:text-ink'
-                      }`}
-                      style={matrixTier === v && meta ? { color: meta.color } : undefined}>
+                        matrixTier === v ? `bg-paper border border-rule ${meta ? meta.cls : 'text-ink'}` : 'text-ink-muted hover:text-ink'
+                      }`}>
                       {v === 'ALL' ? 'All tiers' : meta!.label}
                     </button>
                   )
@@ -303,7 +297,7 @@ export default function ComparisonRoutes() {
               return (
                 <div key={tier} className="mb-8">
                   <div className="flex items-baseline gap-3 mb-3">
-                    <h2 className="text-sm font-bold" style={{ color: tm.color }}>{tm.label} pairings</h2>
+                    <h2 className={`text-sm font-bold ${tm.cls}`}>{tm.label} pairings</h2>
                     <p className="text-xs text-ink-muted">{TIER_DESC[tier]}</p>
                     <span className="text-xs text-ink-muted ml-auto">{rows.length}</span>
                   </div>
@@ -328,7 +322,7 @@ export default function ComparisonRoutes() {
                 <div className="space-y-2">
                   {untiered.map(m => (
                     <MatrixCard key={m.id} row={m}
-                      tier={{ label: '', color: '#64748b', bg: 'rgba(100,116,139,0.06)', border: 'rgba(100,116,139,0.15)' }}
+                      tier={{ label: '', cls: 'text-ink-muted', badgeCls: 'text-ink-muted bg-paper', borderCls: 'border-rule' }}
                       isOpen={expandedMatrix.has(m.id)}
                       onToggle={() => toggleMatrix(m.id)} />
                   ))}
@@ -347,7 +341,7 @@ export default function ComparisonRoutes() {
 
 function MatrixCard({ row, tier, isOpen, onToggle }: {
   row: MatrixRow
-  tier: { label: string; color: string; bg: string; border: string }
+  tier: { label: string; cls: string; badgeCls: string; borderCls: string }
   isOpen: boolean
   onToggle: () => void
 }) {
@@ -358,13 +352,12 @@ function MatrixCard({ row, tier, isOpen, onToggle }: {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             {tier.label && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
-                style={{ color: tier.color, background: tier.bg }}>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${tier.badgeCls}`}>
                 {tier.label}
               </span>
             )}
             {(row.themes || []).map(t => (
-              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex-shrink-0">
+              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-ao5 border border-rule flex-shrink-0">
                 {t}
               </span>
             ))}
@@ -380,24 +373,21 @@ function MatrixCard({ row, tier, isOpen, onToggle }: {
           <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-rule">
             <div className="p-4">
               <div className="flex items-center gap-1.5 mb-2">
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                  style={{ color: HT_CLR.color, background: HT_CLR.bg }}>HT</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${HT_CLS}`}>HT</span>
               </div>
               <p className="text-xs text-ink-muted leading-relaxed">{row.hard_times}</p>
             </div>
             <div className="p-4">
               <div className="flex items-center gap-1.5 mb-2">
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                  style={{ color: AT_CLR.color, background: AT_CLR.bg }}>AT</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${AT_CLS}`}>AT</span>
               </div>
               <p className="text-xs text-ink-muted leading-relaxed">{row.atonement}</p>
             </div>
           </div>
 
           {/* Divergence — AO4 move */}
-          <div className="p-4 border-t"
-            style={{ background: DIV_CLR.bg, borderColor: DIV_CLR.border }}>
-            <p className="label-eyebrow mb-1.5" style={{ color: DIV_CLR.color }}>
+          <div className={`p-4 border-t border-rule ${DIV_CLS}`}>
+            <p className="label-eyebrow mb-1.5 text-ao3">
               Divergence — the AO4 move
             </p>
             <p className="text-xs text-ink leading-relaxed">{row.divergence}</p>

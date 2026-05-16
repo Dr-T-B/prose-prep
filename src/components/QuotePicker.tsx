@@ -157,7 +157,7 @@ export default function QuotePicker({
                   </p>
                   <div className="flex items-center gap-1 shrink-0 mt-0.5">
                     {quote.is_core_quote && (
-                      <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-300 rounded-sm">
+                      <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 bg-hard-times text-ink border border-rule rounded-sm">
                         Core
                       </span>
                     )}
