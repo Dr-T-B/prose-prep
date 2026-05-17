@@ -32,7 +32,7 @@ import * as path from 'path';
 // ---------------------------------------------------------------------------
 
 const EXPECTED_TABLES = [
-  'ao5_glossary', 'ao5_layer_resources', 'ao5_tensions',
+  'interpretive_glossary', 'interpretive_layer_resources', 'interpretive_tensions',
   'character_cards', 'comparative_matrix', 'comparison_pairs',
   'content_audit_log', 'content_changes', 'content_dataset_versions',
   'core_quote_evidence', 'cross_text_themes', 'curation_notes',

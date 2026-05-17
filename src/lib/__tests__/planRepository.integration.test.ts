@@ -25,8 +25,8 @@ const basePlan = {
   updated_at: Date.now(),
   thesis_level: "strong" as const,
   selected_quote_ids: [] as string[],
-  ao5_enabled: false,
-  selected_ao5_ids: [] as string[],
+  interpretive_extension_enabled: false,
+  selected_interpretive_extension_ids: [] as string[],
   paragraph_cards: [] as never[],
   builder_handoffs: [] as never[],
 };

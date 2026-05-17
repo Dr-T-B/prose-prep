@@ -141,12 +141,12 @@ create table if not exists public.theme_maps (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.ao5_tensions (
+create table if not exists public.interpretive_tensions (
   id text primary key,
   focus text not null,
   dominant_reading text not null,
   alternative_reading text not null,
-  safe_stem text not null,
+  interpretive_stem text not null,
   level_tag text not null,
   best_use text[] not null default '{}',
   created_at timestamptz not null default now(),
@@ -190,8 +190,8 @@ create table if not exists public.saved_essay_plans (
   route_id text,
   thesis_id text,
   thesis_level text,
-  ao5_enabled boolean not null default true,
-  selected_ao5_ids text[] not null default '{}',
+  interpretive_extension_enabled boolean not null default true,
+  selected_interpretive_extension_ids text[] not null default '{}',
   selected_quote_ids text[] not null default '{}',
   paragraph_job_ids text[] not null default '{}',
   paragraph_cards jsonb not null default '[]'::jsonb,
@@ -428,8 +428,8 @@ drop trigger if exists set_updated_at_theme_maps on public.theme_maps;
 create trigger set_updated_at_theme_maps before update on public.theme_maps
 for each row execute function public.set_updated_at();
 
-drop trigger if exists set_updated_at_ao5_tensions on public.ao5_tensions;
-create trigger set_updated_at_ao5_tensions before update on public.ao5_tensions
+drop trigger if exists set_updated_at_interpretive_tensions on public.interpretive_tensions;
+create trigger set_updated_at_interpretive_tensions before update on public.interpretive_tensions
 for each row execute function public.set_updated_at();
 
 drop trigger if exists set_updated_at_profiles on public.profiles;
@@ -485,7 +485,7 @@ alter table public.paragraph_jobs enable row level security;
 alter table public.character_cards enable row level security;
 alter table public.symbol_entries enable row level security;
 alter table public.theme_maps enable row level security;
-alter table public.ao5_tensions enable row level security;
+alter table public.interpretive_tensions enable row level security;
 alter table public.profiles enable row level security;
 alter table public.user_roles enable row level security;
 alter table public.saved_essay_plans enable row level security;
@@ -527,7 +527,7 @@ for select using (true);
 create policy theme_maps_read_all on public.theme_maps
 for select using (true);
 
-create policy ao5_tensions_read_all on public.ao5_tensions
+create policy interpretive_tensions_read_all on public.interpretive_tensions
 for select using (true);
 
 create policy modules_read_all on public.modules

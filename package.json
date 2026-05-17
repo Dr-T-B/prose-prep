@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "validate:component2-ao": "node scripts/validate-component2-ao-model.mjs",
     "import-quotes": "npx tsx scripts/importQuotes.ts",
     "import-quotes:write": "npx tsx scripts/importQuotes.ts --write"
   },

@@ -8,7 +8,7 @@ interface AltReading {
   focus: string
   dominant_reading: string
   alternative_reading: string
-  safe_stem: string
+  interpretive_stem: string
   level_tag: string
   best_use: string[]
 }
@@ -34,8 +34,8 @@ type ToolkitSection = 'thesis' | 'stems' | 'transitions' | 'dtc'
 const LEVEL_META: Record<string, { label: string; cls: string }> = {
   secure:     { label: 'Secure',     cls: 'text-ao2 bg-paper' },
   strong:     { label: 'Strong',     cls: 'text-ao3 bg-paper' },
-  top_band:   { label: 'Top band',   cls: 'text-ao5 bg-paper' },
-  perceptive: { label: 'Perceptive', cls: 'text-ao5 bg-paper' },
+  top_band:   { label: 'Top band',   cls: 'text-interpretive bg-paper' },
+  perceptive: { label: 'Perceptive', cls: 'text-interpretive bg-paper' },
 }
 
 const DOM_BG  = 'bg-hard-times'
@@ -52,7 +52,7 @@ const isTransition  = (id: string) => id.startsWith('wp4_trans_')
 const isDTC         = (id: string) => id.startsWith('wp4_dtc_')
 const isVerbUpgrade = (id: string) => id.startsWith('wp4_verb_') || (id.startsWith('cu_verb_'))
 const isThemeReframe = (id: string) => id.startsWith('wp4_theme_') || id.startsWith('tr_')
-const isLens        = (cat: string) => cat === 'ao5_lens'
+const isLens        = (cat: string) => cat === 'interpretive_lens'
 
 // Lens display label
 const LENS_LABEL = 'AO1 — Interpretive lens'
@@ -84,7 +84,7 @@ export default function InterpretiveFlex() {
     async function load() {
       setLoading(true)
       const [rRes, gRes] = await Promise.all([
-        supabase.from('ao5_tensions').select('*').order('level_tag').order('focus'),
+        (supabase as any).from('interpretive_tensions').select('*').order('level_tag').order('focus'),
         supabase.from('glossary_terms').select('*').eq('is_active', true).order('id'),
       ])
       if (rRes.error) { setError(rRes.error.message); setLoading(false); return }
@@ -219,7 +219,7 @@ export default function InterpretiveFlex() {
                           <div className="flex items-center gap-2 flex-wrap mb-1.5">
                             {lm && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${lm.cls}`}>{lm.label}</span>}
                             {topicTags.map(t => (
-                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-ao5 border border-rule">{t}</span>
+                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-interpretive border border-rule">{t}</span>
                             ))}
                             {examTags.map(t => (
                               <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-ink-muted">{t}</span>
@@ -243,10 +243,10 @@ export default function InterpretiveFlex() {
                           <p className={`label-eyebrow mb-1.5 ${ALT_TXT}`}>Alternative reading</p>
                           <p className="text-sm text-ink leading-relaxed">{r.alternative_reading}</p>
                         </div>
-                        {/* Safe stem */}
+                        {/* Interpretive stem */}
                         <div className={`p-4 ${STEM_BG}`}>
-                          <p className={`label-eyebrow mb-1.5 ${STEM_TXT}`}>Safe stem — use this in your paragraph</p>
-                          <p className="text-sm text-ink italic leading-relaxed">"{r.safe_stem}"</p>
+                          <p className={`label-eyebrow mb-1.5 ${STEM_TXT}`}>Interpretive stem — use this in your paragraph</p>
+                          <p className="text-sm text-ink italic leading-relaxed">"{r.interpretive_stem}"</p>
                         </div>
                       </div>
                     )}

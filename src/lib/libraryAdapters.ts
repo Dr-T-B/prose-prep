@@ -122,7 +122,7 @@ export interface LibraryComparativePairing {
   levelBand?: string | null;
 }
 
-export type LibraryContextKind = "character" | "symbol" | "theme" | "ao5";
+export type LibraryContextKind = "character" | "symbol" | "theme" | "interpretive";
 
 export interface LibraryContextItem {
   id: string;
@@ -238,12 +238,12 @@ export interface LibraryRawThemeRow {
   one_line?: string;
 }
 
-export interface LibraryRawAO5Row {
+export interface LibraryRawInterpretiveTensionRow {
   id?: string;
   focus?: string;
   dominant_reading?: string;
   alternative_reading?: string;
-  safe_stem?: string;
+  interpretive_stem?: string;
   best_use?: unknown;
   level_tag?: LibraryLevel;
 }
@@ -525,13 +525,13 @@ export function toLibraryContextFromThemes(rows: LibraryRawThemeRow[] | undefine
   });
 }
 
-export function toLibraryContextFromAO5(rows: LibraryRawAO5Row[] | undefined): LibraryContextItem[] {
+export function toLibraryContextFromInterpretiveTensions(rows: LibraryRawInterpretiveTensionRow[] | undefined): LibraryContextItem[] {
   return (rows ?? []).map((row) => ({
-    id: row.id || `ao5-${row.focus || "untitled"}`,
-    kind: "ao5",
+    id: row.id || `interpretive-${row.focus || "untitled"}`,
+    kind: "interpretive",
     title: cleanText(row.focus, "Unnamed interpretive tension"),
     summary: cleanText(
-      row.safe_stem,
+      row.interpretive_stem,
       "Develop, challenge, or refine a credible interpretation rather than bolting on another opinion."
     ),
     sourceText: "Comparative",
@@ -540,7 +540,7 @@ export function toLibraryContextFromAO5(rows: LibraryRawAO5Row[] | undefined): L
     details: compactDetails([
       detail("Dominant reading", row.dominant_reading),
       detail("Alternative reading", row.alternative_reading),
-      detail("Safe stem", row.safe_stem),
+      detail("Interpretive stem", row.interpretive_stem),
     ]),
   }));
 }

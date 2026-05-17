@@ -57,7 +57,7 @@
     --ao2: 198 32% 67%;                /* #8FB7C9 */
     --ao3: 35 53% 66%;                 /* #D6B27A */
     --ao4: 145 22% 68%;                /* #9CBFAD */
-    --ao5: 13 50% 69%;                 /* #D39A8A */
+    --interpretive: 13 50% 69%;                 /* #D39A8A */
 
     /* Soft restrained shadows */
     --shadow-press: 0 1px 2px 0 hsl(30 15% 25% / 0.06), 0 1px 1px 0 hsl(30 15% 25% / 0.04);
@@ -138,7 +138,7 @@
   .chip-ao2 { background: hsl(var(--ao2) / 0.20); color: hsl(198 35% 28%); }
   .chip-ao3 { background: hsl(var(--ao3) / 0.22); color: hsl(30 45% 28%); }
   .chip-ao4 { background: hsl(var(--ao4) / 0.22); color: hsl(145 25% 26%); }
-  .chip-ao5 { background: hsl(var(--ao5) / 0.22); color: hsl(13 40% 32%); }
+  .chip-interpretive { background: hsl(var(--interpretive) / 0.22); color: hsl(13 40% 32%); }
 }
 
 /* Print styles for plan export */

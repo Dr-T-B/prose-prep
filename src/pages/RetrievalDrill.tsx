@@ -374,7 +374,7 @@ function RecognitionCard({ card, chosen, onChoose, isPairMode }: {
         {(card.meta.themes ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {card.meta.themes!.map(t => (
-              <span key={t} className="text-[11px] px-2 py-0.5 rounded bg-paper text-ao5 border border-rule">{t}</span>
+              <span key={t} className="text-[11px] px-2 py-0.5 rounded bg-paper text-interpretive border border-rule">{t}</span>
             ))}
           </div>
         )}
@@ -432,7 +432,7 @@ function FreeRecallCard({ card, revealed, onReveal, onScore }: {
         {(card.meta.themes ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {card.meta.themes!.map(t => (
-              <span key={t} className="text-[11px] px-2 py-0.5 rounded bg-paper text-ao5 border border-rule">{t}</span>
+              <span key={t} className="text-[11px] px-2 py-0.5 rounded bg-paper text-interpretive border border-rule">{t}</span>
             ))}
           </div>
         )}

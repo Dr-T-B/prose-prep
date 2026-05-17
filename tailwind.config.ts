@@ -40,7 +40,7 @@ export default {
         ao2: "hsl(var(--ao2))",
         ao3: "hsl(var(--ao3))",
         ao4: "hsl(var(--ao4))",
-        ao5: "hsl(var(--ao5))",
+        interpretive: "hsl(var(--interpretive))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",

@@ -14,7 +14,7 @@ export type RouteFunction =
   | 'evidence_pair'
   | 'method_upgrade'
   | 'context_anchor'
-  | 'ao5_evaluation'
+  | 'interpretive_judgement'
   | 'ending_move';
 
 export type ParagraphRouteStep = {
@@ -28,7 +28,7 @@ export type ParagraphRouteStep = {
   method_prompt?: string;
   context_prompt?: string;
   comparison_prompt?: string;
-  ao5_prompt?: string;
+  analytical_position_prompt?: string;
 };
 
 export type ThesisRoute = {
@@ -43,7 +43,7 @@ export type ThesisRoute = {
   thesis_sentence: string;
   conceptual_upgrade?: string | null;
   ao3_context_frame?: string | null;
-  ao5_tension?: string | null;
+  interpretive_tension?: string | null;
   paragraph_sequence?: ParagraphRouteStep[] | null;
   recommended_quote_pairs?: string[] | null;
   common_risk?: string | null;
@@ -72,7 +72,7 @@ export type QuotePairMini = {
   how_they_compare?: string | null;
   why_useful_in_essay?: string | null;
   student_action?: string | null;
-  ao5_tension?: string | null;
+  interpretive_tension?: string | null;
   mastery_status?: MasteryStatus;
 };
 
@@ -95,12 +95,12 @@ export type ParagraphDraft = {
   atonement_analysis: string;
   ao4_comparison: string;
   ao3_context_integration: string;
-  ao5_evaluation?: string;
+  interpretive_judgement?: string;
   final_paragraph: string;
   ao1_self_score?: number;
   ao2_self_score?: number;
   ao3_self_score?: number;
   ao4_self_score?: number;
-  ao5_self_score?: number;
+  ao1_sophistication_self_score?: number;
   draft_status: 'draft' | 'complete' | 'reviewed' | 'rewritten';
 };

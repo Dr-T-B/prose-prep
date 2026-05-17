@@ -1620,6 +1620,51 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_question_links: {
+        Row: {
+          created_at: string
+          id: string
+          question_id: string
+          quote_id: string
+          rationale: string | null
+          relevance_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_id: string
+          quote_id: string
+          rationale?: string | null
+          relevance_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_id?: string
+          quote_id?: string
+          rationale?: string | null
+          relevance_score?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_question_links_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_question_links_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quote_methods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_methods: {
         Row: {
           ao_priority: string[] | null

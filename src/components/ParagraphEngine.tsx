@@ -276,7 +276,7 @@ export default function ParagraphEngine({ embedded = false }: Props) {
       evidence_cmp_ids: [],
       method_focus: "",
       context_anchor: "",
-      ao5_prompt: "",
+      analytical_position_prompt: "",
       notes: "",
     };
     setCards([...cards, blank]);
@@ -690,15 +690,15 @@ function CardEditor({
 
         <Field label="Analytical position (optional)">
           <Textarea
-            value={card.ao5_prompt}
-            onChange={(e) => onPatch({ ao5_prompt: e.target.value }, ["ao5_prompt"])}
+            value={card.analytical_position_prompt}
+            onChange={(e) => onPatch({ analytical_position_prompt: e.target.value }, ["analytical_position_prompt"])}
             rows={2}
             placeholder="Optional interpretive tension"
           />
           <SuggestionChip
-            value={suggestions?.ao5_prompt}
-            onAccept={() => onAcceptSuggestion("ao5_prompt")}
-            onDismiss={() => onDismissSuggestion("ao5_prompt")}
+            value={suggestions?.analytical_position_prompt}
+            onAccept={() => onAcceptSuggestion("analytical_position_prompt")}
+            onDismiss={() => onDismissSuggestion("analytical_position_prompt")}
           />
         </Field>
 

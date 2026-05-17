@@ -6,7 +6,7 @@ import {
   contextMatchesText,
   getLibraryThemeLabel,
   libraryContextKindSupportsSourceFilter,
-  toLibraryContextFromAO5,
+  toLibraryContextFromInterpretiveTensions,
   toLibraryContextFromCharacters,
   toLibraryContextFromSymbols,
   toLibraryContextFromThemes,
@@ -27,7 +27,7 @@ const SOURCES = ["All", "Hard Times", "Atonement"] as const;
 type Src = (typeof SOURCES)[number];
 
 function contextLabel(kind: LibraryContextItem["kind"]) {
-  if (kind === "ao5") return "Analytical position";
+  if (kind === "interpretive") return "Analytical position";
   return kind === "theme" ? "Theme family" : kind[0].toUpperCase() + kind.slice(1);
 }
 
@@ -65,7 +65,7 @@ function ContextCard({ item, onUse }: { item: LibraryContextItem; onUse: (item: 
 }
 
 export default function LibraryContext() {
-  const { characters, symbols, themes, ao5_tensions } = useContent();
+  const { characters, symbols, themes, interpretive_tensions } = useContent();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("characters");
   const [q, setQ] = useState("");
@@ -76,8 +76,8 @@ export default function LibraryContext() {
     characters: toLibraryContextFromCharacters(characters),
     symbols: toLibraryContextFromSymbols(symbols),
     themes: toLibraryContextFromThemes(themes),
-    tensions: toLibraryContextFromAO5(ao5_tensions),
-  }), [characters, symbols, themes, ao5_tensions]);
+    tensions: toLibraryContextFromInterpretiveTensions(interpretive_tensions),
+  }), [characters, symbols, themes, interpretive_tensions]);
 
   const themeOptions = useMemo<("All" | LibraryThemeId)[]>(() => {
     const set = new Set<LibraryThemeId>();

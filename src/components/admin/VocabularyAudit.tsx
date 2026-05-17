@@ -110,7 +110,7 @@ const PRIORITY_TABLES: AuditableTable[] = [
   "questions",
   "quote_methods",
   "theme_maps",
-  "ao5_tensions",
+  "interpretive_tensions",
 ];
 
 const ROUTE_FIELDS = new Set(["primary_route_id", "secondary_route_id", "route_id"]);

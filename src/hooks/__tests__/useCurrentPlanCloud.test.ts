@@ -27,8 +27,8 @@ const basePlan = {
   updated_at: 0,
   thesis_level: "strong" as const,
   selected_quote_ids: [],
-  ao5_enabled: false,
-  selected_ao5_ids: [],
+  interpretive_extension_enabled: false,
+  selected_interpretive_extension_ids: [],
   paragraph_cards: [],
   builder_handoffs: [],
 };

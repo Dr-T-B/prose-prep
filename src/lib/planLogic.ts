@@ -1,7 +1,7 @@
 import {
-  QUESTIONS, ROUTES, THESES, PARAGRAPH_JOBS, QUOTE_METHODS, AO5_TENSIONS,
+  QUESTIONS, ROUTES, THESES, PARAGRAPH_JOBS, QUOTE_METHODS, INTERPRETIVE_TENSIONS,
   type Level, type QuestionFamily, type SourceText, type ParagraphJob, type QuoteMethod,
-  type Question, type Route, type Thesis, type AO5Tension,
+  type Question, type Route, type Thesis, type InterpretiveTension,
 } from "@/data/seed";
 import type { EssayPlan } from "./planStore";
 
@@ -13,7 +13,7 @@ export interface ContentSlice {
   theses?: Thesis[];
   paragraph_jobs?: ParagraphJob[];
   quote_methods?: QuoteMethod[];
-  ao5_tensions?: AO5Tension[];
+  interpretive_tensions?: InterpretiveTension[];
 }
 
 const pick = <T,>(remote: T[] | undefined, fallback: T[]): T[] =>
@@ -215,29 +215,29 @@ export function groupQuotesBySource(qs: QuoteMethod[]): Record<SourceText, Quote
   return groups;
 }
 
-/** Per-family AO5 priority IDs — the tensions that genuinely lift a response
+/** Per-family interpretive priority IDs — the tensions that genuinely lift a response
  *  in this family. Used to rank, then we cap at 3 so the panel stays selective. */
-const AO5_PRIORITY: Partial<Record<QuestionFamily, string[]>> = {
-  class: ["ao5_marshall", "ao5_stephen", "ao5_class_lens", "ao5_dickens_satire"],
-  power: ["ao5_marshall", "ao5_class_lens", "ao5_narr_authority", "ao5_dickens_satire"],
-  guilt: ["ao5_briony_judge", "ao5_repair", "ao5_fiction_repair", "ao5_endings_closure"],
-  endings: ["ao5_endings_closure", "ao5_repair", "ao5_briony_judge", "ao5_fiction_repair"],
-  truth: ["ao5_narr_authority", "ao5_briony_judge", "ao5_fiction_repair"],
-  narrative_authority: ["ao5_narr_authority", "ao5_briony_judge", "ao5_fiction_repair"],
-  imagination: ["ao5_imag_moral", "ao5_imag_danger", "ao5_fiction_repair", "ao5_briony_judge"],
-  childhood: ["ao5_imag_moral", "ao5_imag_danger", "ao5_briony_judge"],
-  gender: ["ao5_louisa", "ao5_repair", "ao5_briony_judge"],
-  love: ["ao5_repair", "ao5_louisa", "ao5_endings_closure"],
-  suffering: ["ao5_repair", "ao5_stephen", "ao5_endings_closure", "ao5_louisa"],
+const INTERPRETIVE_EXTENSION_PRIORITY: Partial<Record<QuestionFamily, string[]>> = {
+  class: ["interpretive_marshall", "interpretive_stephen", "interpretive_class_lens", "interpretive_dickens_satire"],
+  power: ["interpretive_marshall", "interpretive_class_lens", "interpretive_narr_authority", "interpretive_dickens_satire"],
+  guilt: ["interpretive_briony_judge", "interpretive_repair", "interpretive_fiction_repair", "interpretive_endings_closure"],
+  endings: ["interpretive_endings_closure", "interpretive_repair", "interpretive_briony_judge", "interpretive_fiction_repair"],
+  truth: ["interpretive_narr_authority", "interpretive_briony_judge", "interpretive_fiction_repair"],
+  narrative_authority: ["interpretive_narr_authority", "interpretive_briony_judge", "interpretive_fiction_repair"],
+  imagination: ["interpretive_imag_moral", "interpretive_imag_danger", "interpretive_fiction_repair", "interpretive_briony_judge"],
+  childhood: ["interpretive_imag_moral", "interpretive_imag_danger", "interpretive_briony_judge"],
+  gender: ["interpretive_louisa", "interpretive_repair", "interpretive_briony_judge"],
+  love: ["interpretive_repair", "interpretive_louisa", "interpretive_endings_closure"],
+  suffering: ["interpretive_repair", "interpretive_stephen", "interpretive_endings_closure", "interpretive_louisa"],
 };
 
-export function findAO5(family?: QuestionFamily, c?: ContentSlice) {
+export function findInterpretiveExtensions(family?: QuestionFamily, c?: ContentSlice) {
   if (!family) return [];
-  const matches = pick(c?.ao5_tensions, AO5_TENSIONS).filter((a) => a.best_use.includes(family));
-  const priority = AO5_PRIORITY[family] ?? [];
+  const matches = pick(c?.interpretive_tensions, INTERPRETIVE_TENSIONS).filter((a) => a.best_use.includes(family));
+  const priority = INTERPRETIVE_EXTENSION_PRIORITY[family] ?? [];
 
   // Score: lower is better. Priority position dominates; top_band tiebreaks.
-  const score = (x: AO5Tension) => {
+  const score = (x: InterpretiveTension) => {
     const pi = priority.indexOf(x.id);
     const base = pi === -1 ? 100 : pi;       // unlisted entries pushed down
     const tier = x.level_tag === "top_band" ? 0 : 0.5;
@@ -261,7 +261,7 @@ export function renderPlanText(plan: EssayPlan, c?: ContentSlice): string {
   const t = getThesisById(plan.thesis_id, c) || findThesis(plan.route_id, plan.family, plan.thesis_level, c);
   const jobs = resolveParagraphJobs(plan.family, plan.route_id, t, c);
   const quotes = pick(c?.quote_methods, QUOTE_METHODS).filter((qm) => plan.selected_quote_ids.includes(qm.id));
-  const ao5s = pick(c?.ao5_tensions, AO5_TENSIONS).filter((a) => plan.selected_ao5_ids.includes(a.id));
+  const interpretiveTensions = pick(c?.interpretive_tensions, INTERPRETIVE_TENSIONS).filter((a) => plan.selected_interpretive_extension_ids.includes(a.id));
   const lines: string[] = [];
   lines.push("COMPONENT 2 PROSE — ESSAY PLAN");
   lines.push("");
@@ -298,11 +298,11 @@ export function renderPlanText(plan: EssayPlan, c?: ContentSlice): string {
     });
     lines.push("");
   }
-  if (plan.ao5_enabled && ao5s.length) {
+  if (plan.interpretive_extension_enabled && interpretiveTensions.length) {
     lines.push("CRITICAL READINGS");
-    ao5s.forEach((a) => {
+    interpretiveTensions.forEach((a) => {
       lines.push(`• ${a.focus}`);
-      lines.push(`    ${a.safe_stem}`);
+      lines.push(`    ${a.interpretive_stem}`);
     });
     lines.push("");
   }

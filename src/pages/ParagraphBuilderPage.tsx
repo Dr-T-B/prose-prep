@@ -79,10 +79,10 @@ export default function ParagraphBuilderPage() {
   const [at, setAt] = useState('');
   const [comparison, setComparison] = useState('');
   const [ao3, setAo3] = useState('');
-  const [ao5, setAo5] = useState('');
+  const [interpretive, setInterpretive] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const assembled = useMemo(() => [topic, ht, at, comparison, ao3, ao5].join(' '), [topic, ht, at, comparison, ao3, ao5]);
+  const assembled = useMemo(() => [topic, ht, at, comparison, ao3, interpretive].join(' '), [topic, ht, at, comparison, ao3, interpretive]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -103,7 +103,7 @@ export default function ParagraphBuilderPage() {
         atonement_analysis: at,
         ao4_comparison: comparison,
         ao3_context_integration: ao3,
-        ao5_evaluation: ao5,
+        interpretive_judgement: interpretive,
         final_paragraph: assembled,
         draft_status: 'complete',
       });
@@ -231,8 +231,8 @@ export default function ParagraphBuilderPage() {
       />
       <TextareaBlock
         title="Evaluation"
-        value={ao5}
-        onChange={setAo5}
+        value={interpretive}
+        onChange={setInterpretive}
         starter={gradeBMode ? "Ultimately, this matters because…" : undefined}
         scaffold={gradeBMode ? ["Say what the reader is left to think.", "Link back to the topic sentence."] : undefined}
       />

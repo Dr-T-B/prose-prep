@@ -10,12 +10,12 @@ describe("plan store normalization", () => {
     const plan = normalizeEssayPlan({
       id: "plan_sparse",
       selected_quote_ids: ["q1", "q1"],
-      selected_ao5_ids: ["a1", "a1", "a2", "a3", "a4"],
+      selected_interpretive_extension_ids: ["a1", "a1", "a2", "a3", "a4"],
     });
 
     expect(plan.id).toBe("plan_sparse");
     expect(plan.selected_quote_ids).toEqual(["q1"]);
-    expect(plan.selected_ao5_ids).toEqual(["a1", "a2", "a3"]);
+    expect(plan.selected_interpretive_extension_ids).toEqual(["a1", "a2", "a3"]);
     expect(plan.builder_handoffs).toEqual([]);
     expect(plan.paragraph_cards).toEqual([]);
   });
@@ -36,10 +36,10 @@ describe("plan store normalization", () => {
     const [saved] = savePlan({
       ...normalizeEssayPlan({ id: "plan_saved" }),
       selected_quote_ids: ["q1", "q1"],
-      selected_ao5_ids: ["a1", "a1", "a2", "a3", "a4"],
+      selected_interpretive_extension_ids: ["a1", "a1", "a2", "a3", "a4"],
     });
 
     expect(saved.selected_quote_ids).toEqual(["q1"]);
-    expect(saved.selected_ao5_ids).toEqual(["a1", "a2", "a3"]);
+    expect(saved.selected_interpretive_extension_ids).toEqual(["a1", "a2", "a3"]);
   });
 });

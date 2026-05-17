@@ -38,7 +38,7 @@ import RecordEditor, {
 type ContentTableKey =
   | "questions"
   | "quote_methods"
-  | "ao5_tensions"
+  | "interpretive_tensions"
   | "theme_maps"
   | "theses"
   | "paragraph_jobs"
@@ -86,12 +86,12 @@ const CONFIGS: AuditConfig[] = [
     priority: true,
   },
   {
-    key: "ao5_tensions",
-    displayName: "AO5 Interpretation Engine",
+    key: "interpretive_tensions",
+    displayName: "Interpretive Extensions",
     criticalFields: ["focus", "dominant_reading", "alternative_reading"],
     previewField: "focus",
     duplicateCheckFields: ["focus"],
-    auditTextFields: ["focus", "dominant_reading", "alternative_reading", "safe_stem"],
+    auditTextFields: ["focus", "dominant_reading", "alternative_reading", "interpretive_stem"],
     expectedFieldCount: 6,
     priority: true,
   },

@@ -1,0 +1,144 @@
+{
+  "exam_board": "Pearson Edexcel",
+  "qualification": "A-Level English Literature",
+  "component": "Component 2: Prose",
+  "paper_code": "9ET0/02",
+  "texts": [
+    {
+      "title": "Hard Times",
+      "author": "Charles Dickens",
+      "isbn": "978-0141439679"
+    },
+    {
+      "title": "Atonement",
+      "author": "Ian McEwan",
+      "isbn": "978-0099429791"
+    }
+  ],
+  "assessed_aos": ["AO1", "AO2", "AO3", "AO4"],
+  "excluded_aos": ["AO5"],
+  "canonical_sources": [
+    {
+      "title": "Component 2 — Exam — WP1 component2_complete_prose_workbook_with_master_matrix_WP1_corrected",
+      "type": "google_sheet",
+      "url": "https://docs.google.com/spreadsheets/d/1IOO-_bZrosXpT-OzQqIwxkqtXhUjQYtPls5srVEmK-w",
+      "status": "canonical_pending_ao_sweep",
+      "priority": "very_high",
+      "allowed_tabs": [
+        "AO2_Prose_Grid",
+        "Quote_Bank",
+        "Quotes_by_Theme",
+        "Master_Comparative_Matrix",
+        "Essay_Paragraph_Planner",
+        "Model_Paragraph_Frames",
+        "Essay_Openings_Thesis_Bank",
+        "AO3_Context_Triggers",
+        "WP1_Correction_Log"
+      ]
+    },
+    {
+      "title": "THE COMPONENT 2 PROSE WORKBOOK SYSTEM",
+      "type": "google_doc",
+      "url": "https://docs.google.com/document/d/1OW9NneYQ3rVumpmp1jwSu3c6uvKVdTCCEdGorHfCRhM",
+      "status": "canonical_workflow_guide",
+      "priority": "high"
+    },
+    {
+      "title": "Hard Times Chapter-to-Exam Matrix - Edexcel Component 2 Prose",
+      "type": "google_sheet",
+      "url": "https://docs.google.com/spreadsheets/d/1kKOyAki8s8MmT0t69kDY5ZfkbsvYkXYnWuw90mqhZX0",
+      "status": "canonical_pending_ao_sweep",
+      "priority": "high",
+      "allowed_tabs": [
+        "Hard Times Matrix",
+        "WP4 Paragraph Engine",
+        "WP5 Essay Generator",
+        "Final Layer - Exam Simulation + Marking",
+        "Adaptive Intelligence Layer"
+      ]
+    },
+    {
+      "title": "Atonement — Chapter-to-Exam Matrix — Edexcel Component 2 Prose",
+      "type": "google_sheet",
+      "url": "https://docs.google.com/spreadsheets/d/1wSzysvGoyTLHHCGlrfoHUvqUKNnsYy0oG1VS0llRaB8",
+      "status": "canonical_requires_ao5_reframe",
+      "priority": "high",
+      "tab_rules": {
+        "Atonement Matrix": "allow_after_ao_sweep",
+        "AO3 Context Bank": "allow_after_ao_sweep",
+        "at_past_papers_reference": "allow_after_ao_sweep",
+        "AO5 Critics Bank": "exclude_or_rename_to_critical_interpretations"
+      }
+    },
+    {
+      "title": "HT & Atonement — Quotes — component2_ao2_prose_grid_with_quote_bank",
+      "type": "google_sheet",
+      "url": "https://docs.google.com/spreadsheets/d/1Zkh7tDi3QFtj9bAzT4zCZe_T_SuIn_kqUpcYnHr554Q",
+      "status": "canonical_pending_ao_sweep",
+      "priority": "high",
+      "allowed_tabs": ["AO2_Prose_Grid", "Quote_Bank"]
+    },
+    {
+      "title": "Quote Pair Matrix - Hard Times and Atonement - AO2 AO3 AO4 App Dataset",
+      "type": "google_sheet",
+      "url": "https://docs.google.com/spreadsheets/d/1z-x01q3DqELLFiZgTJgTaJeuRfmSUCx_nu0T1RqSnjE",
+      "status": "canonical_pending_validation",
+      "priority": "high"
+    },
+    {
+      "title": "AO3 Context Library — Student Guide",
+      "type": "google_doc",
+      "url": "https://docs.google.com/document/d/19cJW5Cl42q3nGgyNCF3jhA--d0-LQj7drDcvM14GK9Q",
+      "status": "supporting_canonical_ao3_guide",
+      "priority": "medium_high"
+    },
+    {
+      "title": "Component 2 — Exam — Edexcel A-Level English Literature: Level 5 (A*) Peer-Assessment Rubric",
+      "type": "google_doc",
+      "url": "https://docs.google.com/document/d/1SRzt4TaNmwi5yOULJL4M3qD2X--Z2SdxqEyw1JkA10g",
+      "status": "review_before_import",
+      "priority": "high_for_feedback_features_after_ao1_ao4_compliance_check"
+    }
+  ],
+  "excluded_sources": [
+    {
+      "title": "Component 2 Prose — Ultimate Edition (Final Unified Textbook)",
+      "url": "https://docs.google.com/document/d/1YIC_gGafT8vgTt2z5ifhDTZwUUX01U6q2CZTnqD2vX4",
+      "reason": "Legacy draft notice and AO5-labelled chapters"
+    },
+    {
+      "title": "Component 2 — Misc — Copy of Component 2 Prose — Ultimate Edition (Final Unified Textbook)",
+      "url": "https://docs.google.com/document/d/12Buw72h_aHFQceENOgd8ldwFZ3UIUflyvcOJWazxFcs",
+      "reason": "Duplicate of non-canonical legacy draft"
+    },
+    {
+      "title": "Component 2 — Exam — component2_complete_prose_workbook_with_master_matrix",
+      "url": "https://docs.google.com/spreadsheets/d/1KyqApEMLH6BYPJntByqcHjKcluCSRMwrbeTksrjRVBs",
+      "reason": "Near-duplicate of WP1-corrected workbook; comparison-only fallback if WP1 content is missing"
+    },
+    {
+      "title": "Component 2 — Exam — Copy of WP2 component2_complete_prose_workbook_with_master_matrix_corrected",
+      "url": "https://docs.google.com/spreadsheets/d/1wKvkbSY9rhGZhC31rfz9geE1aSYQHgZ5CePUe6Tcgac",
+      "reason": "Duplicate/copy; review only if WP2 assessment or review data is missing elsewhere"
+    },
+    {
+      "title": "Component 1 Drama resources",
+      "url": null,
+      "reason": "Component 1 has different AO rules and may legitimately include AO5"
+    }
+  ],
+  "import_policy": {
+    "production_database_writes": "forbidden",
+    "raw_drive_import_to_production": "forbidden",
+    "required_pre_import_validation": "node scripts/validate-component2-ao-model.mjs",
+    "allowed_interpretive_reframes": [
+      "interpretive_extension",
+      "critical_angle",
+      "alternative_reading",
+      "interpretive_nuance",
+      "ao1_sophistication",
+      "method_led_interpretation",
+      "interpretive_judgement"
+    ]
+  }
+}

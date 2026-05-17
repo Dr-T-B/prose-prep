@@ -42,20 +42,20 @@ type PrimaryTab = 'structure' | 'characters' | 'symbols'
 const HT_BOOKS = [
   { label: 'Sowing',    subtitle: 'Book One',   cls: 'text-ao2 bg-paper', borderCls: 'border-rule', desc: 'Ideology planted — Fact, repression, class hardness' },
   { label: 'Reaping',   subtitle: 'Book Two',   cls: 'text-ao3 bg-paper', borderCls: 'border-rule', desc: 'Consequences emerge — Louisa collapses, Stephen suffers' },
-  { label: 'Garnering', subtitle: 'Book Three', cls: 'text-ao5 bg-paper', borderCls: 'border-rule', desc: 'Reckoning — recognition arrives, but too late' },
+  { label: 'Garnering', subtitle: 'Book Three', cls: 'text-interpretive bg-paper', borderCls: 'border-rule', desc: 'Reckoning — recognition arrives, but too late' },
 ]
 
 const AT_PARTS = [
   { label: 'Part One',   subtitle: '1935 estate',  cls: 'text-ao1 bg-paper', borderCls: 'border-rule', desc: 'The misreading — perception, class, accusation' },
   { label: 'Part Two',   subtitle: 'Dunkirk 1940', cls: 'text-ao3 bg-paper', borderCls: 'border-rule', desc: 'Historical catastrophe — private injustice inside mass suffering' },
   { label: 'Part Three', subtitle: 'London 1940',  cls: 'text-ao2 bg-paper', borderCls: 'border-rule', desc: 'Nursing — penance without repair' },
-  { label: 'Coda',       subtitle: 'London 1999',  cls: 'text-ao5 bg-paper', borderCls: 'border-rule', desc: 'Revelation — Briony as author; repair as fiction' },
+  { label: 'Coda',       subtitle: 'London 1999',  cls: 'text-interpretive bg-paper', borderCls: 'border-rule', desc: 'Revelation — Briony as author; repair as fiction' },
 ]
 
 const LEVEL_META: Record<string, { label: string; cls: string }> = {
   secure:   { label: 'Secure',   cls: 'text-ao2 bg-paper' },
   strong:   { label: 'Strong',   cls: 'text-ao3 bg-paper' },
-  top_band: { label: 'Top band', cls: 'text-ao5 bg-paper' },
+  top_band: { label: 'Top band', cls: 'text-interpretive bg-paper' },
 }
 
 const TEXT_META = {
@@ -547,7 +547,7 @@ export default function TextArchitecture() {
                               </span>
                             )}
                             {(s.themes || []).map(t => (
-                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-ao5 border border-rule">
+                              <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-paper text-interpretive border border-rule">
                                 {t}
                               </span>
                             ))}

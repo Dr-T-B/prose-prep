@@ -57,7 +57,7 @@ const App = () => (
                 <Route path="/login" element={<Navigate to="/auth" replace />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
-                <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+                <Route element={<ProtectedRoute allowAnonymous><AppShell /></ProtectedRoute>}>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/dashboard" element={<Navigate to="/" replace />} />
                   <Route path="/build" element={<Navigate to="/builder" replace />} />

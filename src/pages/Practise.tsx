@@ -151,7 +151,7 @@ export default function Practise() {
         <div className="mt-10 pt-8 border-t border-dashed border-rule">
           <p className="label-eyebrow text-ink-muted mb-4">Beyond the official AOs</p>
           <div className="border-l-2 border-rule pl-5 bg-paper rounded-r-sm py-4 pr-4 max-w-2xl">
-            <dt className="font-mono text-[10px] uppercase tracking-wider text-ao5">
+            <dt className="font-mono text-[10px] uppercase tracking-wider text-interpretive">
               A* Extension · Alternative readings for AO1 sophistication
             </dt>
             <dd className="mt-2 text-sm text-ink-muted leading-relaxed">

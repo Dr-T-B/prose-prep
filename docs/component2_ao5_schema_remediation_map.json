@@ -1,0 +1,176 @@
+{
+  "component": "Component 2: Prose",
+  "paper_code": "9ET0/02",
+  "assessed_aos": ["AO1", "AO2", "AO3", "AO4"],
+  "excluded_aos": ["AO5"],
+  "repository": "Dr-T-B/prose-prep",
+  "branch": "fix/component-2-ao5-forward-schema-remediation-implementation",
+  "supabase_project_url": "https://nxlxunygoccbnzdopqna.supabase.co",
+  "supabase_project_ref": "nxlxunygoccbnzdopqna",
+  "supabase_project_name": "prose-craft-aid-staging",
+  "database_changes_applied": false,
+  "implementation_status": {
+    "migration_file": "supabase/migrations/20260517232441_component2_interpretive_schema_remediation.sql",
+    "migration_created": true,
+    "migration_applied_to_staging": false,
+    "staging_schema_or_data_mutated": false,
+    "read_only_remote_migration_list_ran": true,
+    "generated_types_regenerated": false,
+    "ao_validator_before_blocked_references": 104,
+    "ao_validator_after_blocked_references": 0,
+    "active_component2_blockers_after": 0,
+    "next_step": "Review and authorise the forward-only migration for staging-only application, then regenerate Supabase types from nxlxunygoccbnzdopqna."
+  },
+  "schema_surface_count": 15,
+  "component2_blocker_count": 14,
+  "component1_schema_exception_count": 1,
+  "component1_exception_count": 2,
+  "schema_surfaces": [
+    {
+      "current_name": "ao5_tensions",
+      "object_type": "table",
+      "classification": "component2_blocker",
+      "target_name": "interpretive_tensions",
+      "recommended_action": "create replacement table, backfill from legacy table, update app code, later deprecate old table",
+      "row_count_known": 0,
+      "risk": "medium"
+    },
+    {
+      "current_name": "drama_scene_ao5_readings",
+      "object_type": "table",
+      "classification": "component1_drama_valid",
+      "target_name": null,
+      "recommended_action": "keep as Component 1 Drama surface and isolate from Component 2 Prose imports",
+      "row_count_known": 0,
+      "risk": "low"
+    }
+  ],
+  "column_surfaces": [
+    {
+      "table": "essay_plans",
+      "current_column": "ao5_enabled",
+      "target_column": "interpretive_extension_enabled",
+      "classification": "component2_blocker",
+      "recommended_action": "add replacement column, backfill, update code, later deprecate old column",
+      "risk": "medium"
+    },
+    {
+      "table": "essay_plans",
+      "current_column": "selected_ao5_ids",
+      "target_column": "selected_interpretive_extension_ids",
+      "classification": "component2_blocker",
+      "recommended_action": "add replacement column, backfill, update code, later deprecate old column",
+      "risk": "medium"
+    },
+    {
+      "table": "library_paragraph_frames",
+      "current_column": "ao5_stem",
+      "target_column": "interpretive_stem",
+      "classification": "component2_import_blocker",
+      "recommended_action": "add replacement column and reject AO5-labelled Component 2 import headers",
+      "risk": "medium"
+    },
+    {
+      "table": "paragraph_attempts",
+      "current_column": "ao5_evaluation",
+      "target_column": "interpretive_judgement",
+      "classification": "component2_blocker",
+      "recommended_action": "add replacement column, backfill, update paragraph builder models, later deprecate old column",
+      "risk": "medium"
+    },
+    {
+      "table": "paragraph_attempts",
+      "current_column": "ao5_self_score",
+      "target_column": "ao1_sophistication_self_score",
+      "classification": "component2_blocker",
+      "recommended_action": "add replacement column, update progress views, later deprecate old column",
+      "risk": "medium"
+    },
+    {
+      "table": "quote_pairs",
+      "current_column": "ao5_tension",
+      "target_column": "interpretive_tension",
+      "classification": "component2_blocker",
+      "recommended_action": "add replacement column, backfill, update thesis route and paragraph contexts, later deprecate old column",
+      "risk": "medium"
+    },
+    {
+      "table": "saved_essay_plans",
+      "current_column": "selected_ao5_ids",
+      "target_column": "selected_interpretive_extension_ids",
+      "classification": "component2_blocker",
+      "recommended_action": "add replacement column, backfill user-state plans, update persistence, later deprecate old column",
+      "risk": "high"
+    },
+    {
+      "table": "saved_essay_plans",
+      "current_column": "ao5_enabled",
+      "target_column": "interpretive_extension_enabled",
+      "classification": "component2_blocker",
+      "recommended_action": "add replacement column, backfill user-state plans, update persistence, later deprecate old column",
+      "risk": "high"
+    },
+    {
+      "table": "student_quote_pair_mastery",
+      "current_column": "ao5_secure",
+      "target_column": "interpretive_secure",
+      "classification": "component2_blocker",
+      "recommended_action": "add interpretive_secure, backfill from legacy column, update app/view surfaces, later deprecate old column",
+      "risk": "medium"
+    },
+    {
+      "table": "thesis_routes",
+      "current_column": "ao5_tension",
+      "target_column": "interpretive_tension",
+      "classification": "component2_blocker",
+      "recommended_action": "add replacement column, backfill, update route detail/model types, later deprecate old column",
+      "risk": "medium"
+    }
+  ],
+  "view_surfaces": [
+    {
+      "view": "retrieval_due_today",
+      "current_dependency": "ao5_tensions and retrieval item_type 'ao5_tension'",
+      "target_dependency": "interpretive_tensions and retrieval item_type 'interpretive_tension'",
+      "classification": "component2_blocker",
+      "recommended_action": "replace view definition after replacement table exists; preserve compatibility during transition",
+      "risk": "medium"
+    },
+    {
+      "view": "v_student_quote_pair_progress",
+      "current_column": "ao5_secure",
+      "target_column": "interpretive_secure",
+      "classification": "component2_blocker",
+      "recommended_action": "replace view definition to expose target column while old compatibility column exists",
+      "risk": "medium"
+    },
+    {
+      "view": "v_student_recent_paragraphs",
+      "current_column": "ao5_self_score",
+      "target_column": "ao1_sophistication_self_score",
+      "classification": "component2_blocker",
+      "recommended_action": "replace view definition to expose target column while old compatibility column exists",
+      "risk": "medium"
+    }
+  ],
+  "component1_exceptions": [
+    {
+      "object": "drama_scene_ao5_readings",
+      "reason": "Component 1 Drama may assess AO5; isolate from Component 2 Prose imports and app paths"
+    },
+    {
+      "object": "prompts/quote_bank_master.md and prompts/README.md",
+      "reason": "Hamlet and The Duchess of Malfi prompt assets are Component 1 Drama-oriented and should be separated or allowlisted outside Component 2 validation scope"
+    }
+  ],
+  "generated_files": [
+    {
+      "path": "src/integrations/supabase/types.ts",
+      "policy": "do_not_manually_edit; regenerate from staging only after accepted forward-only migration"
+    }
+  ],
+  "historical_migration_policy": "do_not_edit_historical_migrations; use the new forward-only remediation migration created in this implementation pass",
+  "production_policy": "do_not_touch_production",
+  "recommended_migration_strategy": "staged add/copy/deprecate: create replacement table and columns, backfill, update views and app code, regenerate types from staging, then remove old names only in a later cleanup branch",
+  "validator_expected_state": "passes with zero active Component 2 blockers; remaining AO5 references are allowed generated, historical, Drama, guardrail, or validator-self references"
+}
