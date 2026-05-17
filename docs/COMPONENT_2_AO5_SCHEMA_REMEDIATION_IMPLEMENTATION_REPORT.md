@@ -2,9 +2,9 @@
 
 ## 1. Executive summary
 
-This pass implements the approved forward-only Component 2 Prose AO5 remediation plan. Component 2 app/import paths now use interpretive naming, the AO validator passes with zero active Component 2 blockers, and a real non-destructive Supabase migration has been created for review.
+This pass implements the approved forward-only Component 2 Prose AO5 remediation plan. Component 2 app/import paths now use interpretive naming, the AO validator passes with zero active Component 2 blockers, and a real non-destructive Supabase migration has been created and subsequently applied to staging.
 
-No Drive data was imported. No production project was touched. The migration was not applied to staging.
+No Drive data was imported. No production project was touched. The migration has now been applied to staging project `nxlxunygoccbnzdopqna`, and Supabase types have been regenerated from that staging project.
 
 ## 2. Branch name
 
@@ -16,11 +16,20 @@ No Drive data was imported. No production project was touched. The migration was
 
 ## 4. Database changes applied or not applied
 
-Not applied. The migration file was created only.
+Applied to staging in the follow-up branch `fix/apply-component-2-interpretive-schema-to-staging`.
+
+Commands used:
+
+```bash
+npx supabase db query --linked --file supabase/migrations/20260517232441_component2_interpretive_schema_remediation.sql --output table
+npx supabase migration repair --status applied 20260517232441 --yes
+```
 
 ## 5. Whether staging was touched
 
-No staging schema or data mutation was performed. A read-only `npx supabase migration list` was run; it confirmed the new local migration is not present on the remote migration history.
+Yes. Staging project `nxlxunygoccbnzdopqna` was mutated by the reviewed forward-only migration only.
+
+`npx supabase db push --dry-run` was attempted first and made no changes. It stopped because the remote migration history has versions not present locally. To avoid applying unrelated pending local migrations, only the reviewed SQL file was executed against the linked staging project, then migration history was repaired for version `20260517232441`.
 
 ## 6. Files changed
 
@@ -65,11 +74,17 @@ The migration follows add/copy/deprecate:
 
 ## 11. Generated Supabase types
 
-Not regenerated.
+Regenerated from staging.
 
 ## 12. Why types were not regenerated
 
-The migration was not applied to staging. Per policy, `src/integrations/supabase/types.ts` must only be regenerated from staging after the reviewed migration is applied to project `nxlxunygoccbnzdopqna`.
+Types were regenerated only after the reviewed migration was applied to staging project `nxlxunygoccbnzdopqna`.
+
+Command used:
+
+```bash
+npx supabase gen types typescript --project-id nxlxunygoccbnzdopqna --schema public > src/integrations/supabase/types.ts
+```
 
 ## 13. Validator result
 
@@ -91,15 +106,14 @@ Remaining AO5 references by category:
 - `npm run build`: passed; Vite reported a large chunk warning and stale Browserslist data notice.
 - `npm run typecheck`: passed.
 - `npm run validate:component2-ao`: passed.
-- `npx supabase migration list`: passed as a read-only check.
+- `npx supabase migration list`: passed after application and shows `20260517232441` applied locally and remotely.
 
 ## 15. Remaining blockers
 
-- Staging schema has not been migrated.
-- Generated Supabase types have not been regenerated.
-- Remote `saved_essay_plans` / `essay_plans` writes that use new columns require the staging migration before they can succeed remotely.
-- Component 2 content import is not ready until the migration is reviewed/applied and types are regenerated from staging.
+- Local and remote Supabase migration history still have unrelated drift outside this migration.
+- Component 2 content exports still need an AO sweep before write import.
+- No Drive content has been imported.
 
 ## 16. Exact next step
 
-Review `supabase/migrations/20260517232441_component2_interpretive_schema_remediation.sql`. If approved, apply it to staging only, confirm project ref `nxlxunygoccbnzdopqna`, run row/column/view checks, regenerate Supabase types from staging, then run the full verification suite again.
+Start `fix/component-2-content-export-ao-sweep-and-import-dry-run`: export canonical Component 2 source tabs, run AO validation, perform the content AO sweep, then run dry-run imports against staging only.

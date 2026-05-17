@@ -71,7 +71,9 @@ npm run validate:component2-ao
 
 The validator reads `docs/component2_canonical_import_manifest.json`, scans import-relevant files and staging folders, and fails on AO5 contamination in Component 2 assessed content. It allows AO5 only in explicitly excluded/archive/report contexts or where the text clearly states AO5 is not assessed for Component 2.
 
-Implementation status as of the forward-schema remediation pass: live Component 2 app/import paths use interpretive naming and the AO gate passes with zero active blockers. Staging has not yet been migrated, so do not run content import until the reviewed migration is applied and Supabase types are regenerated from the staging project.
+Implementation status as of the staging interpretive-schema apply pass: live Component 2 app/import paths use interpretive naming, staging project `nxlxunygoccbnzdopqna` has the replacement interpretive schema, Supabase types have been regenerated from staging, and the AO gate passes with zero active blockers.
+
+Component 2 import is now schema-ready on staging, but content exports still need an AO sweep before any write import. No Drive data has been imported yet.
 
 ## Dry-Run Import
 
