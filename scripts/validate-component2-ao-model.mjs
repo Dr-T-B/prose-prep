@@ -69,6 +69,13 @@ const REPORT_OR_ARCHIVE_RE = /(?:^|\/)docs\/.*(?:audit|archive|archived|report|v
 const DRAMA_RE = /(?:drama|hamlet|duchess|component\s*1|9ET0\/01)/i;
 const HISTORICAL_MIGRATION_RE = /^supabase\/migrations\//;
 const GENERATED_TYPES_RE = /^src\/integrations\/supabase\/types\.ts$/;
+const VALIDATOR_SELF_FILES = new Set([
+  "scripts/validate-component2-ao-model.mjs",
+  "scripts/component2-staged-content-utils.mjs",
+  "scripts/scan-component2-staged-content.mjs",
+  "scripts/validate-component2-staged-content-shape.mjs",
+  "scripts/dry-run-component2-canonical-import.mjs"
+]);
 const FAILING_CATEGORIES = new Set([
   "component2_blocker",
   "component2_import_blocker",
@@ -149,7 +156,7 @@ function collectFiles() {
 function classifyOccurrence(relPath, lineText, fileText) {
   const line = lineText.toLowerCase();
 
-  if (relPath === "scripts/validate-component2-ao-model.mjs") {
+  if (VALIDATOR_SELF_FILES.has(relPath)) {
     return "validator_self";
   }
 
@@ -167,11 +174,24 @@ function classifyOccurrence(relPath, lineText, fileText) {
   if (relPath === "docs/COMPONENT_2_IMPORT_README.md") {
     return (
       line.includes("not assessed") ||
+      line.includes("reject") ||
       line.includes("rejection") ||
       line.includes("excluded") ||
       line.includes("do not import") ||
       line.includes("must not be imported") ||
       line.includes("exclude it or reframe")
+    ) ? "readme_guardrail" : "component2_import_blocker";
+  }
+
+  if (relPath === "staging/component2/README.md") {
+    return (
+      line.includes("not assessed") ||
+      line.includes("forbidden") ||
+      line.includes("rejected") ||
+      line.includes("exclude") ||
+      line.includes("reframed") ||
+      line.includes("do not") ||
+      line.includes("out of scope")
     ) ? "readme_guardrail" : "component2_import_blocker";
   }
 

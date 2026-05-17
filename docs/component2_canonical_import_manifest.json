@@ -131,6 +131,11 @@
     "production_database_writes": "forbidden",
     "raw_drive_import_to_production": "forbidden",
     "required_pre_import_validation": "node scripts/validate-component2-ao-model.mjs",
+    "required_staged_content_scan": "node scripts/scan-component2-staged-content.mjs",
+    "required_staged_content_shape_validation": "node scripts/validate-component2-staged-content-shape.mjs",
+    "required_dry_run_report": "node scripts/dry-run-component2-canonical-import.mjs",
+    "local_staging_root": "staging/component2",
+    "raw_staging_exports_git_policy": "ignored_by_default_do_not_commit_without_explicit_review",
     "allowed_interpretive_reframes": [
       "interpretive_extension",
       "critical_angle",

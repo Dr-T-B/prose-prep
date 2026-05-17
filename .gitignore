@@ -35,3 +35,15 @@ supabase/.temp/
 # Generated quote bank output — do not commit, Supabase is source of truth
 prompts/out/
 
+# Local Component 2 Drive exports. Keep raw staged content out of git unless
+# explicitly reviewed and intended for commit.
+staging/component2/**/*.csv
+staging/component2/**/*.tsv
+staging/component2/**/*.xlsx
+staging/component2/**/*.xls
+staging/component2/**/*.ods
+staging/component2/**/*.json
+staging/component2/**/*.txt
+staging/component2/**/*.md
+!staging/component2/README.md
+!staging/component2/**/.gitkeep

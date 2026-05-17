@@ -67,9 +67,14 @@ Run the AO gate before any import or dry-run import:
 
 ```bash
 npm run validate:component2-ao
+npm run scan:component2-staged-content
+npm run validate:component2-staged-content
+npm run dry-run:component2-import
 ```
 
 The validator reads `docs/component2_canonical_import_manifest.json`, scans import-relevant files and staging folders, and fails on AO5 contamination in Component 2 assessed content. It allows AO5 only in explicitly excluded/archive/report contexts or where the text clearly states AO5 is not assessed for Component 2.
+
+The staged-content scan checks local files under `staging/component2/` before import. The shape validator confirms expected folders, parseable CSVs, non-empty headers, and recognisable quote/method/comparison headers where files are present. It must reject AO5-named Component 2 columns and must reject any unreframed Atonement `AO5 Critics Bank`.
 
 Implementation status as of the staging interpretive-schema apply pass: live Component 2 app/import paths use interpretive naming, staging project `nxlxunygoccbnzdopqna` has the replacement interpretive schema, Supabase types have been regenerated from staging, and the AO gate passes with zero active blockers.
 
@@ -84,6 +89,14 @@ npm run import-quotes
 ```
 
 For any new canonical import script, run validation first, then dry-run import, then review the generated report before using any write mode.
+
+For the Component 2 canonical content pass:
+
+```bash
+npm run dry-run:component2-import
+```
+
+This writes `docs/COMPONENT_2_CONTENT_EXPORT_AO_SWEEP_DRY_RUN_REPORT.md` and does not write to Supabase.
 
 ## Manual Import Guardrails
 
