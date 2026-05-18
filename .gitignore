@@ -47,3 +47,5 @@ staging/component2/**/*.txt
 staging/component2/**/*.md
 !staging/component2/README.md
 !staging/component2/**/.gitkeep
+
+.DS_Store
