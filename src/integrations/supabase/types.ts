@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      ao_readiness: {
+        Row: {
+          ao: string
+          label: string
+          note: string | null
+          score: number
+          trend: number
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          ao: string
+          label: string
+          note?: string | null
+          score?: number
+          trend?: number
+          updated_at?: string
+          weight: number
+        }
+        Update: {
+          ao?: string
+          label?: string
+          note?: string | null
+          score?: number
+          trend?: number
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: []
+      }
       ao5_tensions: {
         Row: {
           alternative_reading: string
@@ -97,42 +127,66 @@ export type Database = {
       }
       comparative_matrix: {
         Row: {
+          ao2: string | null
+          ao3: string | null
+          ao4: string | null
           atonement: string
           axis: string
+          character: string | null
           created_at: string
           divergence: string
+          exam_fit: string | null
           hard_times: string
           id: string
           is_active: boolean
           level_band: string | null
+          narrative: string | null
           sort_order: number | null
+          structure: string | null
           themes: string[]
+          thesis: string | null
           updated_at: string
         }
         Insert: {
+          ao2?: string | null
+          ao3?: string | null
+          ao4?: string | null
           atonement: string
           axis: string
+          character?: string | null
           created_at?: string
           divergence: string
+          exam_fit?: string | null
           hard_times: string
           id: string
           is_active?: boolean
           level_band?: string | null
+          narrative?: string | null
           sort_order?: number | null
+          structure?: string | null
           themes?: string[]
+          thesis?: string | null
           updated_at?: string
         }
         Update: {
+          ao2?: string | null
+          ao3?: string | null
+          ao4?: string | null
           atonement?: string
           axis?: string
+          character?: string | null
           created_at?: string
           divergence?: string
+          exam_fit?: string | null
           hard_times?: string
           id?: string
           is_active?: boolean
           level_band?: string | null
+          narrative?: string | null
           sort_order?: number | null
+          structure?: string | null
           themes?: string[]
+          thesis?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -428,12 +482,14 @@ export type Database = {
           created_at: string
           family: string | null
           id: string
+          interpretive_extension_enabled: boolean
           is_current: boolean
           notes: string | null
           paragraph_cards: Json
           question_id: string | null
           route_id: string | null
           selected_ao5_ids: Json
+          selected_interpretive_extension_ids: Json
           selected_quote_ids: Json
           thesis_id: string | null
           thesis_level: string
@@ -447,12 +503,14 @@ export type Database = {
           created_at?: string
           family?: string | null
           id?: string
+          interpretive_extension_enabled?: boolean
           is_current?: boolean
           notes?: string | null
           paragraph_cards?: Json
           question_id?: string | null
           route_id?: string | null
           selected_ao5_ids?: Json
+          selected_interpretive_extension_ids?: Json
           selected_quote_ids?: Json
           thesis_id?: string | null
           thesis_level?: string
@@ -466,12 +524,14 @@ export type Database = {
           created_at?: string
           family?: string | null
           id?: string
+          interpretive_extension_enabled?: boolean
           is_current?: boolean
           notes?: string | null
           paragraph_cards?: Json
           question_id?: string | null
           route_id?: string | null
           selected_ao5_ids?: Json
+          selected_interpretive_extension_ids?: Json
           selected_quote_ids?: Json
           thesis_id?: string | null
           thesis_level?: string
@@ -525,7 +585,9 @@ export type Database = {
           created_at: string
           definition: string
           id: string
+          is_active: boolean
           level_tag: string | null
+          sort_order: number | null
           source_text: string | null
           term: string
           updated_at: string
@@ -535,7 +597,9 @@ export type Database = {
           created_at?: string
           definition?: string
           id: string
+          is_active?: boolean
           level_tag?: string | null
+          sort_order?: number | null
           source_text?: string | null
           term: string
           updated_at?: string
@@ -545,7 +609,9 @@ export type Database = {
           created_at?: string
           definition?: string
           id?: string
+          is_active?: boolean
           level_tag?: string | null
+          sort_order?: number | null
           source_text?: string | null
           term?: string
           updated_at?: string
@@ -588,6 +654,42 @@ export type Database = {
           inserted_count?: number
           skipped_count?: number
           updated_count?: number
+        }
+        Relationships: []
+      }
+      interpretive_tensions: {
+        Row: {
+          alternative_reading: string
+          best_use: string[]
+          created_at: string
+          dominant_reading: string
+          focus: string
+          id: string
+          interpretive_stem: string
+          level_tag: string
+          updated_at: string
+        }
+        Insert: {
+          alternative_reading: string
+          best_use?: string[]
+          created_at?: string
+          dominant_reading: string
+          focus: string
+          id: string
+          interpretive_stem: string
+          level_tag: string
+          updated_at?: string
+        }
+        Update: {
+          alternative_reading?: string
+          best_use?: string[]
+          created_at?: string
+          dominant_reading?: string
+          focus?: string
+          id?: string
+          interpretive_stem?: string
+          level_tag?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -867,6 +969,7 @@ export type Database = {
           grade_band: string | null
           id: string
           import_log_id: string | null
+          interpretive_stem: string | null
           metadata: Json
           notes: string | null
           opening_stem: string | null
@@ -894,6 +997,7 @@ export type Database = {
           grade_band?: string | null
           id?: string
           import_log_id?: string | null
+          interpretive_stem?: string | null
           metadata?: Json
           notes?: string | null
           opening_stem?: string | null
@@ -921,6 +1025,7 @@ export type Database = {
           grade_band?: string | null
           id?: string
           import_log_id?: string | null
+          interpretive_stem?: string | null
           metadata?: Json
           notes?: string | null
           opening_stem?: string | null
@@ -1298,6 +1403,7 @@ export type Database = {
       paragraph_attempts: {
         Row: {
           ao1_self_score: number | null
+          ao1_sophistication_self_score: number | null
           ao2_self_score: number | null
           ao3_context_integration: string | null
           ao3_self_score: number | null
@@ -1314,6 +1420,7 @@ export type Database = {
           hard_times_analysis: string | null
           id: string
           improvement_target: string | null
+          interpretive_judgement: string | null
           paragraph_function: string | null
           paragraph_position: number | null
           paragraph_template_id: string | null
@@ -1325,6 +1432,7 @@ export type Database = {
         }
         Insert: {
           ao1_self_score?: number | null
+          ao1_sophistication_self_score?: number | null
           ao2_self_score?: number | null
           ao3_context_integration?: string | null
           ao3_self_score?: number | null
@@ -1341,6 +1449,7 @@ export type Database = {
           hard_times_analysis?: string | null
           id?: string
           improvement_target?: string | null
+          interpretive_judgement?: string | null
           paragraph_function?: string | null
           paragraph_position?: number | null
           paragraph_template_id?: string | null
@@ -1352,6 +1461,7 @@ export type Database = {
         }
         Update: {
           ao1_self_score?: number | null
+          ao1_sophistication_self_score?: number | null
           ao2_self_score?: number | null
           ao3_context_integration?: string | null
           ao3_self_score?: number | null
@@ -1368,6 +1478,7 @@ export type Database = {
           hard_times_analysis?: string | null
           id?: string
           improvement_target?: string | null
+          interpretive_judgement?: string | null
           paragraph_function?: string | null
           paragraph_position?: number | null
           paragraph_template_id?: string | null
@@ -1455,6 +1566,57 @@ export type Database = {
           },
         ]
       }
+      paragraph_stems: {
+        Row: {
+          ao: string[]
+          best_themes: string[]
+          created_at: string
+          curation_status: string | null
+          example_use: string | null
+          function: string
+          id: string
+          is_active: boolean
+          level_band: string
+          sort_order: number
+          source_text: string | null
+          stem_text: string
+          text_focus: string | null
+          updated_at: string
+        }
+        Insert: {
+          ao?: string[]
+          best_themes?: string[]
+          created_at?: string
+          curation_status?: string | null
+          example_use?: string | null
+          function?: string
+          id: string
+          is_active?: boolean
+          level_band?: string
+          sort_order?: number
+          source_text?: string | null
+          stem_text: string
+          text_focus?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ao?: string[]
+          best_themes?: string[]
+          created_at?: string
+          curation_status?: string | null
+          example_use?: string | null
+          function?: string
+          id?: string
+          is_active?: boolean
+          level_band?: string
+          sort_order?: number
+          source_text?: string | null
+          stem_text?: string
+          text_focus?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       paragraph_templates: {
         Row: {
           created_at: string
@@ -1526,6 +1688,7 @@ export type Database = {
           created_at: string
           family: string
           id: string
+          is_active: boolean
           level_tag: string
           likely_core_methods: string[]
           primary_route_id: string
@@ -1537,6 +1700,7 @@ export type Database = {
           created_at?: string
           family: string
           id: string
+          is_active?: boolean
           level_tag: string
           likely_core_methods?: string[]
           primary_route_id: string
@@ -1548,6 +1712,7 @@ export type Database = {
           created_at?: string
           family?: string
           id?: string
+          is_active?: boolean
           level_tag?: string
           likely_core_methods?: string[]
           primary_route_id?: string
@@ -1571,54 +1736,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      quotes: {
-        Row: {
-          id: string
-          text: string
-          attribution: string
-          location: string | null
-          source: string
-          word_analysis: string | null
-          a_star_insight: string | null
-          anchor_id: string | null
-          paired_anchor_id: string | null
-          is_verified: boolean
-          ao_tags: string[]
-          theme_tags: string[]
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          text: string
-          attribution: string
-          location?: string | null
-          source: string
-          word_analysis?: string | null
-          a_star_insight?: string | null
-          anchor_id?: string | null
-          paired_anchor_id?: string | null
-          is_verified?: boolean
-          ao_tags?: string[]
-          theme_tags?: string[]
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          text?: string
-          attribution?: string
-          location?: string | null
-          source?: string
-          word_analysis?: string | null
-          a_star_insight?: string | null
-          anchor_id?: string | null
-          paired_anchor_id?: string | null
-          is_verified?: boolean
-          ao_tags?: string[]
-          theme_tags?: string[]
-          created_at?: string
-        }
-        Relationships: []
       }
       quote_methods: {
         Row: {
@@ -1742,6 +1859,7 @@ export type Database = {
           hard_times_quote: string
           how_they_compare: string | null
           id: string
+          interpretive_tension: string | null
           key_word_image_focus: string | null
           method_category: string | null
           quote_pair_code: string
@@ -1767,6 +1885,7 @@ export type Database = {
           hard_times_quote?: string
           how_they_compare?: string | null
           id?: string
+          interpretive_tension?: string | null
           key_word_image_focus?: string | null
           method_category?: string | null
           quote_pair_code: string
@@ -1792,6 +1911,7 @@ export type Database = {
           hard_times_quote?: string
           how_they_compare?: string | null
           id?: string
+          interpretive_tension?: string | null
           key_word_image_focus?: string | null
           method_category?: string | null
           quote_pair_code?: string
@@ -1800,6 +1920,99 @@ export type Database = {
           theme_label?: string
           updated_at?: string
           why_useful_in_essay?: string | null
+        }
+        Relationships: []
+      }
+      quote_question_links: {
+        Row: {
+          created_at: string
+          id: string
+          question_id: string
+          quote_id: string
+          rationale: string | null
+          relevance_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_id: string
+          quote_id: string
+          rationale?: string | null
+          relevance_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_id?: string
+          quote_id?: string
+          rationale?: string | null
+          relevance_score?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_question_links_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_question_links_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quote_methods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          a_star_insight: string | null
+          anchor_id: string | null
+          ao_tags: string[]
+          attribution: string
+          created_at: string
+          id: string
+          is_verified: boolean
+          location: string | null
+          paired_anchor_id: string | null
+          source: string
+          text: string
+          theme_tags: string[]
+          word_analysis: string | null
+        }
+        Insert: {
+          a_star_insight?: string | null
+          anchor_id?: string | null
+          ao_tags?: string[]
+          attribution: string
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          location?: string | null
+          paired_anchor_id?: string | null
+          source: string
+          text: string
+          theme_tags?: string[]
+          word_analysis?: string | null
+        }
+        Update: {
+          a_star_insight?: string | null
+          anchor_id?: string | null
+          ao_tags?: string[]
+          attribution?: string
+          created_at?: string
+          id?: string
+          is_verified?: boolean
+          location?: string | null
+          paired_anchor_id?: string | null
+          source?: string
+          text?: string
+          theme_tags?: string[]
+          word_analysis?: string | null
         }
         Relationships: []
       }
@@ -2110,11 +2323,13 @@ export type Database = {
           device_id: string | null
           family: string | null
           id: string
+          interpretive_extension_enabled: boolean
           paragraph_cards: Json
           paragraph_job_ids: string[]
           question_id: string | null
           route_id: string | null
           selected_ao5_ids: string[]
+          selected_interpretive_extension_ids: string[]
           selected_quote_ids: string[]
           thesis_id: string | null
           thesis_level: string | null
@@ -2128,11 +2343,13 @@ export type Database = {
           device_id?: string | null
           family?: string | null
           id?: string
+          interpretive_extension_enabled?: boolean
           paragraph_cards?: Json
           paragraph_job_ids?: string[]
           question_id?: string | null
           route_id?: string | null
           selected_ao5_ids?: string[]
+          selected_interpretive_extension_ids?: string[]
           selected_quote_ids?: string[]
           thesis_id?: string | null
           thesis_level?: string | null
@@ -2146,11 +2363,13 @@ export type Database = {
           device_id?: string | null
           family?: string | null
           id?: string
+          interpretive_extension_enabled?: boolean
           paragraph_cards?: Json
           paragraph_job_ids?: string[]
           question_id?: string | null
           route_id?: string | null
           selected_ao5_ids?: string[]
+          selected_interpretive_extension_ids?: string[]
           selected_quote_ids?: string[]
           thesis_id?: string | null
           thesis_level?: string | null
@@ -2312,6 +2531,7 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           id: string
+          interpretive_secure: boolean
           last_practised_at: string | null
           mastery_status: string
           needs_review: boolean
@@ -2331,6 +2551,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           id?: string
+          interpretive_secure?: boolean
           last_practised_at?: string | null
           mastery_status?: string
           needs_review?: boolean
@@ -2350,6 +2571,7 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           id?: string
+          interpretive_secure?: boolean
           last_practised_at?: string | null
           mastery_status?: string
           needs_review?: boolean
@@ -2425,6 +2647,45 @@ export type Database = {
         }
         Relationships: []
       }
+      themes: {
+        Row: {
+          ao2: string | null
+          ao3: string | null
+          ao4: string | null
+          at_angle: string
+          created_at: string
+          ht_angle: string
+          id: string
+          label: string
+          short: string
+          sort_order: number | null
+        }
+        Insert: {
+          ao2?: string | null
+          ao3?: string | null
+          ao4?: string | null
+          at_angle: string
+          created_at?: string
+          ht_angle: string
+          id: string
+          label: string
+          short: string
+          sort_order?: number | null
+        }
+        Update: {
+          ao2?: string | null
+          ao3?: string | null
+          ao4?: string | null
+          at_angle?: string
+          created_at?: string
+          ht_angle?: string
+          id?: string
+          label?: string
+          short?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       theses: {
         Row: {
           created_at: string
@@ -2484,6 +2745,7 @@ export type Database = {
           examiner_value: string | null
           grade_level: string | null
           id: string
+          interpretive_tension: string | null
           paragraph_sequence: Json | null
           published: boolean
           recommended_quote_pairs: string[] | null
@@ -2506,6 +2768,7 @@ export type Database = {
           examiner_value?: string | null
           grade_level?: string | null
           id?: string
+          interpretive_tension?: string | null
           paragraph_sequence?: Json | null
           published?: boolean
           recommended_quote_pairs?: string[] | null
@@ -2528,6 +2791,7 @@ export type Database = {
           examiner_value?: string | null
           grade_level?: string | null
           id?: string
+          interpretive_tension?: string | null
           paragraph_sequence?: Json | null
           published?: boolean
           recommended_quote_pairs?: string[] | null
@@ -2652,6 +2916,7 @@ export type Database = {
           atonement_quote: string | null
           confidence_score: number | null
           hard_times_quote: string | null
+          interpretive_secure: boolean | null
           last_practised_at: string | null
           mastery_status: string | null
           needs_review: boolean | null
@@ -2679,6 +2944,7 @@ export type Database = {
       v_student_recent_paragraphs: {
         Row: {
           ao1_self_score: number | null
+          ao1_sophistication_self_score: number | null
           ao2_self_score: number | null
           ao3_self_score: number | null
           ao4_self_score: number | null

@@ -38,7 +38,7 @@ export type EditableTableKey =
   | "questions"
   | "quote_methods"
   | "theme_maps"
-  | "ao5_tensions";
+  | "interpretive_tensions";
 
 export type FieldKind = "text" | "textarea" | "tags" | "select";
 
@@ -148,14 +148,14 @@ export const EDITABLE_TABLE_CONFIG: Record<EditableTableKey, EditableTableConfig
       { field: "one_line", label: "Concept summary", kind: "textarea", required: true, minLength: 15 },
     ],
   },
-  ao5_tensions: {
-    table: "ao5_tensions",
-    displayName: "AO5 Interpretation Engine",
+  interpretive_tensions: {
+    table: "interpretive_tensions",
+    displayName: "Interpretive Extensions",
     fields: [
       { field: "focus", label: "Focus / debate", kind: "text", required: true, minLength: 4 },
       { field: "dominant_reading", label: "Dominant reading", kind: "textarea", required: true, minLength: 15 },
       { field: "alternative_reading", label: "Alternative reading", kind: "textarea", required: true, minLength: 15 },
-      { field: "safe_stem", label: "Safe stem", kind: "textarea" },
+      { field: "interpretive_stem", label: "Interpretive stem", kind: "textarea" },
       {
         field: "level_tag",
         label: "Level",

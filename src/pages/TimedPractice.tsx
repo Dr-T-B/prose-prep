@@ -285,10 +285,10 @@ export default function TimedPractice() {
                   </ul>
                 </div>
               )}
-              {plan.ao5_enabled && plan.selected_ao5_ids.length > 0 && (
+              {plan.interpretive_extension_enabled && plan.selected_interpretive_extension_ids.length > 0 && (
                 <div>
                   <p className="label-eyebrow mb-1">AO1 — Alternative Readings</p>
-                  <p className="text-[13px] text-ink-muted">{plan.selected_ao5_ids.length} reading{plan.selected_ao5_ids.length === 1 ? "" : "s"} included</p>
+                  <p className="text-[13px] text-ink-muted">{plan.selected_interpretive_extension_ids.length} reading{plan.selected_interpretive_extension_ids.length === 1 ? "" : "s"} included</p>
                 </div>
               )}
             </div>

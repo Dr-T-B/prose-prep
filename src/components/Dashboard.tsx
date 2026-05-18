@@ -106,6 +106,33 @@ function connectionLabel(ht: number, at: number): string {
   return "Underdeveloped";
 }
 
+function normalizeThemeKey(value: string | null | undefined): string {
+  return (value ?? "")
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+const THEME_TAG_ALIASES: Record<string, string[]> = {
+  education: ["education", "education and utilitarianism", "utilitarianism", "fact"],
+  class: ["class", "social class", "class and power", "power"],
+  guilt: ["guilt", "guilt and atonement", "atonement"],
+  narrative: ["narrative", "narrative authority", "memory and truth", "truth"],
+};
+
+function quoteMatchesThemeTag(themeId: string, themeLabel: string, tags: string[] | null | undefined): boolean {
+  if (!Array.isArray(tags)) return false;
+  const accepted = new Set(
+    [themeId, themeLabel, ...(THEME_TAG_ALIASES[normalizeThemeKey(themeId).replace(/\s+/g, "_")] ?? []), ...(THEME_TAG_ALIASES[normalizeThemeKey(themeId)] ?? [])]
+      .map(normalizeThemeKey)
+      .filter(Boolean),
+  );
+  return tags.some((tag) => accepted.has(normalizeThemeKey(tag)));
+}
+
 export function Component2Dashboard() {
   const { gradeBMode } = useGradeBMode();
   const days = daysUntil(EXAM_DATE_ISO);
@@ -183,14 +210,12 @@ export function Component2Dashboard() {
           const ht = quoteRows.filter(
             (q) =>
               q.source === "hard-times" &&
-              Array.isArray(q.theme_tags) &&
-              q.theme_tags.includes(id),
+              quoteMatchesThemeTag(id, label, q.theme_tags),
           ).length;
           const at = quoteRows.filter(
             (q) =>
               q.source === "atonement" &&
-              Array.isArray(q.theme_tags) &&
-              q.theme_tags.includes(id),
+              quoteMatchesThemeTag(id, label, q.theme_tags),
           ).length;
           return {
             id,

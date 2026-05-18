@@ -207,14 +207,14 @@ insert into public.theme_maps (
 on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------
--- AO5 tensions
+-- interpretive tensions
 -- ---------------------------------------------------------------------------
 
-insert into public.ao5_tensions (
-  id, focus, dominant_reading, alternative_reading, safe_stem, level_tag, best_use
+insert into public.interpretive_tensions (
+  id, focus, dominant_reading, alternative_reading, interpretive_stem, level_tag, best_use
 ) values
   (
-    'ao5_guilt_001',
+    'interpretive_guilt_001',
     'guilt',
     'McEwan presents guilt as a lifelong burden that cannot be fully redeemed.',
     'The novel also suggests that narrative is the only imperfect form of repair still available.',
@@ -223,7 +223,7 @@ insert into public.ao5_tensions (
     array['guilt']
   ),
   (
-    'ao5_class_001',
+    'interpretive_class_001',
     'class',
     'Dickens exposes class as an oppressive social mechanism.',
     'But he also frames individual moral failings as complicit in that structure.',
@@ -232,7 +232,7 @@ insert into public.ao5_tensions (
     array['class']
   ),
   (
-    'ao5_imagination_001',
+    'interpretive_imagination_001',
     'imagination',
     'Imagination is presented as necessary to resist reductive worldviews.',
     'Yet imagination also becomes ethically dangerous when it authorises false narratives.',

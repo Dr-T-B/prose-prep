@@ -23,7 +23,7 @@ export type AuditableTable =
   | "questions"
   | "quote_methods"
   | "theme_maps"
-  | "ao5_tensions"
+  | "interpretive_tensions"
   | "theses"
   | "paragraph_jobs"
   | "character_cards"
@@ -71,8 +71,8 @@ export const AUDITABLE_FIELDS: AuditField[] = [
   { table: "quote_methods", field: "method", label: "Method (descriptive)", required: true, mode: "structural-only" },
   // theme_maps
   { table: "theme_maps", field: "family", label: "Theme family", required: true, softenPunctuation: true },
-  // ao5_tensions
-  { table: "ao5_tensions", field: "level_tag", label: "Level tag", required: true, softenPunctuation: true },
+  // interpretive_tensions
+  { table: "interpretive_tensions", field: "level_tag", label: "Level tag", required: true, softenPunctuation: true },
   // theses (secondary)
   { table: "theses", field: "theme_family", label: "Theme family", required: true, softenPunctuation: true },
   { table: "theses", field: "level", label: "Level", required: true, softenPunctuation: true },

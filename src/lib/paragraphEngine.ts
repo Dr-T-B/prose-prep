@@ -8,7 +8,7 @@
 //   - pre-attached quote suggestions (HT / AT / Comparative buckets)
 //   - a method focus prompt (from the underlying job)
 //   - a context anchor (route emphasis or character_card on the family)
-//   - an AO5 prompt (one tension where the family has them)
+//   - an interpretive prompt (one tension where the family has them)
 //
 // The student edits down from this seed; nothing here is opinionated about
 // which evidence to keep — the engine just front-loads the most likely
@@ -20,7 +20,7 @@ import type { ParagraphCard } from "@/lib/planStore";
 import {
   resolveParagraphJobs,
   findQuotesForFamily,
-  findAO5,
+  findInterpretiveExtensions,
 } from "@/lib/planLogic";
 
 interface SeedInput {
@@ -55,8 +55,8 @@ export function seedParagraphCards(input: SeedInput): ParagraphCard[] {
     r.themes.includes(family),
   );
 
-  // 4. AO5 tensions for the family (capped at 3 by findAO5).
-  const ao5Pool = findAO5(family, bundle);
+  // 4. interpretive tensions for the family (capped at 3 by findInterpretiveExtensions).
+  const interpretivePool = findInterpretiveExtensions(family, bundle);
 
   // 5. Character anchor for context — first character whose themes overlap.
   const characterAnchor = bundle.characters.find((c) =>
@@ -77,7 +77,7 @@ export function seedParagraphCards(input: SeedInput): ParagraphCard[] {
     htSeed: htPool[i] ?? htPool[0],
     atSeed: atPool[i] ?? atPool[0],
     cmpSeed: cmpPool[i],
-    ao5: ao5Pool[i % Math.max(ao5Pool.length, 1)],
+    interpretive: interpretivePool[i % Math.max(interpretivePool.length, 1)],
     characterName: characterAnchor?.name,
     routeId: route_id,
     family,
@@ -91,7 +91,7 @@ interface BuildArgs {
   htSeed?: ContentBundle["quote_methods"][number];
   atSeed?: ContentBundle["quote_methods"][number];
   cmpSeed?: ContentBundle["quote_methods"][number];
-  ao5?: ContentBundle["ao5_tensions"][number];
+  interpretive?: ContentBundle["interpretive_tensions"][number];
   characterName?: string;
   routeId: string;
   family: QuestionFamily;
@@ -116,7 +116,7 @@ function buildCard(a: BuildArgs): ParagraphCard {
     evidence_cmp_ids: a.cmpSeed ? [a.cmpSeed.id] : [],
     method_focus: `${a.job.text1_prompt.split(".")[0]}. ${a.job.text2_prompt.split(".")[0]}.`,
     context_anchor: contextAnchor,
-    ao5_prompt: a.ao5?.safe_stem ?? "",
+    analytical_position_prompt: a.interpretive?.interpretive_stem ?? "",
     notes: "",
     seed_job_id: a.job.id,
     // Newly seeded cards start as draft lanes; the UI surfaces a small
@@ -136,7 +136,7 @@ export interface AOCoverage {
   ao2: { ok: boolean; note: string }; // method focus present
   ao3: { ok: boolean; note: string }; // context anchor present
   ao4: { ok: boolean; note: string }; // both texts represented
-  ao5: { ok: boolean; note: string }; // tension present (optional)
+  interpretive: { ok: boolean; note: string }; // tension present (optional)
 }
 
 export function assessCoverage(card: ParagraphCard): AOCoverage {
@@ -146,7 +146,7 @@ export function assessCoverage(card: ParagraphCard): AOCoverage {
   const htCount = card.evidence_ht_ids.length;
   const atCount = card.evidence_at_ids.length;
   const bothTexts = htCount > 0 && atCount > 0;
-  const ao5Present = card.ao5_prompt.trim().length > 0;
+  const interpretivePresent = card.analytical_position_prompt.trim().length > 0;
 
   return {
     ao1: { ok: claimOk, note: claimOk ? "Claim states a position." : "Sharpen the claim into a position." },
@@ -162,9 +162,9 @@ export function assessCoverage(card: ParagraphCard): AOCoverage {
             ? "Missing Hard Times evidence."
             : "Missing Atonement evidence.",
     },
-    ao5: {
-      ok: ao5Present,
-      note: ao5Present ? "Critical tension noted." : "Optional: add an interpretive tension.",
+    interpretive: {
+      ok: interpretivePresent,
+      note: interpretivePresent ? "Critical tension noted." : "Optional: add an interpretive tension.",
     },
   };
 }
@@ -276,7 +276,7 @@ export function rankEvidenceForCard(
 export type SuggestableField =
   | "method_focus"
   | "context_anchor"
-  | "ao5_prompt"
+  | "analytical_position_prompt"
   | "comparative_direction";
 
 export type CardSuggestions = Partial<Record<SuggestableField, string>>;
@@ -326,14 +326,14 @@ export function recomputeSuggestions(args: RecomputeArgs): CardSuggestions {
     ? `Anchor through ${contextChar.name} (${contextChar.source_text}) — ${contextChar.one_line}`
     : "Lean on the route's structural framing for context.";
 
-  // AO5 — first tension whose focus best matches one of the picked methods,
+  // interpretive — first tension whose focus best matches one of the picked methods,
   // falling back to family default.
-  const ao5Pool = family ? findAO5(family, bundle) : [];
+  const interpretivePool = family ? findInterpretiveExtensions(family, bundle) : [];
   const focusKeyword = methodTags[0]?.toLowerCase().split(/[\s,/]+/)[0];
-  const matchedAO5 = focusKeyword
-    ? ao5Pool.find((a) => a.focus.toLowerCase().includes(focusKeyword))
+  const matchedInterpretive = focusKeyword
+    ? interpretivePool.find((a) => a.focus.toLowerCase().includes(focusKeyword))
     : undefined;
-  const ao5_prompt = (matchedAO5 ?? ao5Pool[0])?.safe_stem ?? "";
+  const analytical_position_prompt = (matchedInterpretive ?? interpretivePool[0])?.interpretive_stem ?? "";
 
   // Comparative direction — pick the comparative_matrix row most aligned
   // with the chosen evidence themes; otherwise leave empty so the caller
@@ -355,5 +355,5 @@ export function recomputeSuggestions(args: RecomputeArgs): CardSuggestions {
     }
   }
 
-  return { method_focus, context_anchor, ao5_prompt, comparative_direction };
+  return { method_focus, context_anchor, analytical_position_prompt, comparative_direction };
 }

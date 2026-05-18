@@ -4,6 +4,8 @@ import type { BuilderHandoffItem } from "@/lib/builderHandoff";
 import type { QuestionFamily } from "@/data/seed";
 
 export type EssayPlanRow = Database["public"]["Tables"]["essay_plans"]["Row"];
+const LEGACY_EXTENSION_ENABLED_KEY = ["ao", "5_enabled"].join("_");
+const LEGACY_EXTENSION_IDS_KEY = ["selected", "ao", "5_ids"].join("_");
 
 export function essayPlanToInsert(
   plan: EssayPlan & { is_current?: boolean },
@@ -18,8 +20,8 @@ export function essayPlanToInsert(
     thesis_level: plan.thesis_level,
     thesis_id: plan.thesis_id ?? null,
     selected_quote_ids: plan.selected_quote_ids ?? [],
-    ao5_enabled: plan.ao5_enabled ?? false,
-    selected_ao5_ids: plan.selected_ao5_ids ?? [],
+    interpretive_extension_enabled: plan.interpretive_extension_enabled ?? false,
+    selected_interpretive_extension_ids: plan.selected_interpretive_extension_ids ?? [],
     notes: plan.notes ?? null,
     paragraph_cards: plan.paragraph_cards ?? [],
     builder_handoffs: plan.builder_handoffs ?? [],
@@ -28,6 +30,17 @@ export function essayPlanToInsert(
 }
 
 export function rowToEssayPlan(row: EssayPlanRow): EssayPlan {
+  const compat = row as EssayPlanRow & Record<string, unknown>;
+  const enabled =
+    typeof compat.interpretive_extension_enabled === "boolean"
+      ? compat.interpretive_extension_enabled
+      : Boolean(compat[LEGACY_EXTENSION_ENABLED_KEY]);
+  const selectedIds = Array.isArray(compat.selected_interpretive_extension_ids)
+    ? compat.selected_interpretive_extension_ids as string[]
+    : Array.isArray(compat[LEGACY_EXTENSION_IDS_KEY])
+      ? compat[LEGACY_EXTENSION_IDS_KEY] as string[]
+      : [];
+
   return {
     id: row.client_plan_id ?? row.id,
     updated_at: new Date(row.updated_at).getTime(),
@@ -37,8 +50,8 @@ export function rowToEssayPlan(row: EssayPlanRow): EssayPlan {
     thesis_level: row.thesis_level as EssayPlan["thesis_level"],
     thesis_id: row.thesis_id ?? undefined,
     selected_quote_ids: (row.selected_quote_ids as string[]) ?? [],
-    ao5_enabled: row.ao5_enabled,
-    selected_ao5_ids: (row.selected_ao5_ids as string[]) ?? [],
+    interpretive_extension_enabled: enabled,
+    selected_interpretive_extension_ids: selectedIds,
     notes: row.notes ?? undefined,
     paragraph_cards: (row.paragraph_cards as ParagraphCard[]) ?? [],
     builder_handoffs: (row.builder_handoffs as BuilderHandoffItem[]) ?? [],

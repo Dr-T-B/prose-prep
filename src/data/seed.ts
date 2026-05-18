@@ -102,12 +102,12 @@ export interface QuoteMethod {
   best_used_for?: string[] | null;
 }
 
-export interface AO5Tension {
+export interface InterpretiveTension {
   id: string;
   focus: string;
   dominant_reading: string;
   alternative_reading: string;
-  safe_stem: string;
+  interpretive_stem: string;
   best_use: QuestionFamily[];
   level_tag: Level;
 }
@@ -691,59 +691,59 @@ export const QUOTE_METHODS: QuoteMethod[] = [
     "The two endings stage incompatible ethics of repair.", "top_band"),
 ];
 
-/* ---------------- AO5 TENSIONS ---------------- */
+/* ---------------- interpretive TENSIONS ---------------- */
 const A5 = (
   id: string, focus: string, dominant_reading: string, alternative_reading: string,
-  safe_stem: string, best_use: QuestionFamily[], level_tag: Level
-): AO5Tension => ({ id, focus, dominant_reading, alternative_reading, safe_stem, best_use, level_tag });
+  interpretive_stem: string, best_use: QuestionFamily[], level_tag: Level
+): InterpretiveTension => ({ id, focus, dominant_reading, alternative_reading, interpretive_stem, best_use, level_tag });
 
-export const AO5_TENSIONS: AO5Tension[] = [
-  A5("ao5_briony", "Briony's guilt",
+export const INTERPRETIVE_TENSIONS: InterpretiveTension[] = [
+  A5("interpretive_briony", "Briony's guilt",
     "Briony’s lifelong writing is a sincere attempt at atonement.",
     "Her writing is a self-serving displacement that lets her control the story she damaged.",
     "Some readers see Briony's narrative as ethical labour, while others read it as a refusal to relinquish authorial power.",
     ["guilt", "narrative_authority", "endings"], "top_band"),
-  A5("ao5_dickens_satire", "Dickens’s satire",
+  A5("interpretive_dickens_satire", "Dickens’s satire",
     "Dickens’s satire of Utilitarianism is a moral indictment of an inhuman system.",
     "The satire is broad and caricatured, weakening its political force.",
     "While many readers value Dickens’s satire as moral critique, others find its caricature limits its analytical reach.",
     ["class", "power", "imagination", "childhood"], "strong"),
-  A5("ao5_fiction_atonement", "Fiction in Atonement",
+  A5("interpretive_fiction_atonement", "Fiction in Atonement",
     "Fiction in Atonement is presented as ethically necessary, the only available form of repair.",
     "Fiction is presented as ethically suspect, the very mechanism that makes repair impossible.",
     "Atonement can be read as defending fiction’s reparative power or as exposing its moral limits.",
     ["truth", "narrative_authority", "guilt", "endings"], "top_band"),
-  A5("ao5_class_atonement", "Class in Atonement",
+  A5("interpretive_class_atonement", "Class in Atonement",
     "Class is shown as a residual prejudice exposed and condemned by the novel.",
     "Class is shown as so structurally embedded that even the narrative voice is implicated in it.",
     "Critics differ on whether McEwan diagnoses class prejudice from outside or implicates his own narration in it.",
     ["class", "power", "guilt"], "top_band"),
-  A5("ao5_louisa", "Louisa",
+  A5("interpretive_louisa", "Louisa",
     "Louisa is a tragic victim of Gradgrindian education.",
     "Louisa retains a quiet interior agency that resists the system that formed her.",
     "Some critics emphasise Louisa as victim of Fact, while others stress her residual interior resistance.",
     ["gender", "childhood", "imagination", "suffering"], "strong"),
-  A5("ao5_sissy", "Sissy Jupe",
+  A5("interpretive_sissy", "Sissy Jupe",
     "Sissy is the moral compass the novel uses to indict Gradgrindian Fact.",
     "Sissy is an idealised symbol whose ethical authority is unargued and sentimental.",
     "Some readers see Sissy as the novel's ethical centre, while others find her morally idealised in ways that flatten the critique.",
     ["imagination", "childhood", "love", "gender"], "strong"),
-  A5("ao5_narr_authority", "Narrative authority",
+  A5("interpretive_narr_authority", "Narrative authority",
     "Both novels use their narrators to deliver moral verdicts on the worlds they describe.",
     "Atonement undermines this very authority, forcing the reader to question who has the right to tell.",
     "Where Dickens’s narrator claims moral authority, McEwan’s narrator interrogates it.",
     ["narrative_authority", "truth", "guilt", "endings"], "top_band"),
-  A5("ao5_repair_irreparable", "Repair vs irreparability",
+  A5("interpretive_repair_irreparable", "Repair vs irreparability",
     "Both novels permit a chastened form of repair through recognition and effort.",
     "Repair is exposed in Atonement as an authored consolation that the original wrong cannot really afford.",
     "Critics divide on whether the novels finally offer repair or expose the wish for it as fiction.",
     ["guilt", "endings", "love"], "top_band"),
-  A5("ao5_imag_moral", "Imagination as moral power or danger",
+  A5("interpretive_imag_moral", "Imagination as moral power or danger",
     "Imagination is the moral oxygen the novels defend against rationalist or class blindness.",
     "Imagination is the very faculty that, ungoverned, produces the worst harm in both novels.",
     "Read together, the texts can be taken either to defend imagination or to expose its dangers.",
     ["imagination", "truth", "childhood", "narrative_authority"], "top_band"),
-  A5("ao5_fiction_ethics", "Fiction and ethics",
+  A5("interpretive_fiction_ethics", "Fiction and ethics",
     "Fiction is presented as a form of moral knowledge that empirical thought cannot reach.",
     "Fiction is presented as an inherently compromised form whose consolations are suspect.",
     "Critics differ on whether the novels finally trust or distrust fiction's ethical reach.",

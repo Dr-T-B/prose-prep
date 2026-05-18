@@ -11,7 +11,7 @@ export type DatasetKey =
   | "theme_maps"
   | "symbol_entries"
   | "comparative_matrix"
-  | "ao5_tensions"
+  | "interpretive_tensions"
   | "saved_essay_plans"
   | "timed_sessions"
   | "reflection_entries";
@@ -122,12 +122,12 @@ export const DATASETS: DatasetMeta[] = [
     arrayColumns: ["themes"],
   },
   {
-    key: "ao5_tensions",
-    label: "AO5 Tensions",
+    key: "interpretive_tensions",
+    label: "Interpretive Tensions",
     description: "Dominant vs alternative critical readings.",
     idType: "text",
     tier: "content",
-    requiredColumns: ["focus", "dominant_reading", "alternative_reading", "safe_stem", "level_tag"],
+    requiredColumns: ["focus", "dominant_reading", "alternative_reading", "interpretive_stem", "level_tag"],
     arrayColumns: ["best_use"],
   },
   // -------- User-state (uuid ids) --------
@@ -139,8 +139,8 @@ export const DATASETS: DatasetMeta[] = [
     tier: "user-state",
     requiredColumns: [],
     uuidColumns: ["user_id"],
-    booleanColumns: ["ao5_enabled"],
-    arrayColumns: ["paragraph_job_ids", "selected_quote_ids", "selected_ao5_ids"],
+    booleanColumns: ["interpretive_extension_enabled"],
+    arrayColumns: ["paragraph_job_ids", "selected_quote_ids", "selected_interpretive_extension_ids"],
   },
   {
     key: "timed_sessions",

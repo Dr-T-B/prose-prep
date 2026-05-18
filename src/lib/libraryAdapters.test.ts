@@ -6,7 +6,7 @@ import {
   libraryContextKindSupportsSourceFilter,
   questionMatchesText,
   quoteMatchesText,
-  toLibraryContextFromAO5,
+  toLibraryContextFromInterpretiveTensions,
   toLibraryContextFromCharacters,
   toLibraryContextFromSymbols,
   toLibraryContextFromThemes,
@@ -172,27 +172,27 @@ describe("library context adapters", () => {
     ]);
     const [symbol] = toLibraryContextFromSymbols([{ id: "s1", source_text: "Atonement", name: "The vase", themes: ["guilt"] }]);
     const [theme] = toLibraryContextFromThemes([{ family: "power", one_line: "Institutional pressure." }]);
-    const [ao5] = toLibraryContextFromAO5([{ focus: "Fiction", dominant_reading: "Repair", best_use: ["truth"], level_tag: "top_band" }]);
+    const [interpretive] = toLibraryContextFromInterpretiveTensions([{ focus: "Fiction", dominant_reading: "Repair", best_use: ["truth"], level_tag: "top_band" }]);
 
     expect(character.kind).toBe("character");
     expect(character.details[0]).toEqual({ label: "Core function", value: "Shows the cost of Utilitarian education." });
     expect(symbol.summary).toBe("No contextual summary available.");
     expect(theme.title).toBe("Power");
-    expect(ao5.sourceText).toBe("Comparative");
-    expect(ao5.level).toBe("top_band");
+    expect(interpretive.sourceText).toBe("Comparative");
+    expect(interpretive.level).toBe("top_band");
   });
 
   it("exposes source filtering only for context kinds with text-specific sources", () => {
     expect(libraryContextKindSupportsSourceFilter("character")).toBe(true);
     expect(libraryContextKindSupportsSourceFilter("symbol")).toBe(true);
     expect(libraryContextKindSupportsSourceFilter("theme")).toBe(false);
-    expect(libraryContextKindSupportsSourceFilter("ao5")).toBe(false);
+    expect(libraryContextKindSupportsSourceFilter("interpretive")).toBe(false);
   });
 
   it("keeps empty and sparse context input stable", () => {
     expect(toLibraryContextFromCharacters(undefined)).toEqual([]);
 
-    const [entry] = toLibraryContextFromAO5([{ id: "a_sparse" }]);
+    const [entry] = toLibraryContextFromInterpretiveTensions([{ id: "a_sparse" }]);
 
     expect(entry.title).toBe("Unnamed interpretive tension");
     expect(entry.summary).toBe(

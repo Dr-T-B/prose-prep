@@ -81,7 +81,7 @@ const PREVIEW_FIELDS: Record<string, string[]> = {
   questions: ["stem"],
   quote_methods: ["quote_text", "source_text"],
   theme_maps: ["family", "one_line"],
-  ao5_tensions: ["focus", "dominant_reading"],
+  interpretive_tensions: ["focus", "dominant_reading"],
   theses: ["thesis_text"],
   paragraph_jobs: ["job_title"],
   character_cards: ["name", "one_line"],

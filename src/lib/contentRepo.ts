@@ -11,13 +11,13 @@ import {
   THESES as SEED_THESES,
   PARAGRAPH_JOBS as SEED_PARAGRAPH_JOBS,
   QUOTE_METHODS as SEED_QUOTE_METHODS,
-  AO5_TENSIONS as SEED_AO5,
+  INTERPRETIVE_TENSIONS as SEED_INTERPRETIVE,
   CHARACTERS as SEED_CHARACTERS,
   THEMES as SEED_THEMES,
   SYMBOLS as SEED_SYMBOLS,
   COMPARATIVE_MATRIX as SEED_MATRIX,
   type Route, type Question, type Thesis, type ParagraphJob,
-  type QuoteMethod, type AO5Tension, type CharacterEntry,
+  type QuoteMethod, type InterpretiveTension, type CharacterEntry,
   type ThemeEntry, type SymbolEntry, type ComparativeMatrixEntry,
 } from "@/data/seed";
 
@@ -84,7 +84,7 @@ export interface ContentBundle {
   theses: Thesis[];
   paragraph_jobs: ParagraphJob[];
   quote_methods: QuoteMethod[];
-  ao5_tensions: AO5Tension[];
+  interpretive_tensions: InterpretiveTension[];
   characters: CharacterEntry[];
   themes: ThemeEntry[];
   symbols: SymbolEntry[];
@@ -103,7 +103,7 @@ const LOCAL_BUNDLE: ContentBundle = {
   theses: SEED_THESES,
   paragraph_jobs: SEED_PARAGRAPH_JOBS,
   quote_methods: SEED_QUOTE_METHODS,
-  ao5_tensions: SEED_AO5,
+  interpretive_tensions: SEED_INTERPRETIVE,
   characters: SEED_CHARACTERS,
   themes: SEED_THEMES,
   symbols: SEED_SYMBOLS,
@@ -144,14 +144,14 @@ const warnFallback = (dataset: string, reason: string) => {
  *  unrelated tables. Never throws. */
 export async function loadContent(): Promise<ContentBundle> {
   try {
-    const [routes, questions, theses, jobs, quotes, ao5, chars, themes, symbols, matrix, glossary, modules, lessons, resources, stems] =
+    const [routes, questions, theses, jobs, quotes, interpretive, chars, themes, symbols, matrix, glossary, modules, lessons, resources, stems] =
       await Promise.all([
         supabase.from("routes").select("*"),
         supabase.from("questions").select("*").eq("is_active", true),
         supabase.from("theses").select("*"),
         supabase.from("paragraph_jobs").select("*"),
         supabase.from("quote_methods").select("*").eq("is_active", true),
-        supabase.from("ao5_tensions").select("*"),
+        (supabase as any).from("interpretive_tensions").select("*"),
         supabase.from("character_cards").select("*"),
         supabase.from("theme_maps").select("*"),
         supabase.from("symbol_entries").select("*"),
@@ -193,7 +193,7 @@ export async function loadContent(): Promise<ContentBundle> {
       theses: pick<Thesis>("theses", theses, LOCAL_BUNDLE.theses),
       paragraph_jobs: pick<ParagraphJob>("paragraph_jobs", jobs, LOCAL_BUNDLE.paragraph_jobs),
       quote_methods: pick<QuoteMethod>("quote_methods", quotes, LOCAL_BUNDLE.quote_methods),
-      ao5_tensions: pick<AO5Tension>("ao5_tensions", ao5, LOCAL_BUNDLE.ao5_tensions),
+      interpretive_tensions: pick<InterpretiveTension>("interpretive_tensions", interpretive, LOCAL_BUNDLE.interpretive_tensions),
       characters: pick<CharacterEntry>("character_cards", chars, LOCAL_BUNDLE.characters),
       themes: pick<ThemeEntry>("theme_maps", themes, LOCAL_BUNDLE.themes),
       symbols: pick<SymbolEntry>("symbol_entries", symbols, LOCAL_BUNDLE.symbols),

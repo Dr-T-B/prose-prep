@@ -15,7 +15,13 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => mockAuth.value,
 }));
 
-function renderProtected(requireAdmin = false) {
+function renderProtected({
+  requireAdmin = false,
+  allowAnonymous = false,
+}: {
+  requireAdmin?: boolean;
+  allowAnonymous?: boolean;
+} = {}) {
   return render(
     <MemoryRouter
       initialEntries={["/protected"]}
@@ -25,7 +31,7 @@ function renderProtected(requireAdmin = false) {
         <Route
           path="/protected"
           element={
-            <ProtectedRoute requireAdmin={requireAdmin}>
+            <ProtectedRoute requireAdmin={requireAdmin} allowAnonymous={allowAnonymous}>
               <div>Protected content</div>
             </ProtectedRoute>
           }
@@ -71,8 +77,14 @@ describe("ProtectedRoute", () => {
       loading: false,
     };
 
-    renderProtected(true);
+    renderProtected({ requireAdmin: true });
 
     expect(screen.getByText("Dashboard page")).toBeInTheDocument();
+  });
+
+  it("renders local-only routes for anonymous users when explicitly allowed", () => {
+    renderProtected({ allowAnonymous: true });
+
+    expect(screen.getByText("Protected content")).toBeInTheDocument();
   });
 });

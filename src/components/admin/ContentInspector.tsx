@@ -46,7 +46,7 @@ type ContentTableKey =
   | "theme_maps"
   | "symbol_entries"
   | "comparative_matrix"
-  | "ao5_tensions";
+  | "interpretive_tensions";
 
 interface PreviewColumn {
   field: string;
@@ -217,8 +217,8 @@ const CONFIGS: ContentTableConfig[] = [
     optionalFilterFields: [{ field: "axis", label: "Axis" }],
   },
   {
-    key: "ao5_tensions",
-    displayName: "AO5 Interpretation Engine",
+    key: "interpretive_tensions",
+    displayName: "Interpretive Extensions",
     titleField: "focus",
     searchableFields: ["id", "focus", "dominant_reading", "alternative_reading", "level_tag"],
     previewColumns: [
@@ -227,7 +227,7 @@ const CONFIGS: ContentTableConfig[] = [
       { field: "dominant_reading", label: "Dominant", truncate: true },
       { field: "alternative_reading", label: "Alternative", truncate: true },
     ],
-    completenessFields: ["focus", "dominant_reading", "alternative_reading", "safe_stem", "best_use", "level_tag"],
+    completenessFields: ["focus", "dominant_reading", "alternative_reading", "interpretive_stem", "best_use", "level_tag"],
     optionalFilterFields: [
       { field: "focus", label: "Focus" },
       { field: "level_tag", label: "Level" },
@@ -530,7 +530,7 @@ export default function ContentInspector({ initialTable, initialSearch, seedNonc
           Inspect seeded academic content records across the app's live content tables.
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          Browse, search, and review records for questions, quote banks, themes, AO5 debates, and other academic datasets.
+          Browse, search, and review records for questions, quote banks, themes, interpretive debates, and other academic datasets.
         </p>
       </div>
 

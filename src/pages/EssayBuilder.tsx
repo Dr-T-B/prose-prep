@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   QUESTION_FAMILY_LABELS,
-  type QuestionFamily, type Level, type QuoteMethod, type AO5Tension,
+  type QuestionFamily, type Level, type QuoteMethod, type InterpretiveTension,
 } from "@/data/seed";
 import QuotePicker from "@/components/QuotePicker";
 import { useCurrentPlan, savePlan, consumeQueuedQuote, consumeQueuedFamily, type EssayPlan } from "@/lib/planStore";
@@ -17,7 +17,7 @@ import { persistPlan } from "@/lib/persistence";
 import { useContent } from "@/lib/ContentProvider";
 import {
   findThesis, resolveParagraphJobs, findQuotesForFamily, groupQuotesBySource,
-  findAO5, getQuestion, getRoute, renderPlanText,
+  findInterpretiveExtensions, getQuestion, getRoute, renderPlanText,
 } from "@/lib/planLogic";
 import { useGradeBMode } from "@/contexts/GradeBModeContext";
 import { getHandoffGradeBHints } from "@/lib/gradeBSupport";
@@ -44,11 +44,11 @@ export default function EssayBuilder() {
   // REQ-P3: Comparative pairing selection
   const [selectedPairingId, setSelectedPairingId] = useState<string | null>(null);
 
-  // REQ-P2: Per-paragraph quote / AO5 state (indices 0–2)
+  // REQ-P2: Per-paragraph quote / interpretive state (indices 0–2)
   const [activeParaIdx, setActiveParaIdx] = useState(0);
   const [paraHtIds, setParaHtIds] = useState<(string | null)[]>([null, null, null]);
   const [paraAtIds, setParaAtIds] = useState<(string | null)[]>([null, null, null]);
-  const [paraAo5Ids, setParaAo5Ids] = useState<(string | null)[]>([null, null, null]);
+  const [paraInterpretiveIds, setParaInterpretiveIds] = useState<(string | null)[]>([null, null, null]);
 
   // Explore handoffs now live on the current plan before navigation. Consume
   // the legacy transport queue only if an older in-flight item is still present.
@@ -114,7 +114,7 @@ export default function EssayBuilder() {
   const thesis = findThesis(plan.route_id, plan.family, plan.thesis_level, content);
   const paragraphJobs = resolveParagraphJobs(plan.family, plan.route_id, thesis, content);
   const quoteGroups = groupQuotesBySource(findQuotesForFamily(plan.family, content));
-  const ao5s = findAO5(plan.family, content);
+  const interpretiveTensions = findInterpretiveExtensions(plan.family, content);
 
   // Step progress
   const stepIdx = (() => {
@@ -122,7 +122,7 @@ export default function EssayBuilder() {
     if (!plan.route_id) return 1;
     if (!plan.thesis_level) return 2;
     if (paragraphJobs.length === 0) return 3;
-    if (!plan.ao5_enabled && plan.selected_quote_ids.length === 0) return 3;
+    if (!plan.interpretive_extension_enabled && plan.selected_quote_ids.length === 0) return 3;
     return 5;
   })();
 
@@ -134,7 +134,7 @@ export default function EssayBuilder() {
       route_id: q?.primary_route_id,
       thesis_id: undefined,
       selected_quote_ids: [],
-      selected_ao5_ids: [],
+      selected_interpretive_extension_ids: [],
     });
   };
 
@@ -145,11 +145,11 @@ export default function EssayBuilder() {
         : [...plan.selected_quote_ids, id],
     });
   };
-  const toggleAO5 = (id: string) => {
+  const toggleInterpretiveExtension = (id: string) => {
     update({
-      selected_ao5_ids: plan.selected_ao5_ids.includes(id)
-        ? plan.selected_ao5_ids.filter((x) => x !== id)
-        : [...plan.selected_ao5_ids, id].slice(0, 3),
+      selected_interpretive_extension_ids: plan.selected_interpretive_extension_ids.includes(id)
+        ? plan.selected_interpretive_extension_ids.filter((x) => x !== id)
+        : [...plan.selected_interpretive_extension_ids, id].slice(0, 3),
     });
   };
 
@@ -172,12 +172,12 @@ export default function EssayBuilder() {
     }
   };
 
-  const handleParaAo5Select = (idx: number, ao5: AO5Tension) => {
-    const current = paraAo5Ids[idx];
-    const newId = current === ao5.id ? null : ao5.id;
-    setParaAo5Ids((prev) => { const n = [...prev]; n[idx] = newId; return n; });
-    if (newId && !plan.selected_ao5_ids.includes(newId)) {
-      update({ ao5_enabled: true, selected_ao5_ids: [...plan.selected_ao5_ids, newId].slice(0, 3) });
+  const handleParaInterpretiveSelect = (idx: number, interpretive: InterpretiveTension) => {
+    const current = paraInterpretiveIds[idx];
+    const newId = current === interpretive.id ? null : interpretive.id;
+    setParaInterpretiveIds((prev) => { const n = [...prev]; n[idx] = newId; return n; });
+    if (newId && !plan.selected_interpretive_extension_ids.includes(newId)) {
+      update({ interpretive_extension_enabled: true, selected_interpretive_extension_ids: [...plan.selected_interpretive_extension_ids, newId].slice(0, 3) });
     }
   };
 
@@ -480,16 +480,16 @@ export default function EssayBuilder() {
                       paraIdx={activeParaIdx}
                       questionId={plan.question_id}
                       family={plan.family}
-                      ao5s={ao5s}
+                      interpretiveTensions={interpretiveTensions}
                       htQuoteId={paraHtIds[activeParaIdx]}
                       atQuoteId={paraAtIds[activeParaIdx]}
-                      ao5Id={paraAo5Ids[activeParaIdx]}
-                      ao5Enabled={plan.ao5_enabled}
+                      interpretiveId={paraInterpretiveIds[activeParaIdx]}
+                      interpretiveEnabled={plan.interpretive_extension_enabled}
                       usedHtIds={paraHtIds.filter((id, i) => id && i !== activeParaIdx) as string[]}
                       usedAtIds={paraAtIds.filter((id, i) => id && i !== activeParaIdx) as string[]}
                       onHtSelect={handleHtSelect(activeParaIdx)}
                       onAtSelect={handleAtSelect(activeParaIdx)}
-                      onAo5Select={(ao5) => handleParaAo5Select(activeParaIdx, ao5)}
+                      onInterpretiveSelect={(interpretive) => handleParaInterpretiveSelect(activeParaIdx, interpretive)}
                     />
                   )}
                 </div>
@@ -499,10 +499,10 @@ export default function EssayBuilder() {
             </Section>
           )}
 
-          {/* 5. AO5 — collapsed by default, secondary */}
+          {/* 5. interpretive — collapsed by default, secondary */}
           {plan.route_id && (
             <Section eyebrow="05" title="Analytical positions">
-              <details className="group" open={plan.ao5_enabled}>
+              <details className="group" open={plan.interpretive_extension_enabled}>
                 <summary className="flex items-center gap-2 cursor-pointer text-sm text-ink-muted hover:text-ink list-none">
                   <span className="meta-mono">Optional</span>
                   <span>+ Add a critical tension (max 3)</span>
@@ -511,27 +511,27 @@ export default function EssayBuilder() {
                   <label className="inline-flex items-center gap-2 text-sm cursor-pointer mb-3">
                     <input
                       type="checkbox"
-                      checked={plan.ao5_enabled}
-                      onChange={(e) => update({ ao5_enabled: e.target.checked, selected_ao5_ids: e.target.checked ? plan.selected_ao5_ids : [] })}
+                      checked={plan.interpretive_extension_enabled}
+                      onChange={(e) => update({ interpretive_extension_enabled: e.target.checked, selected_interpretive_extension_ids: e.target.checked ? plan.selected_interpretive_extension_ids : [] })}
                       className="size-4 accent-primary"
                     />
                     Include critical readings
                   </label>
-                  {plan.ao5_enabled && (
+                  {plan.interpretive_extension_enabled && (
                     <div className="flex flex-col gap-2">
-                      {ao5s.length === 0 && <p className="text-xs text-ink-muted italic">No critical readings for this family.</p>}
-                      {ao5s.map((a) => {
-                        const sel = plan.selected_ao5_ids.includes(a.id);
+                      {interpretiveTensions.length === 0 && <p className="text-xs text-ink-muted italic">No critical readings for this family.</p>}
+                      {interpretiveTensions.map((a) => {
+                        const sel = plan.selected_interpretive_extension_ids.includes(a.id);
                         return (
                           <button
                             key={a.id}
-                            onClick={() => toggleAO5(a.id)}
+                            onClick={() => toggleInterpretiveExtension(a.id)}
                             className={`text-left p-3 bg-paper border rounded-sm text-sm transition-colors ${
                               sel ? "border-primary bg-highlight/40 shadow-card" : "border-rule hover:border-rule-strong"
                             }`}
                           >
                             <p className="font-medium">{a.focus}</p>
-                            <p className="text-xs text-ink-muted mt-1 leading-relaxed">{a.safe_stem}</p>
+                            <p className="text-xs text-ink-muted mt-1 leading-relaxed">{a.interpretive_stem}</p>
                           </button>
                         );
                       })}
@@ -797,31 +797,31 @@ function ParaEvidencePanel({
   paraIdx,
   questionId,
   family,
-  ao5s,
+  interpretiveTensions,
   htQuoteId,
   atQuoteId,
-  ao5Id,
-  ao5Enabled,
+  interpretiveId,
+  interpretiveEnabled,
   usedHtIds,
   usedAtIds,
   onHtSelect,
   onAtSelect,
-  onAo5Select,
+  onInterpretiveSelect,
 }: {
   job: { id: string; job_title: string; text1_prompt: string; text2_prompt: string; divergence_prompt: string; judgement_prompt: string };
   paraIdx: number;
   questionId: string;
   family?: string;
-  ao5s: AO5Tension[];
+  interpretiveTensions: InterpretiveTension[];
   htQuoteId: string | null;
   atQuoteId: string | null;
-  ao5Id: string | null;
-  ao5Enabled: boolean;
+  interpretiveId: string | null;
+  interpretiveEnabled: boolean;
   usedHtIds: string[];
   usedAtIds: string[];
   onHtSelect: (q: QuoteMethod) => void;
   onAtSelect: (q: QuoteMethod) => void;
-  onAo5Select: (a: AO5Tension) => void;
+  onInterpretiveSelect: (a: InterpretiveTension) => void;
 }) {
   const themes = family ? [family] : [];
 
@@ -867,17 +867,17 @@ function ParaEvidencePanel({
         <p className="text-xs text-ink-muted leading-relaxed italic">{job.judgement_prompt}</p>
       </div>
 
-      {/* AO5 (shown when ao5_enabled on the plan) */}
-      {ao5Enabled && ao5s.length > 0 && (
+      {/* interpretive (shown when interpretive_extension_enabled on the plan) */}
+      {interpretiveEnabled && interpretiveTensions.length > 0 && (
         <div className="px-4 py-3 flex flex-col gap-2">
           <p className="label-eyebrow text-[10px]">Analytical position — §{paraIdx + 1}</p>
           <div className="flex flex-col gap-1">
-            {ao5s.map((a) => (
+            {interpretiveTensions.map((a) => (
               <button
                 key={a.id}
-                onClick={() => onAo5Select(a)}
+                onClick={() => onInterpretiveSelect(a)}
                 className={`text-left px-3 py-2 border rounded-sm text-xs transition-colors ${
-                  ao5Id === a.id
+                  interpretiveId === a.id
                     ? "border-primary bg-highlight/30 text-ink"
                     : "border-rule bg-paper hover:border-rule-strong text-ink-muted hover:text-ink"
                 }`}
@@ -887,9 +887,9 @@ function ParaEvidencePanel({
               </button>
             ))}
           </div>
-          {ao5Id && ao5s.find((a) => a.id === ao5Id) && (
+          {interpretiveId && interpretiveTensions.find((a) => a.id === interpretiveId) && (
             <p className="text-xs border border-rule rounded-sm px-3 py-2 bg-paper italic leading-relaxed">
-              {ao5s.find((a) => a.id === ao5Id)!.safe_stem}
+              {interpretiveTensions.find((a) => a.id === interpretiveId)!.interpretive_stem}
             </p>
           )}
         </div>
@@ -906,7 +906,7 @@ function LiveOutput({ plan }: { plan: EssayPlan }) {
   const t = findThesis(plan.route_id, plan.family, plan.thesis_level, content);
   const jobs = resolveParagraphJobs(plan.family, plan.route_id, t, content);
   const quotes = content.quote_methods.filter((qm) => plan.selected_quote_ids.includes(qm.id));
-  const ao5s = content.ao5_tensions.filter((a) => plan.selected_ao5_ids.includes(a.id));
+  const interpretiveTensions = content.interpretive_tensions.filter((a) => plan.selected_interpretive_extension_ids.includes(a.id));
 
   const empty = !q && !r && !t;
 
@@ -975,14 +975,14 @@ function LiveOutput({ plan }: { plan: EssayPlan }) {
           </section>
         )}
 
-        {plan.ao5_enabled && ao5s.length > 0 && (
+        {plan.interpretive_extension_enabled && interpretiveTensions.length > 0 && (
           <section>
             <p className="label-eyebrow mb-2">Analytical positions</p>
             <ul className="flex flex-col gap-2">
-              {ao5s.map((a) => (
+              {interpretiveTensions.map((a) => (
                 <li key={a.id} className="text-sm">
                   <p className="font-medium">{a.focus}</p>
-                  <p className="text-ink-muted">{a.safe_stem}</p>
+                  <p className="text-ink-muted">{a.interpretive_stem}</p>
                 </li>
               ))}
             </ul>
