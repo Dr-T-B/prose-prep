@@ -1,6 +1,5 @@
 -- Seed questions table (Essay Builder flow)
 -- 15 Section B comparative questions, all level_tag = 'A*'
--- Dry-run count: 15 rows
 
 INSERT INTO questions (id, family, stem, primary_route_id, secondary_route_id, likely_core_methods, level_tag, is_active)
 VALUES

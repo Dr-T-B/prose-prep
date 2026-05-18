@@ -1,6 +1,3 @@
--- Seed library_context_bank with 7 AO3 context entries for Component 2
--- No AO5 (not assessed in 9ET0/02).  AO4 comparative links are included.
-
 INSERT INTO library_context_bank
   (context_title, context_point, source_text, context_type, theme_tags, ao_tags, exam_use)
 VALUES
@@ -67,5 +64,4 @@ VALUES
     ARRAY['AO3', 'AO4'],
     'Use to contextualise the satirical intent of Coketown and Gradgrind''s school.'
   )
-
 ON CONFLICT DO NOTHING;

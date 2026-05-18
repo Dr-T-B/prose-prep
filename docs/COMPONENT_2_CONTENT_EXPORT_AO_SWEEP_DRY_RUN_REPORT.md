@@ -18,8 +18,6 @@ Actual canonical exports are not yet present in `staging/component2/`, so conten
 
 Drive metadata access was checked separately for canonical files, but raw Drive content was not committed. Manual export placeholders and an ignored local staging layout were created instead.
 
-Metadata resolved for the WP1 corrected workbook, Hard Times matrix, Atonement matrix, HT & Atonement quote/method source, quote pair dataset, AO3 context guide, workflow guide, and peer-assessment rubric candidate. The Atonement matrix includes an `AO5 Critics Bank` tab; that tab was not staged and remains excluded unless reframed without AO5 labels.
-
 ## 5. Files expected
 
 - wp1_complete_workbook/AO2_Prose_Grid.csv
@@ -76,7 +74,7 @@ _None._
 
 ## 8. AO sweep results
 
-- Scanned files: 1
+- Scanned files: 6
 - Allowed guardrail references: 2
 - Interpretive reframing candidates: 0
 - Excluded files staged: 0
@@ -88,8 +86,8 @@ _None._
 - Present expected files: 0
 - Missing/manual-export files: 22
 - Parsed CSV files: 0
-- Unexpected files: 0
-- Warnings: 0
+- Unexpected files: 6
+- Warnings: 6
 - Errors: 0
 - Result: passed
 
@@ -134,18 +132,6 @@ _None._
 - routes
 - theses
 
-Read-only staging schema confirmation was run against project `nxlxunygoccbnzdopqna`; these target tables all resolved:
-
-- interpretive_tensions
-- quote_methods
-- quotes
-- quote_pairs
-- comparative_matrix
-- library_quotes
-- library_context_bank
-- library_paragraph_frames
-- library_thesis_bank
-
 ## 12. Blocked files
 
 _None._
@@ -169,16 +155,7 @@ Dry-run script result:
 
 - `npm run dry-run:component2-import`: passed and wrote this report
 
-Full final verification:
-
-- `npm run lint`: passed, 0 errors and 23 existing warnings
-- `npm run test`: passed, 79 passed and 3 skipped
-- `npm run build`: passed, with existing Browserslist and chunk-size warnings
-- `npm run typecheck`: passed
-- `npm run validate:component2-ao`: passed, 0 blocked references
-- `npm run scan:component2-staged-content`: passed
-- `npm run validate:component2-staged-content`: passed, 22 manual-export files missing
-- `npm run dry-run:component2-import`: passed and wrote this report
+Full final verification is recorded after this report is regenerated.
 
 ## 16. Remaining blockers
 
