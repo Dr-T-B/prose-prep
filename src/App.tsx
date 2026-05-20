@@ -39,6 +39,7 @@ import ThemeWheel from "./components/ThemeWheel";
 import ComparativeMatrix from "./components/ComparativeMatrix";
 import { ContentProvider } from "./lib/ContentProvider";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { GradeBModeProvider } from "./contexts/GradeBModeContext";
 
@@ -52,6 +53,7 @@ const App = () => (
         <GradeBModeProvider>
           <BrowserRouter>
             <AuthProvider>
+              <ErrorBoundary>
               <Routes>
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/login" element={<Navigate to="/auth" replace />} />
@@ -93,6 +95,7 @@ const App = () => (
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </ErrorBoundary>
             </AuthProvider>
           </BrowserRouter>
         </GradeBModeProvider>
