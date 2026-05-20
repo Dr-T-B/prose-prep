@@ -8,13 +8,15 @@
 // A later PR introduces SSE for progressive section rendering.
 
 import Anthropic from "npm:@anthropic-ai/sdk@0.30.1";
-import { createClient } from "npm:@supabase/supabase-js@2.95.0";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.95.0";
 import {
   AO_KEYS,
   EXAM_WARNING,
+  extractSection,
   LEVEL_TO_MARKS,
   LEVEL_TO_READINESS_SCORE,
   pickDrillRouteForWeakestAO,
+  safeJsonParse,
   stripAO5,
   validateInput,
   validateShape,
@@ -215,45 +217,162 @@ Deno.serve(async (req) => {
     mode: input.mode,
   });
 
-  // --- Anthropic call ---------------------------------------------------------
-  let aiText: string;
-  try {
-    const response = await anthropic.messages.create({
-      model: "claude-opus-4-7",
-      max_tokens: 4000,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: `${studentWorkBlock}\n\nReturn ONLY the JSON object specified in the system prompt. No prose before or after.`,
-        },
-      ],
-    });
-    const firstBlock = response.content[0];
-    if (!firstBlock || firstBlock.type !== "text") {
-      return json(500, { error: "Anthropic returned no text content" });
-    }
-    aiText = firstBlock.text;
-  } catch (err) {
-    console.error("Anthropic call failed", err);
-    return json(500, { error: "AI model call failed" });
-  }
+  // --- Anthropic streaming call (SSE) ----------------------------------------
+  // All validation above this point returns JSON error responses. Once we
+  // open the SSE response below, HTTP errors can no longer be sent, so any
+  // failure inside the stream is surfaced as a `data: {"error": ...}` event.
 
-  // --- Parse + AO5 strip + shape validate ------------------------------------
-  const parsed = extractJsonObject(aiText);
-  if (!parsed) return json(422, { error: "AI response was not valid JSON" });
-
-  const stripped = stripAO5(parsed) as Record<string, unknown>;
-  // Force canonical examWarning regardless of what the model produced.
-  stripped.examWarning = EXAM_WARNING;
-  // Backfill provisionalMarks for non-paragraph_only if the model omitted it.
+  const encoder = new TextEncoder();
   const allowMissingMarks = input.mode === "paragraph_only";
-  if (!allowMissingMarks && stripped.provisionalMarks === undefined) {
-    if (typeof stripped.provisionalLevel === "string" && stripped.provisionalLevel in LEVEL_TO_MARKS) {
-      stripped.provisionalMarks = LEVEL_TO_MARKS[stripped.provisionalLevel as LevelLabel];
+  const persistCtx: PersistCtx = {
+    userId,
+    mode: input.mode,
+    questionId,
+    questionStem: question?.stem ?? null,
+    attemptId,
+    essayText: essayTextForPersist,
+    wordCount: wordCountForPersist,
+    targetGrade: input.target_grade,
+    allowMissingMarks,
+  };
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      let accumulated = "";
+      try {
+        const stream = anthropic.messages.stream({
+          model: "claude-opus-4-7",
+          max_tokens: 4000,
+          system: systemPrompt,
+          messages: [
+            {
+              role: "user",
+              content:
+                `${studentWorkBlock}\n\n` +
+                `Return ONLY the section-tagged response specified in the system prompt. ` +
+                `No prose, JSON, or markdown outside the section tags.`,
+            },
+          ],
+        });
+
+        for await (const event of stream) {
+          if (
+            event.type === "content_block_delta" &&
+            event.delta.type === "text_delta"
+          ) {
+            const chunk = event.delta.text;
+            accumulated += chunk;
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`),
+            );
+          }
+        }
+
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      } catch (err) {
+        console.error("Anthropic stream failed", err);
+        try {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ error: "Stream failed" })}\n\n`,
+            ),
+          );
+          controller.close();
+        } catch {
+          // controller already closed — nothing to do.
+        }
+        return;
+      }
+
+      // Post-stream: reconstruct, validate, persist. The HTTP response has
+      // already completed from the client's perspective, so failures here
+      // are logged but do not throw.
+      try {
+        await postStream(accumulated, admin, persistCtx);
+      } catch (err) {
+        console.error("postStream failed", err);
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
+});
+
+// --- Post-stream reconstruction + persistence ---------------------------------
+
+type PersistCtx = {
+  userId: string;
+  mode: ValidatedInput["mode"];
+  questionId: string | null;
+  questionStem: string | null;
+  attemptId: string | null;
+  essayText: string | null;
+  wordCount: number | null;
+  targetGrade: string;
+  allowMissingMarks: boolean;
+};
+
+async function postStream(
+  accumulated: string,
+  admin: SupabaseClient,
+  ctx: PersistCtx,
+): Promise<void> {
+  const reconstructed: Record<string, unknown> = {
+    // Always enforce the canonical exam-warning string regardless of what
+    // the model produced in the <section:examWarning> tag.
+    examWarning: EXAM_WARNING,
+    provisionalLevel: extractSection(accumulated, "provisionalLevel"),
+    overallSummary: extractSection(accumulated, "overallSummary"),
+    aoFeedback: {
+      AO1: safeJsonParse(extractSection(accumulated, "AO1"), {}),
+      AO2: safeJsonParse(extractSection(accumulated, "AO2"), {}),
+      AO3: safeJsonParse(extractSection(accumulated, "AO3"), {}),
+      AO4: safeJsonParse(extractSection(accumulated, "AO4"), {}),
+    },
+    topStrengths: safeJsonParse<unknown[]>(
+      extractSection(accumulated, "topStrengths"),
+      [],
+    ),
+    priorityWeaknesses: safeJsonParse<unknown[]>(
+      extractSection(accumulated, "priorityWeaknesses"),
+      [],
+    ),
+    quoteMethodDiagnostic: safeJsonParse<unknown[]>(
+      extractSection(accumulated, "quoteMethodDiagnostic"),
+      [],
+    ),
+    modelUpgradeParagraph: extractSection(accumulated, "modelUpgradeParagraph"),
+    nextDrill: safeJsonParse(extractSection(accumulated, "nextDrill"), {}),
+  };
+
+  if (!ctx.allowMissingMarks) {
+    const rawMarks = extractSection(accumulated, "provisionalMarks");
+    const parsedMarks = rawMarks != null ? parseInt(rawMarks, 10) : NaN;
+    if (Number.isFinite(parsedMarks)) {
+      reconstructed.provisionalMarks = parsedMarks;
+    } else if (
+      typeof reconstructed.provisionalLevel === "string" &&
+      reconstructed.provisionalLevel in LEVEL_TO_MARKS
+    ) {
+      reconstructed.provisionalMarks =
+        LEVEL_TO_MARKS[reconstructed.provisionalLevel as LevelLabel];
     }
   }
-  // Force appRoute into the allowed list if the model hallucinated one.
+
+  const stripped = stripAO5(reconstructed) as Record<string, unknown>;
+  // Re-enforce canonical examWarning post-strip in case the regex touched it.
+  stripped.examWarning = EXAM_WARNING;
+
+  // Coerce appRoute into the allowed set if the model hallucinated one.
   if (
     stripped.nextDrill &&
     typeof stripped.nextDrill === "object" &&
@@ -265,29 +384,39 @@ Deno.serve(async (req) => {
       typeof nd.appRoute !== "string" ||
       !(VALID_APP_ROUTES as readonly string[]).includes(nd.appRoute)
     ) {
-      nd.appRoute = pickDrillRouteForWeakestAO(
-        stripped.aoFeedback as Parameters<typeof pickDrillRouteForWeakestAO>[0],
-      );
+      try {
+        nd.appRoute = pickDrillRouteForWeakestAO(
+          stripped.aoFeedback as Parameters<typeof pickDrillRouteForWeakestAO>[0],
+        );
+      } catch {
+        // aoFeedback may be malformed; fall back to a safe default.
+        nd.appRoute = "/paragraph-builder";
+      }
     }
   }
 
-  const shape = validateShape(stripped, { allowMissingProvisionalMarks: allowMissingMarks });
+  const shape = validateShape(stripped, {
+    allowMissingProvisionalMarks: ctx.allowMissingMarks,
+  });
   if (!shape.ok) {
-    console.error("Shape validation failed", shape.errors);
-    return json(422, { error: "AI response failed shape validation", details: shape.errors });
+    // Stream has already completed; log and skip persistence. The frontend
+    // has already rendered whatever sections it could parse.
+    console.warn("postStream shape validation failed; skipping persist", {
+      errors: shape.errors,
+    });
+    return;
   }
   const result: MarkerResult = shape.value;
 
-  // --- Persist ----------------------------------------------------------------
   const { error: insertErr } = await admin.from("essay_marker_results").insert({
-    user_id: userId,
-    mode: input.mode,
-    question_id: questionId,
-    question_stem: question?.stem ?? null,
-    paragraph_attempt_id: attemptId,
-    essay_text: essayTextForPersist,
-    word_count: wordCountForPersist,
-    target_grade: input.target_grade,
+    user_id: ctx.userId,
+    mode: ctx.mode,
+    question_id: ctx.questionId,
+    question_stem: ctx.questionStem,
+    paragraph_attempt_id: ctx.attemptId,
+    essay_text: ctx.essayText,
+    word_count: ctx.wordCount,
+    target_grade: ctx.targetGrade,
     provisional_level: result.provisionalLevel,
     provisional_marks: result.provisionalMarks ?? null,
     result_json: result,
@@ -295,10 +424,9 @@ Deno.serve(async (req) => {
   });
   if (insertErr) {
     console.error("essay_marker_results insert failed", insertErr);
-    return json(500, { error: "Failed to persist result" });
+    return;
   }
 
-  // --- ao_readiness upsert ----------------------------------------------------
   await Promise.all(
     AO_KEYS.map(async (ao: AOKey) => {
       const level = result.aoFeedback[ao].level;
@@ -308,7 +436,7 @@ Deno.serve(async (req) => {
         .from("ao_readiness")
         .select("score")
         .eq("ao", ao)
-        .eq("user_id", userId)
+        .eq("user_id", ctx.userId)
         .maybeSingle();
       const trend = current ? newScore - current.score : 0;
       const { error: upsertErr } = await admin
@@ -316,7 +444,7 @@ Deno.serve(async (req) => {
         .upsert(
           {
             ao,
-            user_id: userId,
+            user_id: ctx.userId,
             score: newScore,
             trend,
             updated_at: new Date().toISOString(),
@@ -326,9 +454,7 @@ Deno.serve(async (req) => {
       if (upsertErr) console.error("ao_readiness upsert failed", { ao, upsertErr });
     }),
   );
-
-  return json(200, { result });
-});
+}
 
 // --- Helpers ---------------------------------------------------------------
 
@@ -356,23 +482,6 @@ function formatStructuredAttempt(a: {
   return `STUDENT WORK (structured paragraph attempt):\n\n${sections.join("\n\n")}`;
 }
 
-// Best-effort JSON extraction. The model is instructed to return JSON only,
-// but it sometimes wraps in ```json ... ``` or adds a leading sentence.
-function extractJsonObject(text: string): unknown {
-  const trimmed = text.trim();
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  const candidate = fenced ? fenced[1] : trimmed;
-  const firstBrace = candidate.indexOf("{");
-  const lastBrace = candidate.lastIndexOf("}");
-  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) return null;
-  const slice = candidate.slice(firstBrace, lastBrace + 1);
-  try {
-    return JSON.parse(slice);
-  } catch {
-    return null;
-  }
-}
-
 type SystemPromptCtx = {
   question: {
     stem: string;
@@ -393,9 +502,9 @@ type SystemPromptCtx = {
 };
 
 function buildSystemPrompt(ctx: SystemPromptCtx): string {
-  const allowMarksLine = ctx.mode === "paragraph_only"
-    ? "DO NOT include a `provisionalMarks` key. Paragraph-only marking does not map to /20."
-    : "Include `provisionalMarks` as an integer 1–20 mapped from `provisionalLevel`.";
+  const marksSectionLine = ctx.mode === "paragraph_only"
+    ? "DO NOT emit a <section:provisionalMarks> tag. Paragraph-only marking does not map to /20."
+    : "Emit <section:provisionalMarks>N</section:provisionalMarks> where N is an integer 1–20 mapped from provisionalLevel.";
 
   return [
     `ROLE AND AO RULES`,
@@ -464,20 +573,72 @@ function buildSystemPrompt(ctx: SystemPromptCtx): string {
       : "(none)",
     ``,
     `--- MARKING TASK ---`,
-    `Read the student work below. Return your assessment as a single JSON object with exactly these top-level keys:`,
-    `provisionalLevel, ${ctx.mode === "paragraph_only" ? "" : "provisionalMarks, "}overallSummary, aoFeedback, topStrengths, priorityWeaknesses, quoteMethodDiagnostic, modelUpgradeParagraph, nextDrill, examWarning.`,
-    `${allowMarksLine}`,
+    `Read the student work below. Output your response as a sequence of`,
+    `tagged sections in EXACTLY this order. Each section is wrapped in`,
+    `XML-style tags. Do NOT output a top-level JSON object. Do NOT output`,
+    `anything outside the section tags. No prose before, between, or after.`,
+    `No markdown fences. Stream the sections in the order shown.`,
     ``,
-    `Shape requirements:`,
+    `<section:examWarning>${EXAM_WARNING}</section:examWarning>`,
+    ``,
+    `<section:provisionalLevel>Level N</section:provisionalLevel>`,
+    ``,
+    ctx.mode === "paragraph_only"
+      ? `(provisionalMarks section is OMITTED in paragraph_only mode)`
+      : `<section:provisionalMarks>N</section:provisionalMarks>`,
+    ``,
+    `<section:overallSummary>`,
+    `3-5 sentences of holistic feedback here.`,
+    `</section:overallSummary>`,
+    ``,
+    `<section:AO1>`,
+    `{"level":"Level N","strength":"...","weakness":"...","nextAction":"..."}`,
+    `</section:AO1>`,
+    ``,
+    `<section:AO2>`,
+    `{"level":"Level N","strength":"...","weakness":"...","nextAction":"..."}`,
+    `</section:AO2>`,
+    ``,
+    `<section:AO3>`,
+    `{"level":"Level N","strength":"...","weakness":"...","nextAction":"..."}`,
+    `</section:AO3>`,
+    ``,
+    `<section:AO4>`,
+    `{"level":"Level N","strength":"...","weakness":"...","nextAction":"..."}`,
+    `</section:AO4>`,
+    ``,
+    `<section:topStrengths>`,
+    `["strength one","strength two","strength three"]`,
+    `</section:topStrengths>`,
+    ``,
+    `<section:priorityWeaknesses>`,
+    `["weakness one","weakness two"]`,
+    `</section:priorityWeaknesses>`,
+    ``,
+    `<section:quoteMethodDiagnostic>`,
+    `[]`,
+    `</section:quoteMethodDiagnostic>`,
+    ``,
+    `<section:modelUpgradeParagraph>`,
+    `One complete model upgrade paragraph here.`,
+    `</section:modelUpgradeParagraph>`,
+    ``,
+    `<section:nextDrill>`,
+    `{"title":"...","durationMinutes":15,"instructions":"...","appRoute":"/compare"}`,
+    `</section:nextDrill>`,
+    ``,
+    `RULES:`,
+    `- examWarning content must always be exactly: ${EXAM_WARNING}`,
+    `- ${marksSectionLine}`,
     `- provisionalLevel: one of "Level 1","Level 2","Level 3","Level 4","Level 5".`,
-    `- aoFeedback: object with exactly keys AO1, AO2, AO3, AO4. Each: { level, strength, weakness, nextAction }. NEVER include AO5.`,
-    `- topStrengths: array of strings (3 items).`,
-    `- priorityWeaknesses: array of strings (2 items).`,
-    `- quoteMethodDiagnostic: array of { quote, status: "verified"|"unverified"|"paraphrased", note }. Empty array if all quotes verified.`,
-    `- modelUpgradeParagraph: ONE rewritten paragraph (the weakest in the student work). Not a full essay.`,
-    `- nextDrill: { title, durationMinutes, instructions, appRoute }. appRoute MUST be one of: ${ctx.validAppRoutes.join(", ")}.`,
-    `- examWarning: exactly "${EXAM_WARNING}"`,
-    ``,
-    `Return ONLY the JSON object. No prose before or after. No markdown fences.`,
+    `- AO1/AO2/AO3/AO4 sections contain a JSON OBJECT ONLY — no surrounding text. Keys: level, strength, weakness, nextAction.`,
+    `- topStrengths is a JSON array of exactly 3 strings.`,
+    `- priorityWeaknesses is a JSON array of exactly 2 strings.`,
+    `- quoteMethodDiagnostic is a JSON array (possibly empty) of objects { quote, status, note } where status ∈ "verified"|"unverified"|"paraphrased".`,
+    `- modelUpgradeParagraph is ONE rewritten paragraph (the weakest in the student work). Not a full essay.`,
+    `- nextDrill is a JSON object: { title, durationMinutes, instructions, appRoute }. appRoute MUST be one of: ${ctx.validAppRoutes.join(", ")}.`,
+    `- Do NOT emit a <section:AO5> tag anywhere. Do NOT mention AO5.`,
+    `- Do NOT wrap the section tags in a top-level JSON object.`,
+    `- Do NOT use markdown code fences.`,
   ].join("\n");
 }

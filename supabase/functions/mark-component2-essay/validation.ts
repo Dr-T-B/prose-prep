@@ -73,6 +73,32 @@ export function countWords(text: string): number {
   return trimmed.split(/\s+/).length;
 }
 
+// Extract the inner text of <section:NAME>…</section:NAME> from a streamed
+// or completed accumulator. Returns null if the section is missing or has
+// no closing tag yet. Used by both the Edge Function post-stream
+// reconstruction and the frontend progressive parser.
+export function extractSection(text: string, name: string): string | null {
+  const re = new RegExp(
+    `<section:${name}>([\\s\\S]*?)<\\/section:${name}>`,
+    'i',
+  );
+  const m = text.match(re);
+  return m ? m[1].trim() : null;
+}
+
+// JSON.parse without throwing — used when reconstructing sections from a
+// streamed response where the model may have emitted malformed JSON inside
+// a section tag. Returns the fallback on failure (and does not log; callers
+// decide whether to log).
+export function safeJsonParse<T>(raw: string | null, fallback: T): T {
+  if (raw == null) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export function validateInput(raw: RawInput): ValidationResult {
   const mode = raw.mode;
   if (mode !== 'full_essay' && mode !== 'paragraph_only' && mode !== 'structured_attempt') {
