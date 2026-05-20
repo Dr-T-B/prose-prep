@@ -33,7 +33,6 @@ import RetrievalDrill from "./pages/RetrievalDrill";
 import TextArchitecture from "./pages/TextArchitecture";
 import ComparisonRoutes from "./pages/ComparisonRoutes";
 import InterpretiveFlex from "./pages/InterpretiveFlex";
-import TimedWrite from "./pages/TimedWrite";
 import ParagraphBuilderPage from "./pages/ParagraphBuilderPage";
 import EssayMarker from "./pages/EssayMarker";
 import ThemeWheel from "./components/ThemeWheel";
@@ -83,7 +82,6 @@ const App = () => (
                   <Route path="/flex" element={<InterpretiveFlex />} />
                   <Route path="/theme-wheel" element={<ThemeWheel />} />
                   <Route path="/matrix" element={<ComparativeMatrix />} />
-                  <Route path="/session" element={<TimedWrite />} />
                   <Route path="/essay-marker" element={<EssayMarker />} />
                   <Route path="/learn" element={<Learn />} />
                   <Route path="/modules" element={<Modules />} />
