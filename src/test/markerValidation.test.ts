@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   countWords,
   EXAM_WARNING,
+  extractSection,
   pickDrillRouteForWeakestAO,
+  safeJsonParse,
   stripAO5,
   validateInput,
   validateShape,
@@ -225,5 +227,47 @@ describe('VALID_APP_ROUTES', () => {
   it('only lists routes that exist in App.tsx', () => {
     // Sanity: the well-formed test result uses one of these.
     expect((VALID_APP_ROUTES as readonly string[]).includes('/library/context')).toBe(true);
+  });
+});
+
+describe('extractSection', () => {
+  it('extracts and trims the inner content of a closed section tag', () => {
+    const text =
+      'preamble<section:overallSummary>\n  A solid argument.\n</section:overallSummary>tail';
+    expect(extractSection(text, 'overallSummary')).toBe('A solid argument.');
+  });
+
+  it('returns null when the section is absent', () => {
+    expect(extractSection('no tags here', 'AO1')).toBeNull();
+  });
+
+  it('returns null when only an opening tag has been streamed so far', () => {
+    const text = '<section:AO1>{"level":"Level 4"';
+    expect(extractSection(text, 'AO1')).toBeNull();
+  });
+
+  it('is case-insensitive on the tag name', () => {
+    const text = '<SECTION:provisionalLevel>Level 5</SECTION:provisionalLevel>';
+    expect(extractSection(text, 'provisionalLevel')).toBe('Level 5');
+  });
+
+  it('extracts the first occurrence when a section appears twice', () => {
+    const text =
+      '<section:AO1>{"a":1}</section:AO1>X<section:AO1>{"a":2}</section:AO1>';
+    expect(extractSection(text, 'AO1')).toBe('{"a":1}');
+  });
+});
+
+describe('safeJsonParse', () => {
+  it('parses valid JSON', () => {
+    expect(safeJsonParse('{"a":1}', {})).toEqual({ a: 1 });
+  });
+
+  it('returns the fallback on malformed JSON', () => {
+    expect(safeJsonParse('{"a":', { ok: false })).toEqual({ ok: false });
+  });
+
+  it('returns the fallback when input is null', () => {
+    expect(safeJsonParse(null, [])).toEqual([]);
   });
 });

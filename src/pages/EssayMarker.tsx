@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowRight, ChevronDown, ChevronRight, Copy, Printer } from "lucide-react";
 
@@ -135,6 +135,101 @@ type MarkerHttpError = { status: number; message: string; raw?: unknown };
 
 function isHttpError(e: unknown): e is MarkerHttpError {
   return !!e && typeof e === "object" && "status" in e && typeof (e as MarkerHttpError).status === "number";
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// SSE streaming: progressive section state + parser
+// ────────────────────────────────────────────────────────────────────────────
+
+export type SectionState = {
+  examWarning:           string | null;
+  provisionalLevel:      string | null;
+  provisionalMarks:      number | null;
+  overallSummary:        string | null;
+  AO1:                   AoFeedback | null;
+  AO2:                   AoFeedback | null;
+  AO3:                   AoFeedback | null;
+  AO4:                   AoFeedback | null;
+  topStrengths:          string[] | null;
+  priorityWeaknesses:    string[] | null;
+  quoteMethodDiagnostic: QuoteDiagnostic[] | null;
+  modelUpgradeParagraph: string | null;
+  nextDrill:             MarkerResult["nextDrill"] | null;
+};
+
+const EMPTY_SECTIONS: SectionState = {
+  examWarning: null,
+  provisionalLevel: null,
+  provisionalMarks: null,
+  overallSummary: null,
+  AO1: null,
+  AO2: null,
+  AO3: null,
+  AO4: null,
+  topStrengths: null,
+  priorityWeaknesses: null,
+  quoteMethodDiagnostic: null,
+  modelUpgradeParagraph: null,
+  nextDrill: null,
+};
+
+// Pure: scan the accumulated SSE text for closed <section:NAME>…</section:NAME>
+// pairs and return a partial SectionState containing only newly-parsed sections
+// (sections already present in `prev` are skipped). Exported for unit tests.
+export function parseSectionsDelta(
+  text: string,
+  prev: SectionState,
+): Partial<SectionState> {
+  const re = /<section:([^>\s]+)>([\s\S]*?)<\/section:\1>/gi;
+  const delta: Partial<SectionState> = {};
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    const name = match[1] as keyof SectionState;
+    const content = match[2].trim();
+    if (prev[name] !== null || delta[name] !== undefined) continue;
+    try {
+      switch (name) {
+        case "examWarning":
+        case "overallSummary":
+        case "modelUpgradeParagraph":
+        case "provisionalLevel":
+          delta[name] = content;
+          break;
+        case "provisionalMarks": {
+          const n = parseInt(content, 10);
+          if (Number.isFinite(n)) delta.provisionalMarks = n;
+          break;
+        }
+        case "AO1":
+        case "AO2":
+        case "AO3":
+        case "AO4":
+          delta[name] = JSON.parse(content) as AoFeedback;
+          break;
+        case "topStrengths":
+        case "priorityWeaknesses":
+          delta[name] = JSON.parse(content) as string[];
+          break;
+        case "quoteMethodDiagnostic":
+          delta.quoteMethodDiagnostic = JSON.parse(content) as QuoteDiagnostic[];
+          break;
+        case "nextDrill":
+          delta.nextDrill = JSON.parse(content) as MarkerResult["nextDrill"];
+          break;
+        default:
+          break;
+      }
+    } catch {
+      // Malformed JSON in a section payload — skip; if the model emits a
+      // corrected version later it still won't re-match because the regex
+      // is non-greedy and only matches closed tags.
+    }
+  }
+  return delta;
+}
+
+function mapHttpError(status: number): string {
+  return HTTP_ERROR_MESSAGES[status] ?? HTTP_ERROR_MESSAGES[500];
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -352,6 +447,79 @@ function MarkerOutput({ result }: { result: MarkerResult }) {
       <QuoteDiagnosticCard items={result.quoteMethodDiagnostic} />
       <ModelUpgradeCard paragraph={result.modelUpgradeParagraph} />
       <NextDrillCard drill={result.nextDrill} />
+    </div>
+  );
+}
+
+// Progressive renderer: each section is either skeleton (null) or real
+// content (non-null). Render order matches the streaming order produced
+// by the Edge Function. In paragraph_only mode `provisionalMarks` stays
+// null and the grade card renders without the /20 line.
+function StreamingMarkerOutput({ sections }: { sections: SectionState }) {
+  const aoKeys: Array<"AO1" | "AO2" | "AO3" | "AO4"> = ["AO1", "AO2", "AO3", "AO4"];
+
+  const gradeReady =
+    sections.provisionalLevel !== null || sections.provisionalMarks !== null;
+
+  return (
+    <div className="space-y-4 print:space-y-3">
+      <ExamWarningCallout />
+      {gradeReady ? (
+        <Card className="print:break-inside-avoid">
+          <CardContent className="flex flex-col items-start gap-2 pt-6">
+            <span className="text-xs uppercase tracking-wider text-ink-muted font-mono">
+              Provisional grade
+            </span>
+            <div className="flex items-baseline gap-3 flex-wrap">
+              {sections.provisionalLevel && (
+                <Badge className={`text-base px-3 py-1 ${levelBadgeClasses(sections.provisionalLevel)}`}>
+                  {sections.provisionalLevel}
+                </Badge>
+              )}
+              {typeof sections.provisionalMarks === "number" && (
+                <span className="font-serif text-2xl">~{sections.provisionalMarks} / 20</span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Skeleton className="h-20 w-full" />
+      )}
+      {sections.overallSummary !== null ? (
+        <OverallSummaryCard summary={sections.overallSummary} />
+      ) : (
+        <Skeleton className="h-24 w-full" />
+      )}
+      <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2 print:gap-3">
+        {aoKeys.map((k) =>
+          sections[k] !== null ? (
+            <AOFeedbackCard key={k} aoKey={k} feedback={sections[k] as AoFeedback} />
+          ) : (
+            <Skeleton key={k} className="h-40 w-full" />
+          ),
+        )}
+      </div>
+      {sections.topStrengths !== null && sections.priorityWeaknesses !== null ? (
+        <StrengthsWeaknessesCard
+          strengths={sections.topStrengths}
+          weaknesses={sections.priorityWeaknesses}
+        />
+      ) : (
+        <Skeleton className="h-32 w-full" />
+      )}
+      {sections.quoteMethodDiagnostic !== null && sections.quoteMethodDiagnostic.length > 0 && (
+        <QuoteDiagnosticCard items={sections.quoteMethodDiagnostic} />
+      )}
+      {sections.modelUpgradeParagraph !== null ? (
+        <ModelUpgradeCard paragraph={sections.modelUpgradeParagraph} />
+      ) : (
+        <Skeleton className="h-40 w-full" />
+      )}
+      {sections.nextDrill !== null ? (
+        <NextDrillCard drill={sections.nextDrill} />
+      ) : (
+        <Skeleton className="h-32 w-full" />
+      )}
     </div>
   );
 }
@@ -812,46 +980,156 @@ function InputPanel({
 // Page
 // ────────────────────────────────────────────────────────────────────────────
 
-async function invokeMarker(payload: MarkerPayload): Promise<MarkerResult> {
-  const { data, error } = await supabase.functions.invoke<{ result: MarkerResult; error?: string }>(
-    "mark-component2-essay",
-    { body: payload },
-  );
-  if (error) {
-    const ctx = (error as { context?: { status?: number } }).context;
-    const status = ctx?.status ?? 500;
-    throw { status, message: HTTP_ERROR_MESSAGES[status] ?? HTTP_ERROR_MESSAGES[500], raw: error } as MarkerHttpError;
+// Consume an SSE stream of `data: {chunk}` / `data: {error}` / `data: [DONE]`
+// lines and dispatch parsed sections to the supplied setter.
+async function consumeStream(
+  body: ReadableStream<Uint8Array>,
+  onSections: (sectionsUpdater: (prev: SectionState) => SectionState) => void,
+  onError: (msg: string) => void,
+  onDone: () => void,
+): Promise<void> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let accumulated = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const payload = line.slice(6).trim();
+
+        if (payload === "[DONE]") {
+          onDone();
+          continue;
+        }
+
+        let parsed: { chunk?: string; error?: string };
+        try {
+          parsed = JSON.parse(payload);
+        } catch {
+          continue;
+        }
+
+        if (parsed.error) {
+          onError(
+            "The marker encountered an error. Partial feedback may be shown.",
+          );
+          continue;
+        }
+
+        if (parsed.chunk) {
+          accumulated += parsed.chunk;
+          onSections((prev) => {
+            const delta = parseSectionsDelta(accumulated, prev);
+            if (Object.keys(delta).length === 0) return prev;
+            return { ...prev, ...delta };
+          });
+        }
+      }
+    }
+  } finally {
+    try {
+      reader.releaseLock();
+    } catch {
+      // already released
+    }
   }
-  if (!data || !data.result) {
-    throw { status: 500, message: HTTP_ERROR_MESSAGES[500] } as MarkerHttpError;
-  }
-  return data.result;
 }
 
 export default function EssayMarker() {
   const { user, loading: authLoading } = useAuth();
   const queryClient = useQueryClient();
-  const [result, setResult] = useState<MarkerResult | null>(null);
+  const [sections, setSections] = useState<SectionState>(EMPTY_SECTIONS);
+  const [hasResult, setHasResult] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [friendlyError, setFriendlyError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const mutation = useMutation<MarkerResult, unknown, MarkerPayload>({
-    mutationFn: invokeMarker,
-    onSuccess: (r) => {
-      setResult(r);
-      setFriendlyError(null);
-      queryClient.invalidateQueries({ queryKey: ["essay-marker-history"] });
-    },
-    onError: (e) => {
-      const msg = isHttpError(e) ? e.message : HTTP_ERROR_MESSAGES[500];
-      setFriendlyError(msg);
-      setResult(null);
-    },
-  });
-
-  // Clear stale validation error when the user starts a new submission.
+  // Cancel any in-flight stream on unmount.
   useEffect(() => {
-    if (mutation.isPending) setFriendlyError(null);
-  }, [mutation.isPending]);
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const handleSubmit = useCallback(
+    async (payload: MarkerPayload) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setSections(EMPTY_SECTIONS);
+      setHasResult(false);
+      setFriendlyError(null);
+      setIsPending(true);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const jwt = session?.access_token;
+        if (!jwt) {
+          setFriendlyError(mapHttpError(401));
+          setIsPending(false);
+          return;
+        }
+
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/mark-component2-essay`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${jwt}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          },
+        );
+
+        // Errors raised before the stream opens come back as JSON, not SSE.
+        if (!response.ok) {
+          await response.json().catch(() => ({}));
+          setFriendlyError(mapHttpError(response.status));
+          setIsPending(false);
+          return;
+        }
+        if (!response.body) {
+          setFriendlyError(mapHttpError(500));
+          setIsPending(false);
+          return;
+        }
+
+        await consumeStream(
+          response.body,
+          (updater) => setSections(updater),
+          (msg) => setFriendlyError(msg),
+          () => {
+            setHasResult(true);
+            setIsPending(false);
+            // History view is populated by the Edge Function's post-stream
+            // persistence step; nudge React Query to re-fetch.
+            queryClient.invalidateQueries({ queryKey: ["essay-marker-history"] });
+          },
+        );
+
+        // If the server closed without a [DONE] sentinel, settle the UI.
+        setIsPending((prev) => (prev ? false : prev));
+      } catch (err) {
+        if ((err as { name?: string })?.name === "AbortError") return;
+        const status = isHttpError(err) ? err.status : 500;
+        setFriendlyError(mapHttpError(status));
+        setIsPending(false);
+      }
+    },
+    [queryClient],
+  );
 
   if (authLoading) {
     return (
@@ -873,6 +1151,9 @@ export default function EssayMarker() {
     );
   }
 
+  const showStreaming = isPending || hasResult;
+  const printable = hasResult && !isPending;
+
   return (
     <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-8 print:px-0 print:py-0">
       <header className="mb-6 no-print">
@@ -885,31 +1166,32 @@ export default function EssayMarker() {
 
       <div className="grid gap-6 lg:grid-cols-2 lg:gap-8 print:grid-cols-1 print:gap-0">
         <InputPanel
-          onSubmit={(payload) => mutation.mutate(payload)}
-          isPending={mutation.isPending}
+          onSubmit={handleSubmit}
+          isPending={isPending}
           errorMessage={friendlyError}
           userId={user.id}
         />
 
         <section className="lg:sticky lg:top-24 lg:self-start">
-          {mutation.isPending && <OutputSkeleton />}
-          {!mutation.isPending && result && (
+          {showStreaming && (
             <>
-              <div className="mb-3 flex justify-end no-print">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.print()}
-                  className="gap-1.5"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                  Print feedback
-                </Button>
-              </div>
-              <MarkerOutput result={result} />
+              {printable && (
+                <div className="mb-3 flex justify-end no-print">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.print()}
+                    className="gap-1.5"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    Print feedback
+                  </Button>
+                </div>
+              )}
+              <StreamingMarkerOutput sections={sections} />
             </>
           )}
-          {!mutation.isPending && !result && !friendlyError && (
+          {!showStreaming && !friendlyError && (
             <Card className="no-print">
               <CardContent className="pt-6 text-center text-sm text-ink-muted">
                 Submit your work to receive diagnostic feedback.
