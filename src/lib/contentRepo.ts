@@ -199,7 +199,11 @@ export async function loadContent(): Promise<ContentBundle> {
       symbols: pick<SymbolEntry>("symbol_entries", symbols, LOCAL_BUNDLE.symbols),
       comparative_matrix: pick<ComparativeMatrixEntry>("comparative_matrix", matrix, LOCAL_BUNDLE.comparative_matrix),
       glossary_terms: pick<GlossaryTerm>("glossary_terms", glossary, LOCAL_BUNDLE.glossary_terms),
-      paragraph_stems: pick<ParagraphStem>("paragraph_stems", stems, LOCAL_BUNDLE.paragraph_stems),
+      paragraph_stems: pick<ParagraphStem>("paragraph_stems", stems, LOCAL_BUNDLE.paragraph_stems).map(stem => ({
+        ...stem,
+        ao:          Array.isArray(stem.ao)          ? stem.ao          : [],
+        best_themes: Array.isArray(stem.best_themes) ? stem.best_themes : [],
+      })),
       modules: pick<Module>("modules", modules, LOCAL_BUNDLE.modules),
       lessons: pick<Lesson>("lessons", lessons, LOCAL_BUNDLE.lessons),
       resources: pick<Resource>("resources", resources, LOCAL_BUNDLE.resources),

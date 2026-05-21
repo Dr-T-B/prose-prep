@@ -65,7 +65,7 @@ function StemCard({ stem }: { stem: ParagraphStem }) {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex flex-wrap items-center gap-1.5">
           {/* AO pills */}
-          {stem.ao.map((a) => (
+          {(stem.ao ?? []).map((a) => (
             <span
               key={a}
               className={`text-[9px] font-mono px-1.5 py-0.5 border rounded-sm ${AO_CLASS[a] ?? "border-rule text-ink-muted"}`}
@@ -118,9 +118,9 @@ function StemCard({ stem }: { stem: ParagraphStem }) {
       )}
 
       {/* Themes */}
-      {stem.best_themes.length > 0 && (
+      {(stem.best_themes ?? []).length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1">
-          {stem.best_themes.map((t) => (
+          {(stem.best_themes ?? []).map((t) => (
             <span key={t} className="text-[9px] font-mono px-1.5 py-0.5 border border-rule rounded-sm bg-paper-dim/60 text-ink-muted">
               {t.replace(/_/g, " ")}
             </span>
@@ -148,7 +148,7 @@ export default function LibraryParagraphStems() {
   const filtered = useMemo(() => {
     const ql = q.trim().toLowerCase();
     return paragraph_stems.filter((s) => {
-      if (ao !== "All" && !s.ao.includes(ao)) return false;
+      if (ao !== "All" && !(s.ao ?? []).includes(ao)) return false;
       if (book !== "All") {
         if (book === "Generic" && s.text_focus !== null) return false;
         if (book !== "Generic" && s.text_focus !== book) return false;
