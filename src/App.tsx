@@ -13,7 +13,6 @@ import LibraryQuotes from "./pages/library/Quotes";
 import LibraryQuoteBank from "./pages/library/QuoteBank";
 import LibraryQuestions from "./pages/library/Questions";
 import LibraryThesisParagraph from "./pages/library/ThesisParagraph";
-import ThesisRouteDetailPage from "./pages/ThesisRouteDetailPage";
 import LibraryComparison from "./pages/library/Comparison";
 import LibraryContext from "./pages/library/Context";
 import LibraryGlossary from "./pages/library/Glossary";
@@ -73,7 +72,6 @@ const App = () => (
                   <Route path="/library/quote-bank" element={<LibraryQuoteBank />} />
                   <Route path="/library/questions" element={<LibraryQuestions />} />
                   <Route path="/library/thesis" element={<LibraryThesisParagraph />} />
-                  <Route path="/library/thesis/:routeCode" element={<ThesisRouteDetailPage />} />
                   <Route path="/library/comparison" element={<LibraryComparison />} />
                   <Route path="/library/context" element={<LibraryContext />} />
                   <Route path="/library/glossary" element={<LibraryGlossary />} />
