@@ -4,8 +4,12 @@ import type { EssayPlan } from "@/lib/planStore";
 import { essayPlanToInsert, rowToEssayPlan } from "@/lib/planCloud";
 
 async function getUserId(): Promise<string | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    console.error("[planRepository] auth.getUser failed:", error.message);
+    return null;
+  }
+  return data.user?.id ?? null;
 }
 
 export function getLocalCurrentPlan(): EssayPlan {
@@ -20,12 +24,14 @@ export async function upsertCloudPlan(plan: EssayPlan & { is_current?: boolean }
   const userId = await getUserId();
   if (!userId) throw new Error("Not authenticated");
 
-  const { data: existing } = await supabase
+  const { data: existing, error: fetchError } = await supabase
     .from("essay_plans")
     .select("id")
     .eq("user_id", userId)
     .eq("client_plan_id", plan.id)
     .maybeSingle();
+
+  if (fetchError) throw fetchError;
 
   const payload = essayPlanToInsert(plan, userId);
 
