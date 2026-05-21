@@ -57,11 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
-    (supabase as any)
+    supabase
       .from("essay_plans")
       .select("id")
       .limit(1)
-      .then(({ error }: { error: { code?: string } | null }) => {
+      .then(({ error }) => {
         if (error?.code === "42P01") {
           console.error(
             "[ProseCraft] essay_plans table missing — run the Supabase migration before enabling cloud sync."
