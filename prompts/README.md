@@ -105,4 +105,4 @@ The original brief lists "I am Duchess of Malfi still" twice — once at item 1 
 
 ## Iteration
 
-If a chunk comes back weak — flat AO4, thin AO5, formulaic stems, missing themes — regenerate just that chunk. The pre-allocated IDs and sort_order mean the replacement slots into the assembled array unchanged.
+If a chunk comes back weak — flat AO4, thin interpretive, formulaic stems, missing themes — regenerate just that chunk. The pre-allocated IDs and sort_order mean the replacement slots into the assembled array unchanged.
