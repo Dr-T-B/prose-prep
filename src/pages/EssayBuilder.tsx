@@ -301,12 +301,14 @@ export default function EssayBuilder() {
           {question && (
             <Section eyebrow="02" title="Pick a route">
               <div className="grid sm:grid-cols-2 gap-3">
-                {[primaryRoute, secondaryRoute].filter(Boolean).map((r, i) => {
-                  const selected = plan.route_id === r!.id;
+                {[primaryRoute, secondaryRoute]
+                  .filter((r): r is NonNullable<typeof r> => r != null)
+                  .map((r, i) => {
+                  const selected = plan.route_id === r.id;
                   return (
                     <button
-                      key={r!.id}
-                      onClick={() => update({ route_id: r!.id, thesis_id: undefined })}
+                      key={r.id}
+                      onClick={() => update({ route_id: r.id, thesis_id: undefined })}
                       className={`text-left p-4 bg-paper border rounded-sm transition-colors flex flex-col gap-2 ${
                         selected ? "border-primary bg-highlight/40 shadow-card" : "border-rule hover:border-rule-strong"
                       }`}
@@ -315,11 +317,11 @@ export default function EssayBuilder() {
                         <p className="label-eyebrow">{i === 0 ? "Recommended" : "Alternative"}</p>
                         {selected && <span className="meta-mono text-primary">selected</span>}
                       </div>
-                      <p className="font-serif text-lg leading-snug">{r!.name}</p>
-                      <p className="text-xs text-ink-muted leading-relaxed">{r!.core_question}</p>
+                      <p className="font-serif text-lg leading-snug">{r.name}</p>
+                      <p className="text-xs text-ink-muted leading-relaxed">{r.core_question}</p>
                       <div className="border-t border-rule pt-2 mt-1">
                         <p className="meta-mono mb-1">Why this fits</p>
-                        <p className="text-xs text-ink leading-relaxed">{r!.best_use}</p>
+                        <p className="text-xs text-ink leading-relaxed">{r.best_use}</p>
                       </div>
                     </button>
                   );
