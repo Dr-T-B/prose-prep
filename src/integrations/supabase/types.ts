@@ -17,33 +17,33 @@ export type Database = {
       ao_readiness: {
         Row: {
           ao: string
-          label: string
+          label: string | null
           note: string | null
           score: number
           trend: number
           updated_at: string
           user_id: string
-          weight: number
+          weight: number | null
         }
         Insert: {
           ao: string
-          label: string
+          label?: string | null
           note?: string | null
           score?: number
           trend?: number
           updated_at?: string
           user_id: string
-          weight: number
+          weight?: number | null
         }
         Update: {
           ao?: string
-          label?: string
+          label?: string | null
           note?: string | null
           score?: number
           trend?: number
           updated_at?: string
           user_id?: string
-          weight?: number
+          weight?: number | null
         }
         Relationships: []
       }
