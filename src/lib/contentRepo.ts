@@ -143,25 +143,40 @@ const warnFallback = (dataset: string, reason: string) => {
  *  One empty or rejected table must not discard successful remote content from
  *  unrelated tables. Never throws. */
 export async function loadContent(): Promise<ContentBundle> {
+  // Promise.allSettled so one rejected query (network, auth) does not discard
+  // successful results from the other 14 tables.
+  const settle = <T>(
+    r: PromiseSettledResult<{ data: T[] | null; error: { message?: string } | null }>,
+  ): ContentQueryResult<T> => {
+    if (r.status === "fulfilled") return r.value;
+    const reason = r.reason;
+    return {
+      data: null,
+      error: { message: reason instanceof Error ? reason.message : "remote query rejected" },
+    };
+  };
+
   try {
-    const [routes, questions, theses, jobs, quotes, interpretive, chars, themes, symbols, matrix, glossary, modules, lessons, resources, stems] =
-      await Promise.all([
-        supabase.from("routes").select("*"),
-        supabase.from("questions").select("*").eq("is_active", true),
-        supabase.from("theses").select("*"),
-        supabase.from("paragraph_jobs").select("*"),
-        supabase.from("quote_methods").select("*").eq("is_active", true),
-        (supabase as any).from("interpretive_tensions").select("*"),
-        supabase.from("character_cards").select("*"),
-        (supabase as any).from("themes").select("*"),
-        supabase.from("symbol_entries").select("*"),
-        supabase.from("comparative_matrix").select("*"),
-        (supabase as any).from("glossary_terms").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
-        (supabase as any).from("paragraph_stems").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
-        supabase.from("modules").select("*").eq("published", true).order("position", { ascending: true }),
-        supabase.from("lessons").select("*").eq("published", true).order("position", { ascending: true }),
-        supabase.from("resources").select("*").eq("published", true).order("position", { ascending: true }),
-      ]);
+    const settled = await Promise.allSettled([
+      supabase.from("routes").select("*"),
+      supabase.from("questions").select("*").eq("is_active", true),
+      supabase.from("theses").select("*"),
+      supabase.from("paragraph_jobs").select("*"),
+      supabase.from("quote_methods").select("*").eq("is_active", true),
+      supabase.from("interpretive_tensions").select("*"),
+      supabase.from("character_cards").select("*"),
+      supabase.from("themes").select("*"),
+      supabase.from("symbol_entries").select("*"),
+      supabase.from("comparative_matrix").select("*"),
+      supabase.from("glossary_terms").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
+      supabase.from("paragraph_stems").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
+      supabase.from("modules").select("*").eq("published", true).order("position", { ascending: true }),
+      supabase.from("lessons").select("*").eq("published", true).order("position", { ascending: true }),
+      supabase.from("resources").select("*").eq("published", true).order("position", { ascending: true }),
+    ]);
+
+    const [routes, questions, theses, jobs, quotes, interpretive, chars, themes, symbols, matrix, glossary, stems, modules, lessons, resources] =
+      settled.map((r) => settle(r as PromiseSettledResult<{ data: unknown[] | null; error: { message?: string } | null }>));
 
     let usedRemote = false;
 
