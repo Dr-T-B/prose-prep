@@ -201,8 +201,8 @@ Deno.serve(async (req) => {
   const { data: tensions } = await admin
     .from("interpretive_tensions")
     .select("focus, dominant_reading, alternative_reading, interpretive_stem")
-    .in("level_tag", ["strong", "top_band"])
-    .order("id", { ascending: true });
+    .order("id", { ascending: true })
+    .limit(15);
 
   const systemPrompt = buildSystemPrompt({
     question,
