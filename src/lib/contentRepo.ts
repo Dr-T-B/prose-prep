@@ -153,7 +153,7 @@ export async function loadContent(): Promise<ContentBundle> {
         supabase.from("quote_methods").select("*").eq("is_active", true),
         (supabase as any).from("interpretive_tensions").select("*"),
         supabase.from("character_cards").select("*"),
-        supabase.from("theme_maps").select("*"),
+        (supabase as any).from("themes").select("*"),
         supabase.from("symbol_entries").select("*"),
         supabase.from("comparative_matrix").select("*"),
         (supabase as any).from("glossary_terms").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
@@ -189,15 +189,33 @@ export async function loadContent(): Promise<ContentBundle> {
 
     return {
       routes: pick<Route>("routes", routes, LOCAL_BUNDLE.routes),
-      questions: pick<Question>("questions", questions, LOCAL_BUNDLE.questions),
+      questions: pick<Question>("questions", questions, LOCAL_BUNDLE.questions).map(q => ({
+        ...q,
+        likely_core_methods: Array.isArray(q.likely_core_methods) ? q.likely_core_methods : [],
+      })),
       theses: pick<Thesis>("theses", theses, LOCAL_BUNDLE.theses),
       paragraph_jobs: pick<ParagraphJob>("paragraph_jobs", jobs, LOCAL_BUNDLE.paragraph_jobs),
-      quote_methods: pick<QuoteMethod>("quote_methods", quotes, LOCAL_BUNDLE.quote_methods),
-      interpretive_tensions: pick<InterpretiveTension>("interpretive_tensions", interpretive, LOCAL_BUNDLE.interpretive_tensions),
-      characters: pick<CharacterEntry>("character_cards", chars, LOCAL_BUNDLE.characters),
-      themes: pick<ThemeEntry>("theme_maps", themes, LOCAL_BUNDLE.themes),
-      symbols: pick<SymbolEntry>("symbol_entries", symbols, LOCAL_BUNDLE.symbols),
-      comparative_matrix: pick<ComparativeMatrixEntry>("comparative_matrix", matrix, LOCAL_BUNDLE.comparative_matrix),
+      quote_methods: pick<QuoteMethod>("quote_methods", quotes, LOCAL_BUNDLE.quote_methods).map(qm => ({
+        ...qm,
+        best_themes: Array.isArray(qm.best_themes) ? qm.best_themes : [],
+      })),
+      interpretive_tensions: pick<InterpretiveTension>("interpretive_tensions", interpretive, LOCAL_BUNDLE.interpretive_tensions).map(it => ({
+        ...it,
+        best_use: Array.isArray(it.best_use) ? it.best_use : [],
+      })),
+      characters: pick<CharacterEntry>("character_cards", chars, LOCAL_BUNDLE.characters).map(c => ({
+        ...c,
+        themes: Array.isArray(c.themes) ? c.themes : [],
+      })),
+      themes: pick<ThemeEntry>("themes", themes, LOCAL_BUNDLE.themes),
+      symbols: pick<SymbolEntry>("symbol_entries", symbols, LOCAL_BUNDLE.symbols).map(s => ({
+        ...s,
+        themes: Array.isArray(s.themes) ? s.themes : [],
+      })),
+      comparative_matrix: pick<ComparativeMatrixEntry>("comparative_matrix", matrix, LOCAL_BUNDLE.comparative_matrix).map(m => ({
+        ...m,
+        themes: Array.isArray(m.themes) ? m.themes : [],
+      })),
       glossary_terms: pick<GlossaryTerm>("glossary_terms", glossary, LOCAL_BUNDLE.glossary_terms),
       paragraph_stems: pick<ParagraphStem>("paragraph_stems", stems, LOCAL_BUNDLE.paragraph_stems).map(stem => ({
         ...stem,
