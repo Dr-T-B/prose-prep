@@ -5,8 +5,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { QuoteMethod } from "@/data/seed";
 
-const rawFrom = (table: string) => (supabase as any).from(table);
-
 /** REQ-P1 primary: fetch quotes linked to a specific question via the
  *  quote_question_links junction table, filtered by source text. */
 export async function fetchQuotesForQuestion(
@@ -15,14 +13,21 @@ export async function fetchQuotesForQuestion(
   limit = 20,
 ): Promise<QuoteMethod[]> {
   try {
-    const { data: links } = await rawFrom("quote_question_links")
+    const { data: links, error: linksError } = await supabase
+      .from("quote_question_links")
       .select("quote_id")
       .eq("question_id", questionId);
 
-    const linkedIds: string[] = (links ?? []).map((l: { quote_id: string }) => l.quote_id);
+    if (linksError) {
+      console.error("[planFetches] quote_question_links failed:", linksError.message);
+      return [];
+    }
+
+    const linkedIds: string[] = (links ?? []).map((l) => l.quote_id);
     if (linkedIds.length === 0) return [];
 
-    const { data } = await rawFrom("quote_methods")
+    const { data, error } = await supabase
+      .from("quote_methods")
       .select("*")
       .eq("is_active", true)
       .eq("source_text", sourceText)
@@ -30,6 +35,11 @@ export async function fetchQuotesForQuestion(
       .order("is_core_quote", { ascending: false })
       .order("retrieval_priority", { ascending: true, nullsFirst: false })
       .limit(limit);
+
+    if (error) {
+      console.error("[planFetches] quote_methods (by-question) failed:", error.message);
+      return [];
+    }
 
     return (data ?? []) as unknown as QuoteMethod[];
   } catch {
@@ -47,7 +57,8 @@ export async function fetchQuotesForRoute(
 ): Promise<QuoteMethod[]> {
   if (themes.length === 0) return [];
   try {
-    let query = rawFrom("quote_methods")
+    let query = supabase
+      .from("quote_methods")
       .select("*")
       .eq("is_active", true)
       .eq("source_text", sourceText)
@@ -60,7 +71,11 @@ export async function fetchQuotesForRoute(
       query = query.not("id", "in", `(${excludeIds.join(",")})`);
     }
 
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) {
+      console.error("[planFetches] quote_methods (by-theme) failed:", error.message);
+      return [];
+    }
     return (data ?? []) as unknown as QuoteMethod[];
   } catch {
     return [];
