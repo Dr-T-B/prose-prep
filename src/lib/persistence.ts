@@ -10,7 +10,11 @@ import type { EssayPlan, TimedSession } from "@/lib/planStore";
 import { saveTimedSession as localSaveSession, savePlan as localSavePlan } from "@/lib/planStore";
 
 async function currentUserId(): Promise<string | null> {
-  const { data } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
+  if (error) {
+    console.error("[persistence] auth.getUser failed:", error.message);
+    return null;
+  }
   return data.user?.id ?? null;
 }
 
@@ -129,12 +133,16 @@ export async function persistReflection(
 export async function fetchLatestPlan() {
   try {
     if (!(await currentUserId())) return null;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("saved_essay_plans")
       .select("*")
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (error) {
+      console.error("[persistence] fetchLatestPlan failed:", error.message);
+      return null;
+    }
     return data ?? null;
   } catch {
     return null;
@@ -145,12 +153,16 @@ export async function fetchLatestPlan() {
 export async function fetchLatestTimedSession() {
   try {
     if (!(await currentUserId())) return null;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("timed_sessions")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (error) {
+      console.error("[persistence] fetchLatestTimedSession failed:", error.message);
+      return null;
+    }
     return data ?? null;
   } catch {
     return null;
@@ -161,11 +173,15 @@ export async function fetchLatestTimedSession() {
 export async function fetchRecentPlans(limit = 6) {
   try {
     if (!(await currentUserId())) return [];
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("saved_essay_plans")
       .select("*")
       .order("updated_at", { ascending: false })
       .limit(limit);
+    if (error) {
+      console.error("[persistence] fetchRecentPlans failed:", error.message);
+      return [];
+    }
     return data ?? [];
   } catch {
     return [];
