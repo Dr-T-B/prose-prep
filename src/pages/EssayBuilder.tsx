@@ -887,11 +887,17 @@ function ParaEvidencePanel({
               </button>
             ))}
           </div>
-          {interpretiveId && interpretiveTensions.find((a) => a.id === interpretiveId) && (
-            <p className="text-xs border border-rule rounded-sm px-3 py-2 bg-paper italic leading-relaxed">
-              {interpretiveTensions.find((a) => a.id === interpretiveId)!.interpretive_stem}
-            </p>
-          )}
+          {(() => {
+            const tension = interpretiveId
+              ? interpretiveTensions.find((a) => a.id === interpretiveId)
+              : undefined;
+            if (!tension) return null;
+            return (
+              <p className="text-xs border border-rule rounded-sm px-3 py-2 bg-paper italic leading-relaxed">
+                {tension.interpretive_stem}
+              </p>
+            );
+          })()}
         </div>
       )}
     </div>
