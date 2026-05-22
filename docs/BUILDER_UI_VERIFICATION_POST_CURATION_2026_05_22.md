@@ -121,7 +121,7 @@ Runtime console errors observed during dev-server use: only `404 Error: User att
 
 ## 9. Commit hash
 
-To be filled in after commit (verification-only commit per brief §8).
+`988c6be` — `docs: verify Builder best_use UI prose post-curation` (verification-only, single-file diff).
 
 ## 10. Constraint confirmation
 
