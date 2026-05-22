@@ -11,7 +11,7 @@
 -- Prior migrations established this on purpose:
 --   20260429010000_fix_critical_rls_and_student_progress.sql
 --   20260516223100_tighten_function_execute_grants.sql
--- The 20260521113113 attempt to REVOKE FROM anon was a no-op because
+-- The 20260521113124 attempt to REVOKE FROM anon was a no-op because
 -- anon inherits EXECUTE from PUBLIC, and revoking from PUBLIC would
 -- break anon SELECTs against those tables.
 --
