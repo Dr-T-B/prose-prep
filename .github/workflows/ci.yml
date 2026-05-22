@@ -14,8 +14,8 @@ jobs:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: ".nvmrc"
           cache: npm
@@ -37,8 +37,8 @@ jobs:
       TEST_USER_EMAIL: ${{ secrets.INTEGRATION_TEST_USER_EMAIL }}
       TEST_USER_PASSWORD: ${{ secrets.INTEGRATION_TEST_USER_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: ".nvmrc"
           cache: npm
