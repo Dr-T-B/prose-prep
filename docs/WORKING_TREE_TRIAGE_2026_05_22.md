@@ -20,11 +20,13 @@
 |---|---:|
 | SAFE_RESTORE | 0 |
 | SAFE_DELETE | 0 |
-| STAGE_AS_INTENDED | 13 |
+| STAGE_AS_INTENDED | 12 |
 | ACCEPT_DELETION | 2 |
-| DEFER | 50 |
+| DEFER | 51 |
 | ASK_TAWI | 1 |
 | DO_NOT_TOUCH | 2 |
+
+Total: 12 + 2 + 51 + 1 + 2 = **68** items, matching `git status --short | wc -l`.
 
 The bar for `SAFE_*` is intentionally high. Items with high-confidence positive evidence (remote-ledger matches for migrations) are labelled `STAGE_AS_INTENDED` or `ACCEPT_DELETION`. Items lacking direct evidence of intent (the 50 doc deletions) are labelled `DEFER` with grouping notes so a follow-up session can split them quickly.
 
@@ -115,7 +117,7 @@ The pattern matches the prior reconciliation in commit `cc9a1e2` ("rename `20260
 
 Sorted by classification label (STAGE_AS_INTENDED → ACCEPT_DELETION → ASK_TAWI → DO_NOT_TOUCH → DEFER), then by path.
 
-### STAGE_AS_INTENDED — 13 items
+### STAGE_AS_INTENDED — 12 items
 
 | Path | Status | Evidence | Recommended next step |
 |---|---|---|---|
@@ -131,9 +133,8 @@ Sorted by classification label (STAGE_AS_INTENDED → ACCEPT_DELETION → ASK_TA
 | `supabase/migrations/20260519192443_theme_vocabulary_canonicalisation.sql` | `??` | On remote ledger; committed on side branch (`4423673`), never merged. | Same — Follow-up session #1. |
 | `supabase/migrations/20260521113124_revoke_has_role_from_anon.sql` | `??` | On remote ledger; byte-identical to deleted `…113113` (timestamp swap). | Stage together with accepting the `…113113` deletion — Follow-up session #1. |
 | `supabase/migrations/20260521114316_document_has_role_anon_grant.sql` | `??` | On remote ledger; sibling of deleted `…114253` (differs only by referencing the new timestamp). | Stage together with accepting the `…114253` deletion — Follow-up session #1. |
-| `supabase/migrations/20260518` family (already in `main`) | n/a | — | Already tracked; included only for orientation. |
 
-(12 real STAGE_AS_INTENDED rows; the final line is an orientation marker, not a noise item.)
+(12 rows.)
 
 ### ACCEPT_DELETION — 2 items
 
@@ -226,12 +227,9 @@ Plus 1 more `DEFER` entry not in the doc list:
 |---|---|---|---|
 | `audit/` (directory, 7 files, ~108 KB) | `??` | `AUDIT_REPORT.md` opens with "Do not commit this file" — intentionally untracked audit output. Referenced by name in 4 tracked docs. | Add `audit/` to `.gitignore` in its own session. Not a restore/delete decision. |
 
-Total DEFER: 50 (49 docs + `audit/` — wait, see note). Counts: the table above lists 50 doc rows + 1 directory; the summary count of 50 in the Header treats `audit/` as a single noise entry, which matches `git status --short`'s single-line entry for the untracked directory. Total counts add up:
+Total DEFER: **51** (50 doc deletions in the table above + 1 untracked directory entry `audit/`).
 
-- 12 STAGE_AS_INTENDED migrations + 2 ACCEPT_DELETION migrations + 1 ASK_TAWI (supabase/validation/...) + 2 DO_NOT_TOUCH (`poetry-companion/`, `roles.sql`) + 50 DEFER (49 docs + `audit/`) = **67**.
-- Plus 1 doc (`docs/AUDIT_FIX_REPORT_2026_05_16.md`) which is counted above = total 68. ✓
-
-(Earlier summary table said DEFER=50; this matches.)
+- 12 STAGE_AS_INTENDED + 2 ACCEPT_DELETION + 1 ASK_TAWI + 2 DO_NOT_TOUCH + 51 DEFER = **68** ✓ (matches `git status --short | wc -l`).
 
 ---
 
