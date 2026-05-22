@@ -189,4 +189,8 @@ Run a focused education UX curation pass after this activation settles:
 
 ## 14. Commit status
 
-Pending at report creation time. If a commit-hash backfill is needed, it should be added in a follow-up documentation-only commit rather than amending.
+Activation commit:
+
+`242d457` - `Activate education Builder family`
+
+This commit-hash backfill is documentation-only and should be committed separately rather than amended.
