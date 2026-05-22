@@ -12,7 +12,7 @@ No schema, RLS, generated types, deployment, `--include-all`, database reset, mi
 - Latest commit checked at start: `3f19610 docs: verify education Builder UI activation`
 - Activation commit present: `242d457 Activate education Builder family`
 - Working tree note: the repo had substantial pre-existing unrelated noise, including deleted tracked docs and untracked audit/migration material. This pass did not stage or modify that unrelated noise.
-- Curation commit: `TBD - backfilled after commit`
+- Curation commit: `9bf4638 Curate education quote-method balance`
 
 ## Files inspected
 
