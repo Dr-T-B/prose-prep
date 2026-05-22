@@ -244,7 +244,7 @@ operation was performed.
 
 ## Commit hash
 
-(filled in after commit — see end of file.)
+`474e4c2` (`docs: triage inactive Builder families`) on `main`.
 
 ## Confirmation
 
