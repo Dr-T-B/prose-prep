@@ -49,3 +49,11 @@ staging/component2/**/*.md
 !staging/component2/**/.gitkeep
 
 .DS_Store
+
+# Persistent working-tree noise resolved 2026-05-22 — see docs/WORKING_TREE_TRIAGE_2026_05_22.md
+# Out-of-scope nested project (Component 3 Poetry is not part of prose-prep):
+/poetry-companion/
+# Empty stub with no role grants:
+/roles.sql
+# Audit output artifacts:
+/audit/
