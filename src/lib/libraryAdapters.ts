@@ -16,7 +16,7 @@ export type LibraryThemeId =
   | "childhood" | "class" | "guilt" | "imagination" | "truth"
   | "love" | "gender" | "suffering" | "power" | "endings"
   | "narrative_authority" | "war_industrialism"
-  | "education" | "fact vs imagination" | "memory" | "war";
+  | "education" | "fact_vs_imagination" | "memory" | "war";
 
 export const LIBRARY_THEME_LABELS: Record<LibraryThemeId, string> = {
   childhood: "Childhood",
@@ -32,7 +32,7 @@ export const LIBRARY_THEME_LABELS: Record<LibraryThemeId, string> = {
   narrative_authority: "Narrative Authority",
   war_industrialism: "War / Industrialism",
   education: "Education",
-  "fact vs imagination": "Fact vs Imagination",
+  fact_vs_imagination: "Fact vs Imagination",
   memory: "Memory",
   war: "War",
 };

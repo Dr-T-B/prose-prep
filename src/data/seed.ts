@@ -8,7 +8,7 @@ export type QuestionFamily =
   | "childhood" | "class" | "guilt" | "imagination" | "truth"
   | "love" | "gender" | "suffering" | "power" | "endings"
   | "narrative_authority" | "war_industrialism"
-  | "education" | "fact vs imagination" | "memory" | "war";
+  | "education" | "fact_vs_imagination" | "memory" | "war";
 
 export const QUESTION_FAMILY_LABELS: Record<QuestionFamily, string> = {
   childhood: "Childhood",
@@ -24,7 +24,7 @@ export const QUESTION_FAMILY_LABELS: Record<QuestionFamily, string> = {
   narrative_authority: "Narrative Authority",
   war_industrialism: "War / Industrialism",
   education: "Education",
-  "fact vs imagination": "Fact vs Imagination",
+  fact_vs_imagination: "Fact vs Imagination",
   memory: "Memory",
   war: "War",
 };
