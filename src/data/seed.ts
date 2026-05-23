@@ -951,6 +951,10 @@ export const THEMES: ThemeEntry[] = (Object.keys(QUESTION_FAMILY_LABELS) as Ques
     endings: "What the endings concede about the possibility of repair.",
     narrative_authority: "Who has the right to tell, and on what terms.",
     war_industrialism: "Industrial violence in Dickens, war violence in McEwan.",
+    education: "Education as the apparatus that forms understanding and deforms it.",
+    fact_vs_imagination: "Fact and imagination as opposed epistemologies — and the cost of choosing either.",
+    memory: "Memory as moral archive, unreliable in exactly the places it most matters.",
+    war: "War as systemic violence — industrial in Dickens, military in McEwan, structural in both.",
   }[f],
 }));
 
