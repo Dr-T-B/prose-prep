@@ -57,3 +57,6 @@ staging/component2/**/*.md
 /roles.sql
 # Audit output artifacts:
 /audit/
+
+# Backup files created by env-reconciliation scripts
+.env.backup-*
