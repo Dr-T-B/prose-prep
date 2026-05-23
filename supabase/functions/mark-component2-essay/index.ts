@@ -212,7 +212,6 @@ Deno.serve(async (req) => {
     glossary: glossary ?? [],
     quotes: quotes ?? [],
     tensions: tensions ?? [],
-    validAppRoutes: [...VALID_APP_ROUTES],
     targetGrade: input.target_grade,
     mode: input.mode,
   });
@@ -266,6 +265,24 @@ Deno.serve(async (req) => {
               encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`),
             );
           }
+        }
+
+        try {
+          const finalMsg = await stream.finalMessage();
+          const u = finalMsg.usage as {
+            input_tokens: number;
+            output_tokens: number;
+            cache_creation_input_tokens?: number | null;
+            cache_read_input_tokens?: number | null;
+          };
+          console.log("anthropic_usage", {
+            input_tokens: u.input_tokens,
+            output_tokens: u.output_tokens,
+            cache_creation_input_tokens: u.cache_creation_input_tokens ?? 0,
+            cache_read_input_tokens: u.cache_read_input_tokens ?? 0,
+          });
+        } catch (logErr) {
+          console.warn("usage log failed", logErr);
         }
 
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
@@ -496,17 +513,21 @@ type SystemPromptCtx = {
   glossary: Array<Record<string, unknown>>;
   quotes: Array<Record<string, unknown>>;
   tensions: Array<Record<string, unknown>>;
-  validAppRoutes: string[];
   targetGrade: string;
   mode: ValidatedInput["mode"];
 };
 
-function buildSystemPrompt(ctx: SystemPromptCtx): string {
-  const marksSectionLine = ctx.mode === "paragraph_only"
-    ? "DO NOT emit a <section:provisionalMarks> tag. Paragraph-only marking does not map to /20."
-    : "Emit <section:provisionalMarks>N</section:provisionalMarks> where N is an integer 1–20 mapped from provisionalLevel.";
+type SystemBlock = {
+  type: "text";
+  text: string;
+  cache_control?: { type: "ephemeral" };
+};
 
-  return [
+// The static block below MUST stay byte-identical across calls for prompt
+// caching to hit. Any interpolation that varies per request (target grade,
+// mode, question-specific context) belongs in the dynamic block.
+function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
+  const staticEnvelope = [
     `ROLE AND AO RULES`,
     `You are a strict Pearson Edexcel A-Level English Literature examiner-coach operating against the Component 2: Prose mark scheme.`,
     ``,
@@ -517,7 +538,6 @@ function buildSystemPrompt(ctx: SystemPromptCtx): string {
     `- Never invent quotations. Cross-reference every student quotation against the supplied QUOTE BANK. Flag any quotation not found there in quoteMethodDiagnostic with status "unverified" or "paraphrased".`,
     `- Never produce a complete replacement essay. Produce one model upgrade paragraph only — the weakest paragraph in the submitted work.`,
     `- Provisional marks are out of 20. Level→marks: L1→3, L2→7, L3→11, L4→15, L5→19.`,
-    `- Student target grade: ${ctx.targetGrade}`,
     ``,
     `EDEXCEL COMPONENT 2 MARK SCHEME — LEVEL DESCRIPTORS`,
     `Level 1 (1–4): AO1 simple/narrative; AO2 features without analysis; AO3 absent; AO4 no comparison.`,
@@ -534,46 +554,8 @@ function buildSystemPrompt(ctx: SystemPromptCtx): string {
     `REWARD: sustained comparative argument with clear thesis; accurately attributed evidence; method-led AO2; embedded context; recognition of formal/contextual divergence; interpretive tension (two competing readings) for L5; conceptual register.`,
     `PENALISE AND FLAG: plot summary; vague/paraphrased quotation; invented quotation; bolt-on context; parallel discussion sold as comparison; unsupported authorial-intent claims; device-spotting without analysis; generic statements about Dickens or McEwan.`,
     ``,
-    `--- CONTEXT BLOCK 1: EXAM QUESTION ---`,
-    ctx.question
-      ? `Stem: ${ctx.question.stem}\nFamily: ${ctx.question.family}\nLikely core methods: ${(ctx.question.likely_core_methods ?? []).join(", ")}`
-      : `(no question loaded — assess generically against the mark scheme)`,
-    ``,
-    `--- CONTEXT BLOCK 2: ARGUMENT ROUTES ---`,
-    ctx.routes.length
-      ? ctx.routes
-          .map((r) => `• ${r.name}: ${r.core_question}\n  HT: ${r.hard_times_emphasis}\n  AT: ${r.atonement_emphasis}\n  Insight: ${r.comparative_insight}\n  Best use: ${r.best_use}`)
-          .join("\n")
-      : "(none)",
-    ``,
-    `--- CONTEXT BLOCK 3: COMPARATIVE MATRIX (valid arguments) ---`,
-    ctx.matrix.length
-      ? ctx.matrix.map((m) => `• ${m.axis} | HT: ${m.hard_times} | AT: ${m.atonement} | Divergence: ${m.divergence}`).join("\n")
-      : "(none)",
-    ``,
-    `--- CONTEXT BLOCK 4: LEVELLED THESIS EXEMPLARS ---`,
-    ctx.theses.length
-      ? ctx.theses.map((t) => `${t.level}: ${t.thesis_text}`).join("\n")
-      : "(none)",
-    ``,
-    `--- CONTEXT BLOCK 5: GLOSSARY + MISUSE WARNINGS ---`,
-    ctx.glossary.length
-      ? ctx.glossary.map((g) => `• ${g.term} — misuse: ${g.common_misuse_warning ?? "—"} — notice: ${g.what_to_notice ?? "—"}`).join("\n")
-      : "(none)",
-    ``,
-    `--- CONTEXT BLOCK 6: QUOTE VERIFICATION BANK ---`,
-    `Cross-reference EVERY quotation in the student work against this list. Any quotation not found here is unverified.`,
-    ctx.quotes.length
-      ? ctx.quotes.map((q) => `[${q.source_text}] "${q.quote_text}" — ${q.method} (${q.speaker_or_narrator ?? "narrator"})`).join("\n")
-      : "(none)",
-    ``,
-    `--- CONTEXT BLOCK 7: INTERPRETIVE TENSIONS (AO2 L5 markers) ---`,
-    ctx.tensions.length
-      ? ctx.tensions.map((t) => `• ${t.focus}: dominant=${t.dominant_reading} / alternative=${t.alternative_reading}`).join("\n")
-      : "(none)",
-    ``,
-    `--- MARKING TASK ---`,
-    `Read the student work below. Output your response as a sequence of`,
+    `--- OUTPUT FORMAT ---`,
+    `Read the student work (in the user message). Output your response as a sequence of`,
     `tagged sections in EXACTLY this order. Each section is wrapped in`,
     `XML-style tags. Do NOT output a top-level JSON object. Do NOT output`,
     `anything outside the section tags. No prose before, between, or after.`,
@@ -583,9 +565,7 @@ function buildSystemPrompt(ctx: SystemPromptCtx): string {
     ``,
     `<section:provisionalLevel>Level N</section:provisionalLevel>`,
     ``,
-    ctx.mode === "paragraph_only"
-      ? `(provisionalMarks section is OMITTED in paragraph_only mode)`
-      : `<section:provisionalMarks>N</section:provisionalMarks>`,
+    `<section:provisionalMarks>N</section:provisionalMarks>`,
     ``,
     `<section:overallSummary>`,
     `3-5 sentences of holistic feedback here.`,
@@ -629,16 +609,69 @@ function buildSystemPrompt(ctx: SystemPromptCtx): string {
     ``,
     `RULES:`,
     `- examWarning content must always be exactly: ${EXAM_WARNING}`,
-    `- ${marksSectionLine}`,
     `- provisionalLevel: one of "Level 1","Level 2","Level 3","Level 4","Level 5".`,
     `- AO1/AO2/AO3/AO4 sections contain a JSON OBJECT ONLY — no surrounding text. Keys: level, strength, weakness, nextAction.`,
     `- topStrengths is a JSON array of exactly 3 strings.`,
     `- priorityWeaknesses is a JSON array of exactly 2 strings.`,
     `- quoteMethodDiagnostic is a JSON array (possibly empty) of objects { quote, status, note } where status ∈ "verified"|"unverified"|"paraphrased".`,
     `- modelUpgradeParagraph is ONE rewritten paragraph (the weakest in the student work). Not a full essay.`,
-    `- nextDrill is a JSON object: { title, durationMinutes, instructions, appRoute }. appRoute MUST be one of: ${ctx.validAppRoutes.join(", ")}.`,
+    `- nextDrill is a JSON object: { title, durationMinutes, instructions, appRoute }. appRoute MUST be one of: ${[...VALID_APP_ROUTES].join(", ")}.`,
     `- Do NOT emit a <section:AO5> tag anywhere. Do NOT mention AO5.`,
     `- Do NOT wrap the section tags in a top-level JSON object.`,
     `- Do NOT use markdown code fences.`,
   ].join("\n");
+
+  const marksSectionLine = ctx.mode === "paragraph_only"
+    ? "DO NOT emit a <section:provisionalMarks> tag. Paragraph-only marking does not map to /20."
+    : "Emit <section:provisionalMarks>N</section:provisionalMarks> where N is an integer 1–20 mapped from provisionalLevel.";
+
+  const dynamicContext = [
+    `--- PER-CALL CONTEXT ---`,
+    `Student target grade: ${ctx.targetGrade}`,
+    `Marking mode: ${ctx.mode}`,
+    `Mode-specific marks rule (overrides the generic provisionalMarks template above): ${marksSectionLine}`,
+    ``,
+    `--- CONTEXT BLOCK 1: EXAM QUESTION ---`,
+    ctx.question
+      ? `Stem: ${ctx.question.stem}\nFamily: ${ctx.question.family}\nLikely core methods: ${(ctx.question.likely_core_methods ?? []).join(", ")}`
+      : `(no question loaded — assess generically against the mark scheme)`,
+    ``,
+    `--- CONTEXT BLOCK 2: ARGUMENT ROUTES ---`,
+    ctx.routes.length
+      ? ctx.routes
+          .map((r) => `• ${r.name}: ${r.core_question}\n  HT: ${r.hard_times_emphasis}\n  AT: ${r.atonement_emphasis}\n  Insight: ${r.comparative_insight}\n  Best use: ${r.best_use}`)
+          .join("\n")
+      : "(none)",
+    ``,
+    `--- CONTEXT BLOCK 3: COMPARATIVE MATRIX (valid arguments) ---`,
+    ctx.matrix.length
+      ? ctx.matrix.map((m) => `• ${m.axis} | HT: ${m.hard_times} | AT: ${m.atonement} | Divergence: ${m.divergence}`).join("\n")
+      : "(none)",
+    ``,
+    `--- CONTEXT BLOCK 4: LEVELLED THESIS EXEMPLARS ---`,
+    ctx.theses.length
+      ? ctx.theses.map((t) => `${t.level}: ${t.thesis_text}`).join("\n")
+      : "(none)",
+    ``,
+    `--- CONTEXT BLOCK 5: GLOSSARY + MISUSE WARNINGS ---`,
+    ctx.glossary.length
+      ? ctx.glossary.map((g) => `• ${g.term} — misuse: ${g.common_misuse_warning ?? "—"} — notice: ${g.what_to_notice ?? "—"}`).join("\n")
+      : "(none)",
+    ``,
+    `--- CONTEXT BLOCK 6: QUOTE VERIFICATION BANK ---`,
+    `Cross-reference EVERY quotation in the student work against this list. Any quotation not found here is unverified.`,
+    ctx.quotes.length
+      ? ctx.quotes.map((q) => `[${q.source_text}] "${q.quote_text}" — ${q.method} (${q.speaker_or_narrator ?? "narrator"})`).join("\n")
+      : "(none)",
+    ``,
+    `--- CONTEXT BLOCK 7: INTERPRETIVE TENSIONS (AO2 L5 markers) ---`,
+    ctx.tensions.length
+      ? ctx.tensions.map((t) => `• ${t.focus}: dominant=${t.dominant_reading} / alternative=${t.alternative_reading}`).join("\n")
+      : "(none)",
+  ].join("\n");
+
+  return [
+    { type: "text", text: staticEnvelope, cache_control: { type: "ephemeral" } },
+    { type: "text", text: dynamicContext },
+  ];
 }
