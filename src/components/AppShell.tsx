@@ -11,6 +11,7 @@ const STUDENT_NAV: readonly NavItem[] = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/builder", label: "Essay Builder" },
   { to: "/essay-marker", label: "Essay Marker" },
+  { to: "/annotated-essays", label: "Annotated Essays" },
   { to: "/paragraph-builder", label: "Paragraph Builder" },
   { to: "/paragraph-engine", label: "Paragraph Engine" },
   { to: "/timed", label: "Timed Practice" },

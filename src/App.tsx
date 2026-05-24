@@ -34,6 +34,7 @@ import ComparisonRoutes from "./pages/ComparisonRoutes";
 import InterpretiveFlex from "./pages/InterpretiveFlex";
 import ParagraphBuilderPage from "./pages/ParagraphBuilderPage";
 import EssayMarker from "./pages/EssayMarker";
+import AnnotatedEssayPack from "./pages/AnnotatedEssayPack";
 import ThemeWheel from "./components/ThemeWheel";
 import ComparativeMatrix from "./components/ComparativeMatrix";
 import { ContentProvider } from "./lib/ContentProvider";
@@ -83,6 +84,7 @@ const App = () => (
                   <Route path="/theme-wheel" element={<ThemeWheel />} />
                   <Route path="/matrix" element={<ComparativeMatrix />} />
                   <Route path="/essay-marker" element={<EssayMarker />} />
+                  <Route path="/annotated-essays" element={<AnnotatedEssayPack />} />
                   <Route path="/learn" element={<Learn />} />
                   <Route path="/modules" element={<Modules />} />
                   <Route path="/modules/:moduleSlug/:lessonSlug" element={<LessonDetail />} />
