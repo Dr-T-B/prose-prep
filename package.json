@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "validate:component2-ao": "node scripts/validate-component2-ao-model.mjs",
+    "validate:pedagogical": "node scripts/run-architecture-pedagogical-review.mjs",
     "scan:component2-staged-content": "node scripts/scan-component2-staged-content.mjs",
     "validate:component2-staged-content": "node scripts/validate-component2-staged-content-shape.mjs",
     "dry-run:component2-import": "node scripts/dry-run-component2-canonical-import.mjs",
