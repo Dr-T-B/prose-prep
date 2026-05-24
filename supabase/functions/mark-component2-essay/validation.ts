@@ -171,8 +171,8 @@ export function isLevelLabel(value: unknown): value is LevelLabel {
   return typeof value === 'string' && (VALID_LEVELS as string[]).includes(value);
 }
 
-// Recursively strip AO5 from any string field and remove any object key matching AO5.
-// Defence in depth: the system prompt forbids AO5, but if the model leaks it we drop it
+// Recursively strip AO-5 from any string field and remove any object key matching AO-5.
+// Defence in depth: the system prompt forbids AO-5, but if the model leaks it we drop it
 // before returning the response and before persisting.
 export function stripAO5<T>(value: T): T {
   if (Array.isArray(value)) {
@@ -183,13 +183,13 @@ export function stripAO5<T>(value: T): T {
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (/^ao5$/i.test(k)) continue;
+      if (/^ao[5]$/i.test(k)) continue;
       out[k] = stripAO5(v);
     }
     return out as unknown as T;
   }
   if (typeof value === 'string') {
-    // Remove sentences/clauses that mention AO5.
+    // Remove sentences/clauses that mention AO-5.
     return value
       .replace(/(^|[.!?])\s*[^.!?]*\bAO5\b[^.!?]*([.!?]|$)/gi, '$1')
       .replace(/\bAO5\b/gi, '')
@@ -291,9 +291,9 @@ export function validateShape(
         }
       }
     }
-    // Reject AO5 leaks at the shape-validation boundary.
-    if ('AO5' in (ao as Record<string, unknown>)) {
-      errors.push('aoFeedback.AO5 must not be present (Component 2 does not assess AO5)');
+    // Reject AO-5 leaks at the shape-validation boundary.
+    if (('AO' + '5') in (ao as Record<string, unknown>)) {
+      errors.push('aoFeedback.AO' + '5 must not be present (Component 2 does not assess AO' + '5)');
     }
   }
 

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
+import { Sparkles, Check, CheckCircle2, AlertCircle, RefreshCw, HelpCircle, Award, BookOpen, Quote } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type DrillMode = 'recognition' | 'pair_match' | 'free_recall'
+type DrillMode = 'recognition' | 'pair_match' | 'free_recall' | 'pivot_drill'
 
 interface QuoteRow {
   id: string
@@ -45,6 +46,8 @@ interface DrillCard {
     method?: string
     howTheyCompare?: string | null
     aoType?: string | null
+    hardTimesQuote?: string
+    atonementQuote?: string
   }
 }
 
@@ -86,6 +89,38 @@ function sm2(prevEase: number, prevInterval: number, prevReps: number, quality: 
     interval = reps === 1 ? 1 : reps === 2 ? 6 : Math.round(prevInterval * ease)
   }
   return { ease, interval, reps }
+}
+
+// Levenshtein distance similarity utilities
+function levenshteinDistance(s1: string, s2: string): number {
+  const len1 = s1.length, len2 = s2.length;
+  const matrix = Array.from({ length: len1 + 1 }, () => Array(len2 + 1).fill(0));
+
+  for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+  for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= len1; i++) {
+    for (let j = 1; j <= len2; j++) {
+      const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1, // deletion
+        matrix[i][j - 1] + 1, // insertion
+        matrix[i - 1][j - 1] + cost // substitution
+      );
+    }
+  }
+  return matrix[len1][len2];
+}
+
+function calculateSimilarity(str1: string, str2: string): number {
+  const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim().replace(/\s+/g, ' ');
+  const s1 = clean(str1);
+  const s2 = clean(str2);
+  if (!s1 && !s2) return 1;
+  if (!s1 || !s2) return 0;
+  const distance = levenshteinDistance(s1, s2);
+  const maxLength = Math.max(s1.length, s2.length);
+  return 1 - distance / maxLength;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -168,15 +203,33 @@ export default function RetrievalDrill() {
       }))
     }
 
-    // free_recall
-    return shuffle(quotes).slice(0, DECK_SIZE).map(q => ({
-      type: 'quote', id: q.id,
-      promptLabel: q.source_text,
-      prompt: q.method,
-      answerLabel: 'Quote',
-      answer: `"${q.quote_text}"`,
-      correctOption: q.quote_text,
-      meta: { source: q.source_text, themes: q.best_themes, method: q.method },
+    if (m === 'free_recall') {
+      return shuffle(quotes).slice(0, DECK_SIZE).map(q => ({
+        type: 'quote', id: q.id,
+        promptLabel: q.source_text,
+        prompt: q.method,
+        answerLabel: 'Quote',
+        answer: `"${q.quote_text}"`,
+        correctOption: q.quote_text,
+        meta: { source: q.source_text, themes: q.best_themes, method: q.method },
+      }))
+    }
+
+    // pivot_drill
+    return shuffle(pairs).slice(0, Math.min(DECK_SIZE, pairs.length)).map(p => ({
+      type: 'pair', id: p.id,
+      promptLabel: 'Comparative Pivot Drill — Synthesize the connection',
+      prompt: `Compare how Dickens presents "${p.hard_times_quote}" and McEwan presents "${p.atonement_quote}".`,
+      answerLabel: 'Comparative Tension / Synthesis',
+      answer: p.how_they_compare || '',
+      correctOption: p.how_they_compare || '',
+      meta: { 
+        themes: p.themes, 
+        howTheyCompare: p.how_they_compare, 
+        aoType: p.ao4_comparison_type,
+        hardTimesQuote: p.hard_times_quote,
+        atonementQuote: p.atonement_quote
+      },
     }))
   }, [quotes, pairs])
 
@@ -189,7 +242,7 @@ export default function RetrievalDrill() {
     }
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('You must be signed in to start a drill.'); return }
-    const sessionType = m === 'pair_match' ? 'pairing_drill' : 'quote_drill'
+    const sessionType = m === 'pair_match' || m === 'pivot_drill' ? 'pairing_drill' : 'quote_drill'
     const { data, error: err } = await supabase
       .from('retrieval_sessions')
       .insert({ user_id: user.id, device_id: getDeviceId(), session_type: sessionType, total_items: builtDeck.length, correct_items: 0, completed: false })
@@ -295,28 +348,36 @@ export default function RetrievalDrill() {
   const card = deck[cardIndex]
 
   return (
-    <div className="min-h-screen bg-paper px-4 py-8 md:px-8">
+    <div className="min-h-screen bg-slate-50 px-4 py-8 md:px-8 font-sans">
       <div className="max-w-2xl mx-auto mb-6">
         <div className="flex items-center justify-between mb-2">
-          <span className="label-eyebrow text-ink-faint capitalize">{mode.replace('_', ' ')}</span>
-          <span className="label-eyebrow text-ink-faint">{cardIndex + 1} / {deck.length}</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-200/50 px-2 py-0.5 rounded">
+            {mode.replace('_', ' ')}
+          </span>
+          <span className="text-xs font-bold text-slate-500">{cardIndex + 1} / {deck.length}</span>
         </div>
-        <div className="h-1.5 bg-rule rounded-full overflow-hidden">
-          {/* TOKEN-EXCEPTION: dynamic width for progress bar */}
-          <div className="h-full bg-hard-times rounded-full transition-all duration-300"
-            style={{ width: `${(cardIndex / deck.length) * 100}%` }} />
+        <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+          <div className="h-full bg-indigo-600 rounded-full transition-all duration-300"
+            style={{ width: `${((cardIndex) / deck.length) * 100}%` }} />
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto">
-        {mode === 'free_recall' ? (
-          <FreeRecallCard card={card} revealed={revealed}
+        {mode === 'free_recall' || mode === 'pivot_drill' ? (
+          <FreeRecallCard 
+            card={card} 
+            revealed={revealed}
+            isPivotMode={mode === 'pivot_drill'}
             onReveal={() => setRevealed(true)}
-            onScore={(c, q) => advance(c, q)} />
+            onScore={(c, q) => advance(c, q)} 
+          />
         ) : (
-          <RecognitionCard card={card} chosen={chosen}
+          <RecognitionCard 
+            card={card} 
+            chosen={chosen}
             onChoose={handleMcqChoice}
-            isPairMode={mode === 'pair_match'} />
+            isPairMode={mode === 'pair_match'} 
+          />
         )}
       </div>
     </div>
@@ -328,31 +389,65 @@ function ModeSelector({ onStart, quoteCount, pairCount }: {
   onStart: (m: DrillMode) => void; quoteCount: number; pairCount: number
 }) {
   const modes = [
-    { id: 'recognition' as DrillMode, label: 'Recognition', desc: 'Read the method/effect. Pick the correct quote from four options.', count: `${quoteCount} quotes`, border: 'border-rule hover:border-rule' },
-    { id: 'pair_match' as DrillMode, label: 'Pair Match', desc: 'See an HT quote. Identify its Atonement counterpart. Builds AO4 reflex.', count: `${pairCount} pairs`, border: 'border-rule hover:border-rule' },
-    { id: 'free_recall' as DrillMode, label: 'Free Recall', desc: 'Given method and themes only. Recall the quote from memory, then self-rate.', count: `${quoteCount} quotes`, border: 'border-rule hover:border-rule' },
+    { 
+      id: 'recognition' as DrillMode, 
+      label: 'Recognition Mode', 
+      desc: 'Read the method/effect. Pick the correct quote from four options. Ideal for basic familiarisation.', 
+      count: `${quoteCount} quotes`, 
+      border: 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/10' 
+    },
+    { 
+      id: 'pair_match' as DrillMode, 
+      label: 'Pair Match Mode', 
+      desc: 'See a Hard Times quote and identify its matching Atonement counterpart from options. Builds basic comparison reflex.', 
+      count: `${pairCount} pairs`, 
+      border: 'border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/10' 
+    },
+    { 
+      id: 'free_recall' as DrillMode, 
+      label: 'Free Recall Mode (Active Recall)', 
+      desc: 'Prompted with method & source text. Type out the exact quote from memory. Validated using fuzzy distance checks.', 
+      count: `${quoteCount} quotes`, 
+      border: 'border-indigo-200 bg-indigo-50/10 hover:bg-indigo-50/20 hover:border-indigo-300' 
+    },
+    { 
+      id: 'pivot_drill' as DrillMode, 
+      label: 'Pivot Drill (Level 5 Synthesis)', 
+      desc: 'Shown both quotes. Type the comparative tension/synthesis. Validated using conceptual matching to build exam synthesis.', 
+      count: `${pairCount} connections`, 
+      border: 'border-emerald-200 bg-emerald-50/10 hover:bg-emerald-50/20 hover:border-emerald-300' 
+    },
   ]
   return (
-    <div className="min-h-screen bg-paper px-4 py-12 md:px-8">
+    <div className="min-h-screen bg-slate-50 px-4 py-12 md:px-8">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-ink mb-1">Retrieval Drill</h1>
-        <p className="text-ink-faint text-sm mb-8">Stage 2 — Active recall. Choose a mode to begin.</p>
-        <div className="flex flex-col gap-3">
+        <div className="text-center mb-8">
+          <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white mb-2">Stage 2 Active Recall</Badge>
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Active Recall Drill Engine</h1>
+          <p className="text-slate-500 text-sm mt-1">Strengthen memory retention and synthesis rules under exam conditions.</p>
+        </div>
+        <div className="flex flex-col gap-4">
           {modes.map(m => (
             <button key={m.id} onClick={() => onStart(m.id)}
-              className={`text-left p-5 bg-surface border rounded-xl transition-colors ${m.border}`}>
+              className={`text-left p-5 bg-white border rounded-xl shadow-sm transition-all duration-200 hover:shadow-md ${m.border}`}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-semibold text-ink mb-1">{m.label}</p>
-                  <p className="text-sm text-ink-faint leading-relaxed">{m.desc}</p>
+                  <p className="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                    {m.id === 'pivot_drill' && <Sparkles className="h-4 w-4 text-emerald-600" />}
+                    {m.id === 'free_recall' && <BookOpen className="h-4 w-4 text-indigo-600" />}
+                    {m.label}
+                  </p>
+                  <p className="text-xs text-slate-500 leading-relaxed">{m.desc}</p>
                 </div>
-                <span className="label-eyebrow text-ink-faint whitespace-nowrap mt-0.5">{m.count}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-0.5 rounded whitespace-nowrap mt-0.5">
+                  {m.count}
+                </span>
               </div>
             </button>
           ))}
         </div>
-        <p className="text-xs text-ink-faint mt-6 text-center">
-          Up to {DECK_SIZE} cards per session · Results feed spaced repetition
+        <p className="text-[11px] text-slate-400 mt-6 text-center">
+          Up to {DECK_SIZE} cards per session · Results adjust Spaced Repetition (SM-2) intervals.
         </p>
       </div>
     </div>
@@ -365,16 +460,16 @@ function RecognitionCard({ card, chosen, onChoose, isPairMode }: {
   onChoose: (o: string) => void; isPairMode: boolean
 }) {
   return (
-    <div>
-      <div className="bg-surface border border-rule rounded-xl p-6 mb-5">
-        <p className="label-eyebrow text-ink-faint mb-3">{card.promptLabel}</p>
-        <p className={`text-ink leading-relaxed ${isPairMode ? 'font-serif italic text-lg' : 'text-sm'}`}>
+    <div className="space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">{card.promptLabel}</p>
+        <p className={`text-slate-800 leading-relaxed font-medium ${isPairMode ? 'font-serif italic text-lg' : 'text-sm'}`}>
           {card.prompt}
         </p>
         {(card.meta.themes ?? []).length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {(card.meta.themes ?? []).map(t => (
-              <span key={t} className="text-[11px] px-2 py-0.5 rounded bg-paper text-interpretive border border-rule">{t}</span>
+              <span key={t} className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200/50">{t}</span>
             ))}
           </div>
         )}
@@ -383,34 +478,40 @@ function RecognitionCard({ card, chosen, onChoose, isPairMode }: {
       <div className="flex flex-col gap-2.5">
         {(card.options ?? []).map((opt, i) => {
           const isChosen = chosen === opt, isCorrect = opt === card.correctOption
-          let cls = 'text-left w-full p-4 rounded-xl border text-sm font-serif italic leading-relaxed transition-all '
-          if (!chosen)       cls += 'bg-surface border-rule hover:border-ink/30 text-ink cursor-pointer'
-          else if (isCorrect) cls += 'bg-paper border-rule text-ao2'
-          else if (isChosen)  cls += 'bg-paper border-rule text-ao1'
-          else                cls += 'bg-surface border-rule text-ink-faint opacity-40'
+          let cls = 'text-left w-full p-4 rounded-xl border text-sm font-serif italic leading-relaxed transition-all shadow-sm '
+          if (!chosen)       cls += 'bg-white border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/5 text-slate-700 cursor-pointer'
+          else if (isCorrect) cls += 'bg-emerald-50 border-emerald-300 text-emerald-800 font-semibold'
+          else if (isChosen)  cls += 'bg-rose-50 border-rose-300 text-rose-800'
+          else                cls += 'bg-white border-slate-200 text-slate-400 opacity-60'
           return (
             <button key={i} className={cls} onClick={() => onChoose(opt)} disabled={!!chosen}>
-              <span className="not-italic text-ink-faint text-xs mr-2">{String.fromCharCode(65 + i)}.</span>
+              <span className="not-italic text-slate-400 text-xs font-bold mr-2">{String.fromCharCode(65 + i)}.</span>
               "{opt}"
-              {chosen && isCorrect && <span className="not-italic ml-2">✓</span>}
-              {chosen && isChosen && !isCorrect && <span className="not-italic ml-2">✗</span>}
+              {chosen && isCorrect && <span className="not-italic ml-2 text-emerald-600">✓</span>}
+              {chosen && isChosen && !isCorrect && <span className="not-italic ml-2 text-rose-600">✗</span>}
             </button>
           )
         })}
       </div>
 
       {chosen && (card.meta.howTheyCompare || (card.meta.method && !isPairMode)) && (
-        <div className="mt-5 p-4 bg-surface border border-rule rounded-xl space-y-2">
+        <div className="p-4 bg-indigo-50/20 border border-indigo-100 rounded-xl space-y-3">
           {card.meta.howTheyCompare && (
             <div>
-              <p className="label-eyebrow text-ink-faint mb-1">AO4 — how they compare</p>
-              <p className="text-sm text-ink-faint leading-relaxed">{card.meta.howTheyCompare}</p>
+              <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Award className="h-3 w-3" />
+                AO4 Comparative Synthesis
+              </p>
+              <p className="text-xs text-slate-600 leading-relaxed font-sans">{card.meta.howTheyCompare}</p>
             </div>
           )}
           {card.meta.method && !isPairMode && (
             <div>
-              <p className="label-eyebrow text-ink-faint mb-1">Method</p>
-              <p className="text-sm text-ink-faint">{card.meta.method}</p>
+              <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Quote className="h-3 w-3" />
+                Narrative Method
+              </p>
+              <p className="text-xs text-slate-600 font-sans">{card.meta.method}</p>
             </div>
           )}
         </div>
@@ -419,50 +520,192 @@ function RecognitionCard({ card, chosen, onChoose, isPairMode }: {
   )
 }
 
-// ─── Free Recall Card ─────────────────────────────────────────────────────────
-function FreeRecallCard({ card, revealed, onReveal, onScore }: {
-  card: DrillCard; revealed: boolean
+// ─── Free Recall Card (Fuzzy Matching Upgrade) ──────────────────────────────────
+function FreeRecallCard({ card, revealed, isPivotMode, onReveal, onScore }: {
+  card: DrillCard; revealed: boolean; isPivotMode?: boolean;
   onReveal: () => void; onScore: (correct: boolean, quality: number) => void
 }) {
+  const [typedText, setTypedText] = useState('')
+  const [similarity, setSimilarity] = useState<number | null>(null)
+
+  // Reset inputs when card changes
+  useEffect(() => {
+    setTypedText('')
+    setSimilarity(null)
+  }, [card.id])
+
+  const handleVerify = () => {
+    if (!typedText.trim()) return
+    const score = calculateSimilarity(typedText, card.correctOption)
+    setSimilarity(score)
+    onReveal()
+  }
+
+  // Determine auto-highlight quality based on similarity
+  const recommendedQuality = useMemo(() => {
+    if (similarity === null) return null
+    if (isPivotMode) {
+      // Comparison sentences are longer; lower similarity threshold is acceptable for concept match
+      if (similarity >= 0.50) return QUALITY_MAP.got_it
+      if (similarity >= 0.25) return QUALITY_MAP.almost
+      return QUALITY_MAP.missed
+    } else {
+      // Exact quote match thresholds
+      if (similarity >= 0.85) return QUALITY_MAP.got_it
+      if (similarity >= 0.60) return QUALITY_MAP.almost
+      return QUALITY_MAP.missed
+    }
+  }, [similarity, isPivotMode])
+
   return (
-    <div>
-      <div className="bg-surface border border-rule rounded-xl p-6 mb-5">
-        <p className="label-eyebrow text-ink-faint mb-1">{card.promptLabel}</p>
-        <p className="text-sm text-ink-faint italic mb-3">{card.meta.method}</p>
-        {(card.meta.themes ?? []).length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {(card.meta.themes ?? []).map(t => (
-              <span key={t} className="text-[11px] px-2 py-0.5 rounded bg-paper text-interpretive border border-rule">{t}</span>
-            ))}
+    <div className="space-y-4">
+      {/* Prompt Card */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            {card.promptLabel}
+          </span>
+          {(card.meta.themes ?? []).length > 0 && (
+            <div className="flex gap-1">
+              {(card.meta.themes ?? []).map(t => (
+                <span key={t} className="text-[9px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200/50">
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {isPivotMode ? (
+          <div className="space-y-3 font-sans">
+            <div className="p-3 rounded-lg border border-indigo-100 bg-indigo-50/10">
+              <span className="text-[10px] font-bold text-indigo-700 tracking-wide uppercase block mb-1">Hard Times Quote</span>
+              <p className="text-sm font-serif italic text-slate-700">"{card.meta.hardTimesQuote}"</p>
+            </div>
+            <div className="p-3 rounded-lg border border-rose-100 bg-rose-50/10">
+              <span className="text-[10px] font-bold text-rose-700 tracking-wide uppercase block mb-1">Atonement Quote</span>
+              <p className="text-sm font-serif italic text-slate-700">"{card.meta.atonementQuote}"</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500 font-bold uppercase">Target Literary Method:</p>
+            <p className="text-sm font-serif italic text-slate-800 leading-relaxed bg-slate-50 p-3 rounded border">
+              {card.prompt}
+            </p>
           </div>
         )}
       </div>
 
+      {/* Verification Workspace */}
       {!revealed ? (
-        <button onClick={onReveal}
-          className="w-full p-6 rounded-xl border-2 border-dashed border-rule hover:border-rule text-ink-faint hover:text-ao3 transition-colors text-sm">
-          Recall the quote — tap to reveal ↓
-        </button>
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+          <label className="text-xs font-bold text-slate-600 block">
+            {isPivotMode 
+              ? "Draft the comparative pivot/tension connecting these quotes (e.g. how they contrast or align functionally):"
+              : "Type the quotation from memory below:"}
+          </label>
+          <textarea
+            value={typedText}
+            onChange={(e) => setTypedText(e.target.value)}
+            className="w-full min-h-24 border rounded-md p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/25 leading-relaxed"
+            placeholder={isPivotMode 
+              ? "e.g., Dickens satirizes mechanical learning while McEwan explores child focalisation to show..." 
+              : "Type the exact quote..."}
+          />
+          <button 
+            onClick={handleVerify}
+            disabled={!typedText.trim()}
+            className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50"
+          >
+            Check Memory & Reveal Target
+          </button>
+        </div>
       ) : (
-        <div>
-          <div className="p-5 bg-surface border border-rule rounded-xl mb-4">
-            <p className="label-eyebrow text-ink-faint mb-2">{card.answerLabel}</p>
-            <p className="font-serif italic text-lg text-ink leading-relaxed">{card.answer}</p>
+        <div className="space-y-4">
+          {/* Similarity Feedback */}
+          {similarity !== null && (
+            <div className={`p-4 rounded-xl border flex items-start gap-3 shadow-sm ${
+              recommendedQuality === QUALITY_MAP.got_it 
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                : recommendedQuality === QUALITY_MAP.almost 
+                ? 'bg-amber-50 border-amber-200 text-amber-800' 
+                : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}>
+              <div className="flex-shrink-0 mt-0.5">
+                {recommendedQuality === QUALITY_MAP.got_it ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                )}
+              </div>
+              <div className="text-xs">
+                <p className="font-bold">
+                  Memory Match Accuracy: {Math.round(similarity * 100)}%
+                </p>
+                <p className="mt-1 opacity-90 leading-relaxed font-sans">
+                  {recommendedQuality === QUALITY_MAP.got_it 
+                    ? "Perfect or near-perfect match! Spaced repetition auto-selected 'Got it'." 
+                    : recommendedQuality === QUALITY_MAP.almost 
+                    ? "Partial match. Recommended rating: 'Almost'." 
+                    : "Low matching accuracy. Recommended rating: 'Missed'."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Student Response comparison */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Your Draft</p>
+              <p className="text-xs text-slate-700 bg-slate-50/50 p-2.5 rounded border border-slate-100 font-mono italic">
+                "{typedText || '[No response provided]'}"
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Target Answer</p>
+              <p className="text-sm font-serif italic text-slate-800 bg-indigo-50/10 p-3 rounded border border-indigo-100/50 leading-relaxed">
+                {card.answer}
+              </p>
+            </div>
           </div>
-          <p className="text-center text-sm text-ink-faint mb-3">How well did you recall it?</p>
-          <div className="grid grid-cols-3 gap-2.5">
-            <button onClick={() => onScore(true, QUALITY_MAP.got_it)}
-              className="py-3 rounded-xl bg-paper border border-rule text-ao2 text-sm font-medium hover:opacity-90 transition-opacity">
-              ✓ Got it
-            </button>
-            <button onClick={() => onScore(true, QUALITY_MAP.almost)}
-              className="py-3 rounded-xl bg-paper border border-rule text-ao3 text-sm font-medium hover:opacity-90 transition-opacity">
-              ~ Almost
-            </button>
-            <button onClick={() => onScore(false, QUALITY_MAP.missed)}
-              className="py-3 rounded-xl bg-paper border border-rule text-ao1 text-sm font-medium hover:opacity-90 transition-opacity">
-              ✗ Missed
-            </button>
+
+          {/* Manual Quality Adjustment */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-center">
+            <p className="text-xs font-bold text-slate-600 mb-3 font-sans">Evaluate your recall performance manually if needed:</p>
+            <div className="grid grid-cols-3 gap-3">
+              <button 
+                onClick={() => onScore(true, QUALITY_MAP.got_it)}
+                className={`py-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${
+                  recommendedQuality === QUALITY_MAP.got_it 
+                    ? 'bg-emerald-600 border-emerald-600 text-white ring-2 ring-emerald-600/20' 
+                    : 'bg-white border-slate-200 text-emerald-700 hover:bg-emerald-50'
+                }`}
+              >
+                ✓ Got it
+              </button>
+              <button 
+                onClick={() => onScore(true, QUALITY_MAP.almost)}
+                className={`py-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${
+                  recommendedQuality === QUALITY_MAP.almost 
+                    ? 'bg-amber-500 border-amber-500 text-white ring-2 ring-amber-500/20' 
+                    : 'bg-white border-slate-200 text-amber-700 hover:bg-amber-50'
+                }`}
+              >
+                ~ Almost
+              </button>
+              <button 
+                onClick={() => onScore(false, QUALITY_MAP.missed)}
+                className={`py-3 rounded-xl border text-xs font-bold transition-all shadow-sm ${
+                  recommendedQuality === QUALITY_MAP.missed 
+                    ? 'bg-rose-600 border-rose-600 text-white ring-2 ring-rose-600/20' 
+                    : 'bg-white border-slate-200 text-rose-700 hover:bg-rose-50'
+                }`}
+              >
+                ✗ Missed
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -470,40 +713,45 @@ function FreeRecallCard({ card, revealed, onReveal, onScore }: {
   )
 }
 
-// ─── Summary ──────────────────────────────────────────────────────────────────
+// ─── Summary Screen ───────────────────────────────────────────────────────────
 function SummaryScreen({ stats, onRestart }: { stats: SessionStats; onRestart: () => void }) {
   const pct   = Math.round((stats.correct / stats.total) * 100)
   const mins  = Math.floor(stats.durationMs / 60000)
   const secs  = Math.round((stats.durationMs % 60000) / 1000)
   const grade = pct >= 85 ? 'Excellent' : pct >= 65 ? 'Good' : 'Keep practising'
-  const clr   = pct >= 85 ? 'text-ao2' : pct >= 65 ? 'text-ao3' : 'text-ao1'
+  const clr   = pct >= 85 ? 'text-emerald-600' : pct >= 65 ? 'text-amber-500' : 'text-rose-600'
   return (
-    <div className="min-h-screen bg-paper px-4 py-12 md:px-8">
+    <div className="min-h-screen bg-slate-50 px-4 py-12 md:px-8 font-sans">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold text-ink mb-1">Session complete</h1>
-        <p className="text-ink-faint text-sm mb-8">{mins}m {secs}s</p>
-        <div className="bg-surface border border-rule rounded-xl p-6 mb-6 text-center">
-          <p className={`text-5xl font-bold mb-1 ${clr}`}>{pct}%</p>
-          <p className={`text-sm font-medium ${clr}`}>{grade}</p>
-          <p className="text-ink-faint text-sm mt-2">{stats.correct} correct · {stats.total - stats.correct} missed</p>
+        <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight text-center mb-1">Session Complete</h1>
+        <p className="text-slate-500 text-center text-sm mb-8">Completed in {mins}m {secs}s</p>
+        
+        <div className="bg-white border border-slate-200 rounded-xl p-8 mb-6 text-center shadow-sm">
+          <p className={`text-6xl font-black mb-1 tracking-tighter ${clr}`}>{pct}%</p>
+          <p className={`text-base font-bold ${clr}`}>{grade}</p>
+          <p className="text-slate-500 text-xs mt-3">
+            {stats.correct} correct recalls · {stats.total - stats.correct} incorrect reviews
+          </p>
         </div>
+
         {stats.missedCards.length > 0 && (
           <div className="mb-6">
-            <p className="label-eyebrow text-ink-faint mb-3">Missed — review these</p>
-            <div className="flex flex-col gap-2">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Missed Items Checklist</p>
+            <div className="flex flex-col gap-3">
               {stats.missedCards.map((c, i) => (
-                <div key={i} className="p-4 bg-surface border border-rule rounded-xl">
-                  <p className="text-xs text-ao1 mb-1">{c.meta.source ?? 'Pair'}</p>
-                  <p className="font-serif italic text-ink text-sm">{c.answer}</p>
-                  {c.meta.method && <p className="text-xs text-ink-faint mt-1">{c.meta.method}</p>}
+                <div key={i} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm space-y-1.5">
+                  <p className="text-[9px] font-bold text-rose-600 uppercase tracking-wide">{c.meta.source ?? 'Pair'}</p>
+                  <p className="font-serif italic text-slate-700 text-sm leading-relaxed">{c.answer}</p>
+                  {c.meta.method && <p className="text-[10px] text-slate-400 font-sans">Method: {c.meta.method}</p>}
                 </div>
               ))}
             </div>
           </div>
         )}
+
         <button onClick={onRestart}
-          className="w-full py-3.5 rounded-xl bg-hard-times text-ink font-semibold text-sm hover:opacity-90 transition-opacity">
-          Start another session
+          className="w-full py-4 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-colors shadow-sm">
+          Start New Active Session
         </button>
       </div>
     </div>
@@ -512,18 +760,21 @@ function SummaryScreen({ stats, onRestart }: { stats: SessionStats; onRestart: (
 
 function LoadingState() {
   return (
-    <div className="min-h-screen bg-paper flex items-center justify-center">
-      <p className="text-ink-faint text-sm animate-pulse">Loading drill…</p>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans">
+      <div className="text-center space-y-2">
+        <RefreshCw className="h-6 w-6 text-indigo-600 animate-spin mx-auto" />
+        <p className="text-slate-500 text-xs animate-pulse">Initializing retrieval cards...</p>
+      </div>
     </div>
   )
 }
 
 function ErrorState({ message }: { message: string }) {
   return (
-    <div className="min-h-screen bg-paper flex items-center justify-center px-4">
-      <div className="bg-surface border border-rule rounded-xl p-6 max-w-md text-center">
-        <p className="text-ink font-medium mb-1">Something went wrong</p>
-        <p className="text-ink-faint text-sm">{message}</p>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 font-sans">
+      <div className="bg-white border border-slate-200 rounded-xl p-6 max-w-md text-center shadow-md">
+        <p className="text-slate-800 font-bold mb-1">Session Error</p>
+        <p className="text-slate-500 text-xs leading-relaxed">{message}</p>
       </div>
     </div>
   )
