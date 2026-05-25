@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     const validated = validateInput(parsed);
     if (!validated.ok) return json(validated.status, { error: validated.error });
 
-    const apiKey = Deno.env.get('MODEL_PROVIDER_API_KEY');
+    const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
     if (!apiKey) {
       return json(
         200,
