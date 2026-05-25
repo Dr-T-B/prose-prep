@@ -10,6 +10,7 @@ type NavItem = { to: string; label: string; end?: boolean };
 const STUDENT_NAV: readonly NavItem[] = [
   { to: "/", label: "Dashboard", end: true },
   { to: "/builder", label: "Essay Builder" },
+  { to: "/compass", label: "Prose Compass" },
   { to: "/essay-marker", label: "Essay Marker" },
   { to: "/annotated-essays", label: "Annotated Essays" },
   { to: "/paragraph-builder", label: "Paragraph Builder" },

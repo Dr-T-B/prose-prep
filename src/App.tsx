@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "./components/AppShell";
 import Dashboard from "./pages/Dashboard";
 import EssayBuilder from "./pages/EssayBuilder";
+import ProseCompass from "./pages/ProseCompass";
 import ParagraphEnginePage from "./pages/ParagraphEnginePage";
 import TimedPractice from "./pages/TimedPractice";
 import RetrievalToolkit from "./pages/RetrievalToolkit";
@@ -66,6 +67,7 @@ const App = () => (
                   <Route path="/dashboard" element={<Navigate to="/" replace />} />
                   <Route path="/build" element={<Navigate to="/builder" replace />} />
                   <Route path="/builder" element={<EssayBuilder />} />
+                  <Route path="/compass" element={<ProseCompass />} />
                   <Route path="/paragraph-builder" element={<ParagraphBuilderPage />} />
                   <Route path="/paragraph-engine" element={<ParagraphEnginePage />} />
                   <Route path="/phase4" element={<Phase4Workspace />} />
