@@ -39,8 +39,6 @@ import Phase3Dashboard from "./pages/Phase3Dashboard";
 import Phase4Workspace from "./pages/Phase4Workspace";
 import ThemeWheel from "./components/ThemeWheel";
 import ComparativeMatrix from "./components/ComparativeMatrix";
-import ProseCompass from "./pages/ProseCompass";
-import LandingPage from "./pages/LandingPage";
 import { ContentProvider } from "./lib/ContentProvider";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -59,13 +57,13 @@ const App = () => (
             <AuthProvider>
               <ErrorBoundary>
               <Routes>
-                <Route path="/" element={<LandingPage />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/login" element={<Navigate to="/auth" replace />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route element={<ProtectedRoute allowAnonymous><AppShell /></ProtectedRoute>}>
-                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Navigate to="/" replace />} />
                   <Route path="/build" element={<Navigate to="/builder" replace />} />
                   <Route path="/builder" element={<EssayBuilder />} />
                   <Route path="/paragraph-builder" element={<ParagraphBuilderPage />} />
@@ -96,7 +94,6 @@ const App = () => (
                   <Route path="/practise" element={<Practise />} />
                   <Route path="/revise" element={<Revise />} />
                   <Route path="/compare" element={<Compare />} />
-                  <Route path="/compass" element={<ProseCompass />} />
                   <Route path="/admin" element={<ProtectedRoute requireAdmin><DataManager /></ProtectedRoute>} />
                   <Route path="/admin/character-pairings" element={<ProtectedRoute requireAdmin><Phase3Dashboard /></ProtectedRoute>} />
                 </Route>

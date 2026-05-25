@@ -8,7 +8,7 @@ import { useGradeBMode } from "@/contexts/GradeBModeContext";
 type NavItem = { to: string; label: string; end?: boolean };
 
 const STUDENT_NAV: readonly NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", end: true },
+  { to: "/", label: "Dashboard", end: true },
   { to: "/builder", label: "Essay Builder" },
   { to: "/essay-marker", label: "Essay Marker" },
   { to: "/annotated-essays", label: "Annotated Essays" },
@@ -24,7 +24,6 @@ const STUDENT_NAV: readonly NavItem[] = [
   { to: "/routes", label: "Comparison Routes" },
   { to: "/flex", label: "Interpretive Flex" },
   { to: "/compare", label: "Compare" },
-  { to: "/compass", label: "Prose Compass" },
   { to: "/theme-wheel", label: "Theme Wheel" },
   { to: "/matrix", label: "Comparative Matrix" },
   { to: "/library", label: "Library" },
