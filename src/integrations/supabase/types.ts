@@ -14,6 +14,146 @@ export type Database = {
   }
   public: {
     Tables: {
+      annotated_essays: {
+        Row: {
+          content_type: string
+          created_at: string
+          essay_type: string
+          estimated_mark_range: string | null
+          examiner_summary: string
+          full_essay_text: string
+          id: string
+          question_id: string
+          reviewed: boolean
+          risks: string[]
+          source: string
+          strengths: string[]
+          student_realism_note: string | null
+          target_band: string
+          thesis: string
+          timed_condition_minutes: number
+          title: string
+          updated_at: string
+          upgrade_targets: string[]
+          verification_status: string
+          word_count_band: string
+        }
+        Insert: {
+          content_type?: string
+          created_at?: string
+          essay_type: string
+          estimated_mark_range?: string | null
+          examiner_summary: string
+          full_essay_text: string
+          id: string
+          question_id: string
+          reviewed?: boolean
+          risks?: string[]
+          source?: string
+          strengths?: string[]
+          student_realism_note?: string | null
+          target_band: string
+          thesis: string
+          timed_condition_minutes?: number
+          title: string
+          updated_at?: string
+          upgrade_targets?: string[]
+          verification_status?: string
+          word_count_band: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          essay_type?: string
+          estimated_mark_range?: string | null
+          examiner_summary?: string
+          full_essay_text?: string
+          id?: string
+          question_id?: string
+          reviewed?: boolean
+          risks?: string[]
+          source?: string
+          strengths?: string[]
+          student_realism_note?: string | null
+          target_band?: string
+          thesis?: string
+          timed_condition_minutes?: number
+          title?: string
+          updated_at?: string
+          upgrade_targets?: string[]
+          verification_status?: string
+          word_count_band?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annotated_essays_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "essay_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ao_annotations: {
+        Row: {
+          annotation_order: number
+          annotation_type: string
+          ao_tags: string[]
+          created_at: string
+          essay_id: string
+          explanation: string
+          id: string
+          improvement_note: string | null
+          paragraph_id: string
+          text_span: string
+          updated_at: string
+          why_it_scores: string
+        }
+        Insert: {
+          annotation_order: number
+          annotation_type: string
+          ao_tags?: string[]
+          created_at?: string
+          essay_id: string
+          explanation: string
+          id: string
+          improvement_note?: string | null
+          paragraph_id: string
+          text_span: string
+          updated_at?: string
+          why_it_scores: string
+        }
+        Update: {
+          annotation_order?: number
+          annotation_type?: string
+          ao_tags?: string[]
+          created_at?: string
+          essay_id?: string
+          explanation?: string
+          id?: string
+          improvement_note?: string | null
+          paragraph_id?: string
+          text_span?: string
+          updated_at?: string
+          why_it_scores?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ao_annotations_essay_id_fkey"
+            columns: ["essay_id"]
+            isOneToOne: false
+            referencedRelation: "annotated_essays"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ao_annotations_paragraph_id_fkey"
+            columns: ["paragraph_id"]
+            isOneToOne: false
+            referencedRelation: "essay_paragraphs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ao_readiness: {
         Row: {
           ao: string
@@ -243,6 +383,71 @@ export type Database = {
           },
         ]
       }
+      essay_paragraphs: {
+        Row: {
+          ao_coverage: string[]
+          atonement_focus: string | null
+          comparative_focus: string
+          created_at: string
+          essay_id: string
+          examiner_comment: string | null
+          hard_times_focus: string | null
+          id: string
+          key_contexts: string[]
+          key_methods: string[]
+          main_argument: string
+          paragraph_function: string
+          paragraph_number: number
+          paragraph_text: string
+          updated_at: string
+          upgrade_target: string | null
+        }
+        Insert: {
+          ao_coverage?: string[]
+          atonement_focus?: string | null
+          comparative_focus: string
+          created_at?: string
+          essay_id: string
+          examiner_comment?: string | null
+          hard_times_focus?: string | null
+          id: string
+          key_contexts?: string[]
+          key_methods?: string[]
+          main_argument: string
+          paragraph_function: string
+          paragraph_number: number
+          paragraph_text: string
+          updated_at?: string
+          upgrade_target?: string | null
+        }
+        Update: {
+          ao_coverage?: string[]
+          atonement_focus?: string | null
+          comparative_focus?: string
+          created_at?: string
+          essay_id?: string
+          examiner_comment?: string | null
+          hard_times_focus?: string | null
+          id?: string
+          key_contexts?: string[]
+          key_methods?: string[]
+          main_argument?: string
+          paragraph_function?: string
+          paragraph_number?: number
+          paragraph_text?: string
+          updated_at?: string
+          upgrade_target?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "essay_paragraphs_essay_id_fkey"
+            columns: ["essay_id"]
+            isOneToOne: false
+            referencedRelation: "annotated_essays"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       essay_plans: {
         Row: {
           builder_handoffs: Json
@@ -300,6 +505,90 @@ export type Database = {
           thesis_level?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      essay_questions: {
+        Row: {
+          ao_requirements: string[]
+          component: string
+          content_type: string
+          created_at: string
+          difficulty_level: string
+          exam_board: string
+          id: string
+          level_5_upgrade_moves: string[]
+          likely_routes: string[]
+          linked_paragraph_stem_ids: string[]
+          linked_quote_cluster_ids: string[]
+          marks: number
+          paper_code: string
+          pitfalls: string[]
+          post_1900_text: string
+          pre_1900_text: string
+          question_family: string
+          question_text: string
+          reviewed: boolean
+          source: string
+          text_pair: string
+          theme: string
+          updated_at: string
+          verification_status: string
+          year: string | null
+        }
+        Insert: {
+          ao_requirements?: string[]
+          component?: string
+          content_type?: string
+          created_at?: string
+          difficulty_level: string
+          exam_board?: string
+          id: string
+          level_5_upgrade_moves?: string[]
+          likely_routes?: string[]
+          linked_paragraph_stem_ids?: string[]
+          linked_quote_cluster_ids?: string[]
+          marks?: number
+          paper_code?: string
+          pitfalls?: string[]
+          post_1900_text?: string
+          pre_1900_text?: string
+          question_family: string
+          question_text: string
+          reviewed?: boolean
+          source?: string
+          text_pair?: string
+          theme: string
+          updated_at?: string
+          verification_status?: string
+          year?: string | null
+        }
+        Update: {
+          ao_requirements?: string[]
+          component?: string
+          content_type?: string
+          created_at?: string
+          difficulty_level?: string
+          exam_board?: string
+          id?: string
+          level_5_upgrade_moves?: string[]
+          likely_routes?: string[]
+          linked_paragraph_stem_ids?: string[]
+          linked_quote_cluster_ids?: string[]
+          marks?: number
+          paper_code?: string
+          pitfalls?: string[]
+          post_1900_text?: string
+          pre_1900_text?: string
+          question_family?: string
+          question_text?: string
+          reviewed?: boolean
+          source?: string
+          text_pair?: string
+          theme?: string
+          updated_at?: string
+          verification_status?: string
+          year?: string | null
         }
         Relationships: []
       }
@@ -788,6 +1077,59 @@ export type Database = {
           },
         ]
       }
+      misconception_upgrades: {
+        Row: {
+          content_type: string
+          created_at: string
+          diagnosis: string
+          example_problem_sentence: string
+          id: string
+          improved_level_5_version: string
+          linked_drill_id: string | null
+          reviewed: boolean
+          source: string
+          updated_at: string
+          verification_status: string
+          weakness: string
+        }
+        Insert: {
+          content_type?: string
+          created_at?: string
+          diagnosis: string
+          example_problem_sentence: string
+          id: string
+          improved_level_5_version: string
+          linked_drill_id?: string | null
+          reviewed?: boolean
+          source?: string
+          updated_at?: string
+          verification_status?: string
+          weakness: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          diagnosis?: string
+          example_problem_sentence?: string
+          id?: string
+          improved_level_5_version?: string
+          linked_drill_id?: string | null
+          reviewed?: boolean
+          source?: string
+          updated_at?: string
+          verification_status?: string
+          weakness?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "misconception_upgrades_linked_drill_id_fkey"
+            columns: ["linked_drill_id"]
+            isOneToOne: false
+            referencedRelation: "paragraph_stems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       modules: {
         Row: {
           created_at: string
@@ -1043,50 +1385,89 @@ export type Database = {
         Row: {
           ao: string[]
           best_themes: string[]
+          comparison_route: string | null
+          compatible_characters: string[]
+          compatible_quotes: string[]
+          content_type: string
+          context_route: string | null
           created_at: string
           curation_status: string | null
+          drill_instruction: string | null
           example_use: string | null
           function: string
           id: string
           is_active: boolean
           level_band: string
+          method_triggers: string[]
+          question_family: string | null
+          reviewed: boolean
           sort_order: number
+          source: string
           source_text: string | null
           stem_text: string
           text_focus: string | null
+          theme: string | null
+          timed_target_minutes: number | null
           updated_at: string
+          verification_status: string
         }
         Insert: {
           ao?: string[]
           best_themes?: string[]
+          comparison_route?: string | null
+          compatible_characters?: string[]
+          compatible_quotes?: string[]
+          content_type?: string
+          context_route?: string | null
           created_at?: string
           curation_status?: string | null
+          drill_instruction?: string | null
           example_use?: string | null
           function?: string
           id: string
           is_active?: boolean
           level_band?: string
+          method_triggers?: string[]
+          question_family?: string | null
+          reviewed?: boolean
           sort_order?: number
+          source?: string
           source_text?: string | null
           stem_text: string
           text_focus?: string | null
+          theme?: string | null
+          timed_target_minutes?: number | null
           updated_at?: string
+          verification_status?: string
         }
         Update: {
           ao?: string[]
           best_themes?: string[]
+          comparison_route?: string | null
+          compatible_characters?: string[]
+          compatible_quotes?: string[]
+          content_type?: string
+          context_route?: string | null
           created_at?: string
           curation_status?: string | null
+          drill_instruction?: string | null
           example_use?: string | null
           function?: string
           id?: string
           is_active?: boolean
           level_band?: string
+          method_triggers?: string[]
+          question_family?: string | null
+          reviewed?: boolean
           sort_order?: number
+          source?: string
           source_text?: string | null
           stem_text?: string
           text_focus?: string | null
+          theme?: string | null
+          timed_target_minutes?: number | null
           updated_at?: string
+          verification_status?: string
         }
         Relationships: []
       }
@@ -1182,6 +1563,84 @@ export type Database = {
             columns: ["secondary_route_id"]
             isOneToOne: false
             referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_method_links: {
+        Row: {
+          ao2_explanation: string
+          ao4_comparative_partner: string | null
+          character: string | null
+          content_type: string
+          created_at: string
+          essay_question_id: string | null
+          id: string
+          method: string
+          paragraph_stem_id: string | null
+          quotation: string
+          quote_type: string
+          reviewed: boolean
+          source: string
+          speaker_or_narrative_location: string | null
+          text: string
+          theme: string
+          updated_at: string
+          verification_status: string
+        }
+        Insert: {
+          ao2_explanation: string
+          ao4_comparative_partner?: string | null
+          character?: string | null
+          content_type?: string
+          created_at?: string
+          essay_question_id?: string | null
+          id: string
+          method: string
+          paragraph_stem_id?: string | null
+          quotation: string
+          quote_type?: string
+          reviewed?: boolean
+          source?: string
+          speaker_or_narrative_location?: string | null
+          text: string
+          theme: string
+          updated_at?: string
+          verification_status?: string
+        }
+        Update: {
+          ao2_explanation?: string
+          ao4_comparative_partner?: string | null
+          character?: string | null
+          content_type?: string
+          created_at?: string
+          essay_question_id?: string | null
+          id?: string
+          method?: string
+          paragraph_stem_id?: string | null
+          quotation?: string
+          quote_type?: string
+          reviewed?: boolean
+          source?: string
+          speaker_or_narrative_location?: string | null
+          text?: string
+          theme?: string
+          updated_at?: string
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_method_links_essay_question_id_fkey"
+            columns: ["essay_question_id"]
+            isOneToOne: false
+            referencedRelation: "essay_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_method_links_paragraph_stem_id_fkey"
+            columns: ["paragraph_stem_id"]
+            isOneToOne: false
+            referencedRelation: "paragraph_stems"
             referencedColumns: ["id"]
           },
         ]

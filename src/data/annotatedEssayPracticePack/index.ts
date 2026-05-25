@@ -17,31 +17,32 @@ export type AnnotatedContentVerificationStatus =
   | "reviewed"
   | "approved"
   | "needs correction"
-  | "retired";
+  | "retired"
+  | "incomplete draft";
 
 export type AnnotatedContentProvenance = {
   source: string;
-  content_type: "annotated essay practice";
-  exam_board: "Pearson Edexcel";
-  component: "Component 2 Prose";
+  content_type: string;
+  exam_board: string;
+  component: string;
   verification_status: AnnotatedContentVerificationStatus;
   reviewed: boolean;
 };
 
 export type EssayQuestion = {
   id: string;
-  paper_code: "9ET0/02";
-  component: "Component 2 — Prose";
-  exam_board: "Pearson Edexcel";
+  paper_code: string;
+  component: string;
+  exam_board: string;
   year: string | null;
   question_text: string;
   theme: string;
-  marks: 40;
-  text_pair: "Hard Times / Atonement";
-  pre_1900_text: "Hard Times";
-  post_1900_text: "Atonement";
+  marks: number;
+  text_pair: string;
+  pre_1900_text: string;
+  post_1900_text: string;
   ao_requirements: Component2AO[];
-  difficulty_level: "secure" | "strong" | "top_band";
+  difficulty_level: string;
   question_family: string;
   likely_routes: string[];
   linked_quote_cluster_ids: string[];
@@ -57,11 +58,11 @@ export type AnnotatedEssay = {
   id: string;
   question_id: string;
   title: string;
-  essay_type: "timed-condition model";
-  target_band: "Level 5";
+  essay_type: string;
+  target_band: string;
   estimated_mark_range: string;
-  timed_condition_minutes: 60;
-  word_count_band: "900-1100";
+  timed_condition_minutes: number;
+  word_count_band: string;
   thesis: string;
   full_essay_text: string;
   examiner_summary: string;
@@ -115,7 +116,7 @@ export type ParagraphStem = {
   method_triggers: string[];
   context_route: string;
   comparison_route: string;
-  difficulty_level: "secure" | "strong" | "top_band";
+  difficulty_level: string;
   drill_instruction: string;
   timed_target_minutes: number;
   provenance: AnnotatedContentProvenance;
@@ -125,7 +126,7 @@ export type QuoteMethodLink = {
   id: string;
   quotation: string;
   speaker_or_narrative_location: string;
-  text: "Hard Times" | "Atonement";
+  text: string;
   character: string;
   method: string;
   theme: string;
@@ -133,7 +134,7 @@ export type QuoteMethodLink = {
   paragraph_stem_id: string;
   ao2_explanation: string;
   ao4_comparative_partner: string;
-  quote_type: "verified quotation" | "quote anchor / paraphrase";
+  quote_type: string;
   verification_status: AnnotatedContentVerificationStatus;
   provenance: AnnotatedContentProvenance;
 };
@@ -1064,4 +1065,3 @@ export const annotatedEssayPracticePack: AnnotatedEssayPracticePack = {
   quote_method_links: quoteMethodLinks,
   misconception_upgrades: misconceptionUpgrades,
 };
-

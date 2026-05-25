@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -15,8 +15,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
+  annotatedEssayPracticePack,
   type AOAnnotation,
   type AnnotatedContentVerificationStatus,
+  type AnnotatedEssayPracticePack as AnnotatedEssayPracticePackData,
   type Component2AO,
   type EssayParagraph,
   type EssayQuestion,
@@ -41,19 +43,24 @@ function hasAO(annotation: AOAnnotation, filter: AnnotationFilter) {
   return annotation.ao_tags.includes(filter);
 }
 
-export default function AnnotatedEssayPack() {
-  const { pack, source, fallbackReason } = useAnnotatedEssayPackContent();
+function getQuestion(pack: AnnotatedEssayPracticePackData, questionId: string) {
+  return pack.essay_questions.find((q) => q.id === questionId);
+}
 
-  const getQuestion = (questionId: string) =>
-    pack.essay_questions.find((q) => q.id === questionId);
-  const getEssayParagraphs = (essayId: string) =>
-    pack.essay_paragraphs
-      .filter((p) => p.essay_id === essayId)
-      .sort((a, b) => a.paragraph_number - b.paragraph_number);
-  const getParagraphAnnotations = (paragraphId: string, filter: AnnotationFilter = "all") =>
-    pack.ao_annotations
-      .filter((a) => a.paragraph_id === paragraphId && hasAO(a, filter))
-      .sort((a, b) => a.annotation_order - b.annotation_order);
+function getEssayParagraphs(pack: AnnotatedEssayPracticePackData, essayId: string) {
+  return pack.essay_paragraphs
+    .filter((p) => p.essay_id === essayId)
+    .sort((a, b) => a.paragraph_number - b.paragraph_number);
+}
+
+function getParagraphAnnotations(pack: AnnotatedEssayPracticePackData, paragraphId: string, filter: AnnotationFilter = "all") {
+  return pack.ao_annotations
+    .filter((a) => a.paragraph_id === paragraphId && hasAO(a, filter))
+    .sort((a, b) => a.annotation_order - b.annotation_order);
+}
+
+export default function AnnotatedEssayPack() {
+  const { pack, source, fallbackReason, isLoading } = useAnnotatedEssayPackContent();
 
   const [essayId, setEssayId] = useState(pack.annotated_essays[0].id);
   const [questionId, setQuestionId] = useState(pack.essay_questions[0].id);
@@ -62,6 +69,8 @@ export default function AnnotatedEssayPack() {
   const [drillFamily, setDrillFamily] = useState("All");
   const [drillCharacter, setDrillCharacter] = useState("All");
   const [drillAO, setDrillAO] = useState<"All" | Component2AO>("All");
+  const [drillDifficulty, setDrillDifficulty] = useState("All");
+  const [drillStatus, setDrillStatus] = useState("All");
   const [timedTarget, setTimedTarget] = useState("6");
   const [overlayParagraphId, setOverlayParagraphId] = useState("para_children_roles_2");
   const [overlayRevealed, setOverlayRevealed] = useState(false);
@@ -69,15 +78,33 @@ export default function AnnotatedEssayPack() {
   const [practiceResponse, setPracticeResponse] = useState("");
   const [showPracticeModel, setShowPracticeModel] = useState(false);
 
-  // Defensive lookups: if an admin retires a row, the previously-selected ID may
-  // not exist in the current pack. Fall back to the first available entry so the
-  // page keeps rendering instead of throwing.
   const essay = pack.annotated_essays.find((e) => e.id === essayId) ?? pack.annotated_essays[0];
-  const essayQuestion = getQuestion(essay.question_id) ?? pack.essay_questions[0];
-  const selectedQuestion = getQuestion(questionId) ?? pack.essay_questions[0];
-  const selectedPracticeQuestion =
-    getQuestion(practiceQuestionId) ?? pack.essay_questions[0];
-  const paragraphs = getEssayParagraphs(essay.id);
+  const essayQuestion = essay ? getQuestion(pack, essay.question_id) ?? pack.essay_questions[0] : pack.essay_questions[0];
+  const selectedQuestion = getQuestion(pack, questionId) ?? pack.essay_questions[0];
+  const selectedPracticeQuestion = getQuestion(pack, practiceQuestionId) ?? pack.essay_questions[0];
+  const paragraphs = useMemo(
+    () => (essay ? getEssayParagraphs(pack, essay.id) : []),
+    [essay, pack],
+  );
+
+  useEffect(() => {
+    if (!pack.essay_questions.some((question) => question.id === questionId) && pack.essay_questions[0]) {
+      setQuestionId(pack.essay_questions[0].id);
+    }
+    if (!pack.essay_questions.some((question) => question.id === practiceQuestionId) && pack.essay_questions[0]) {
+      setPracticeQuestionId(pack.essay_questions[0].id);
+    }
+    if (!pack.annotated_essays.some((essayItem) => essayItem.id === essayId) && pack.annotated_essays[0]) {
+      setEssayId(pack.annotated_essays[0].id);
+    }
+  }, [essayId, pack, practiceQuestionId, questionId]);
+
+  useEffect(() => {
+    if (!paragraphs.some((paragraph) => paragraph.id === overlayParagraphId) && paragraphs[0]) {
+      setOverlayParagraphId(paragraphs[0].id);
+      setOverlayRevealed(false);
+    }
+  }, [overlayParagraphId, paragraphs]);
 
   const themes = useMemo(
     () => ["All", ...Array.from(new Set(pack.paragraph_stems.map((s) => s.theme))).sort()],
@@ -96,6 +123,17 @@ export default function AnnotatedEssayPack() {
     ],
     [pack.paragraph_stems],
   );
+  const difficulties = useMemo(
+    () => ["All", ...Array.from(new Set(pack.paragraph_stems.map((s) => s.difficulty_level))).sort()],
+    [pack.paragraph_stems],
+  );
+  const reviewStatuses = useMemo(
+    () => [
+      "All",
+      ...Array.from(new Set(pack.paragraph_stems.map((s) => s.provenance.verification_status))).sort(),
+    ],
+    [pack.paragraph_stems],
+  );
 
   const filteredStems = useMemo(() => {
     return pack.paragraph_stems.filter((stem) => {
@@ -103,30 +141,48 @@ export default function AnnotatedEssayPack() {
       if (drillFamily !== "All" && stem.question_family !== drillFamily) return false;
       if (drillCharacter !== "All" && !stem.compatible_characters.includes(drillCharacter)) return false;
       if (drillAO !== "All" && !stem.ao_focus.includes(drillAO)) return false;
+      if (drillDifficulty !== "All" && stem.difficulty_level !== drillDifficulty) return false;
+      if (drillStatus !== "All" && stem.provenance.verification_status !== drillStatus) return false;
       return stem.timed_target_minutes <= Number(timedTarget || "60");
     });
-  }, [drillTheme, drillFamily, drillCharacter, drillAO, pack.paragraph_stems, timedTarget]);
+  }, [drillTheme, drillFamily, drillCharacter, drillAO, drillDifficulty, drillStatus, pack.paragraph_stems, timedTarget]);
 
   const activeDrill = filteredStems[0] ?? pack.paragraph_stems[0];
-  const routeEssay = pack.annotated_essays.find((e) => e.question_id === selectedQuestion.id);
-  const routeStems = pack.paragraph_stems.filter((s) =>
+  const routeEssay = selectedQuestion
+    ? pack.annotated_essays.find((e) => e.question_id === selectedQuestion.id)
+    : undefined;
+  const routeStems = selectedQuestion ? pack.paragraph_stems.filter((s) =>
     selectedQuestion.linked_paragraph_stem_ids.includes(s.id),
-  );
-  const routeQuotes = pack.quote_method_links.filter(
+  ) : [];
+  const routeQuotes = selectedQuestion ? pack.quote_method_links.filter(
     (q) => q.essay_question_id === selectedQuestion.id,
-  );
-  const overlayParagraph =
-    pack.essay_paragraphs.find((p) => p.id === overlayParagraphId) ??
-    pack.essay_paragraphs[0];
-  const overlayAnnotations = getParagraphAnnotations(overlayParagraph.id, "all");
-  const practiceEssay = pack.annotated_essays.find(
+  ) : [];
+  const overlayParagraph = pack.essay_paragraphs.find((p) => p.id === overlayParagraphId) ?? paragraphs[0];
+  const overlayAnnotations = overlayParagraph ? getParagraphAnnotations(pack, overlayParagraph.id, "all") : [];
+  const practiceEssay = selectedPracticeQuestion ? pack.annotated_essays.find(
     (e) => e.question_id === selectedPracticeQuestion.id,
-  );
-  const practiceStems = pack.paragraph_stems.filter((s) =>
+  ) : undefined;
+  const practiceStems = selectedPracticeQuestion ? pack.paragraph_stems.filter((s) =>
     selectedPracticeQuestion.linked_paragraph_stem_ids.includes(s.id),
-  );
+  ) : [];
   const wordCount = practiceResponse.trim().split(/\s+/).filter(Boolean).length;
 
+  if (!essay || !essayQuestion || !selectedQuestion || !selectedPracticeQuestion) {
+    return (
+      <div className="max-w-[960px] mx-auto px-6 py-12">
+        <Panel icon={BookOpen} eyebrow="Annotated essay reader" title="No Essay Content Available">
+          <p className="text-sm text-ink-muted">
+            No annotated essay content is available from Supabase or the bundled fallback data.
+          </p>
+          {import.meta.env.DEV && fallbackReason && (
+            <pre className="mt-4 whitespace-pre-wrap border border-rule bg-paper-dim/40 p-3 text-xs">
+              {fallbackReason}
+            </pre>
+          )}
+        </Panel>
+      </div>
+    );
+  }
   return (
     <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-8 lg:py-12">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
@@ -139,12 +195,21 @@ export default function AnnotatedEssayPack() {
         </div>
         <div className="border border-rule bg-paper p-3 rounded-sm text-xs max-w-sm">
           <p className="font-mono uppercase tracking-wider text-ink-muted mb-1">Review status</p>
-          <StatusBadge status={pack.provenance.verification_status} />
-          <p className="mt-1 text-ink-muted">
-            Content source: {source === "supabase" ? "live Supabase" : "bundled seed"}
-            {source === "seed" && fallbackReason ? ` (${fallbackReason})` : null}
-          </p>
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge status={pack.provenance.verification_status} reviewed={pack.provenance.reviewed} />
+            <span className="rounded-sm border border-rule px-2 py-1 font-mono uppercase tracking-wider">
+              {source === "supabase" ? "Live Supabase" : "Bundled fallback"}
+            </span>
+            {isLoading && (
+              <span className="rounded-sm border border-rule px-2 py-1 font-mono uppercase tracking-wider">
+                Loading live data
+              </span>
+            )}
+          </div>
           <p className="mt-2 text-ink-muted">{pack.ao_policy_note}</p>
+          {import.meta.env.DEV && source === "seed" && fallbackReason && (
+            <p className="mt-2 text-ink-muted">{fallbackReason}</p>
+          )}
         </div>
       </header>
 
@@ -181,12 +246,13 @@ export default function AnnotatedEssayPack() {
                 <Meta label="Target" value={`${essay.target_band} · ${essay.estimated_mark_range}`} />
                 <Meta label="Timing" value={`${essay.timed_condition_minutes} minutes · ${essay.word_count_band} words`} />
                 <Meta label="Source" value={essay.provenance.source} />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <StatusBadge status={essay.provenance.verification_status} />
-                <StatusBadge status={essayQuestion.provenance.verification_status} labelPrefix="Question" />
+                <Meta label="Status" value={formatStatus(essay.provenance.verification_status)} />
               </div>
               <p className="mt-3 text-sm text-ink-muted">{essay.thesis}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <StatusBadge status={essay.provenance.verification_status} reviewed={essay.provenance.reviewed} />
+                <StatusBadge status={essayQuestion.provenance.verification_status} reviewed={essayQuestion.provenance.reviewed} labelPrefix="Question" />
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -209,7 +275,7 @@ export default function AnnotatedEssayPack() {
                 <EssayParagraphBlock
                   key={paragraph.id}
                   paragraph={paragraph}
-                  annotations={getParagraphAnnotations(paragraph.id, annotationFilter)}
+                  annotations={getParagraphAnnotations(pack, paragraph.id, annotationFilter)}
                   hidden={annotationFilter === "hide"}
                 />
               ))}
@@ -233,7 +299,7 @@ export default function AnnotatedEssayPack() {
                     <span className="label-eyebrow block mb-1">{question.theme}</span>
                     <span className="font-serif leading-snug">{question.question_text}</span>
                     <span className="mt-2 block">
-                      <StatusBadge status={question.provenance.verification_status} />
+                      <StatusBadge status={question.provenance.verification_status} reviewed={question.provenance.reviewed} />
                     </span>
                   </button>
                 ))}
@@ -263,6 +329,7 @@ export default function AnnotatedEssayPack() {
               <button
                 type="button"
                 onClick={() => setOverlayRevealed((value) => !value)}
+                disabled={!overlayParagraph}
                 className="self-end inline-flex items-center gap-1 px-3 py-1.5 text-xs border border-rule-strong rounded-sm bg-paper hover:bg-paper-dim"
               >
                 <Eye className="size-3" />
@@ -270,8 +337,12 @@ export default function AnnotatedEssayPack() {
               </button>
             </div>
             <div className="border border-rule bg-paper rounded-sm p-4">
-              <p className="font-serif text-base leading-relaxed">{overlayParagraph.paragraph_text}</p>
-              {!overlayRevealed && (
+              {overlayParagraph ? (
+                <p className="font-serif text-base leading-relaxed">{overlayParagraph.paragraph_text}</p>
+              ) : (
+                <p className="text-sm text-ink-muted">No paragraph-level structure is available for this essay yet.</p>
+              )}
+              {overlayParagraph && !overlayRevealed && (
                 <div className="mt-4 grid sm:grid-cols-4 gap-2">
                   {AO_OPTIONS.map((ao) => (
                     <div key={ao} className={`rounded-sm p-2 text-xs ${aoClass[ao]}`}>
@@ -280,7 +351,7 @@ export default function AnnotatedEssayPack() {
                   ))}
                 </div>
               )}
-              {overlayRevealed && (
+              {overlayParagraph && overlayRevealed && (
                 <AnnotationList annotations={overlayAnnotations} />
               )}
             </div>
@@ -294,6 +365,8 @@ export default function AnnotatedEssayPack() {
               <SelectField label="Question type" value={drillFamily} onChange={setDrillFamily} options={families} />
               <SelectField label="Character pair" value={drillCharacter} onChange={setDrillCharacter} options={characters} />
               <SelectField label="AO focus" value={drillAO} onChange={(value) => setDrillAO(value as "All" | Component2AO)} options={["All", ...AO_OPTIONS]} />
+              <SelectField label="Difficulty level" value={drillDifficulty} onChange={setDrillDifficulty} options={difficulties} />
+              <SelectField label="Review status" value={drillStatus} onChange={setDrillStatus} options={reviewStatuses} />
               <label className="text-xs">
                 <span className="label-eyebrow block mb-1">Timed target</span>
                 <select
@@ -309,7 +382,11 @@ export default function AnnotatedEssayPack() {
               </label>
             </div>
             <p className="mt-3 meta-mono">{filteredStems.length} matching stems</p>
-            <StemDrill stem={activeDrill} />
+            {activeDrill ? (
+              <StemDrill stem={activeDrill} />
+            ) : (
+              <p className="mt-4 text-sm text-ink-muted">No paragraph stems match those filters.</p>
+            )}
           </Panel>
 
           <Panel icon={Clock3} eyebrow="Timed essay practice" title="60-Minute Practice Link">
@@ -406,6 +483,7 @@ function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string;
 }
 
 function formatStatus(status: string) {
+  if (!status) return "Draft / incomplete";
   return status
     .split(/[\s_-]+/)
     .filter(Boolean)
@@ -415,21 +493,22 @@ function formatStatus(status: string) {
 
 function StatusBadge({
   status,
+  reviewed,
   labelPrefix,
 }: {
   status: AnnotatedContentVerificationStatus;
+  reviewed?: boolean;
   labelPrefix?: string;
 }) {
-  const className =
-    status === "approved"
-      ? "border-emerald-700/30 bg-emerald-50 text-emerald-900"
-      : status === "reviewed"
-        ? "border-sky-700/30 bg-sky-50 text-sky-900"
-        : status === "needs correction"
-          ? "border-amber-700/30 bg-amber-50 text-amber-900"
-          : status === "draft" || status === "retired"
-            ? "border-rule bg-paper-dim text-ink-muted"
-            : "border-primary/30 bg-highlight text-ink";
+  const normalized = status ? status.toLowerCase() : "";
+  const isReviewed = reviewed || normalized === "reviewed" || normalized === "approved";
+  const className = isReviewed
+    ? "border-emerald-700/30 bg-emerald-50 text-emerald-900"
+    : status === "needs correction"
+      ? "border-amber-700/30 bg-amber-50 text-amber-900"
+      : status === "draft" || status === "retired"
+        ? "border-rule bg-paper-dim text-ink-muted"
+        : "border-primary/30 bg-highlight text-ink";
 
   return (
     <span className={`inline-flex rounded-sm border px-2 py-1 text-[10px] font-mono uppercase tracking-wider ${className}`}>
@@ -564,7 +643,7 @@ function QuestionRouteView({
       <p className="label-eyebrow mb-1">{question.theme} · {question.marks} marks</p>
       <h3 className="font-serif text-xl leading-snug">{question.question_text}</h3>
       <div className="mt-2">
-        <StatusBadge status={question.provenance.verification_status} />
+        <StatusBadge status={question.provenance.verification_status} reviewed={question.provenance.reviewed} />
       </div>
       <div className="mt-4 grid gap-3">
         <Meta label="Thesis route" value={question.level_5_upgrade_moves[0]} />
@@ -620,8 +699,8 @@ function StemDrill({ stem }: { stem: ParagraphStem }) {
         {stem.ao_focus.map((ao) => (
           <span key={ao} className={`px-1.5 py-0.5 text-[10px] rounded-sm ${aoClass[ao]}`}>{ao}</span>
         ))}
-        <StatusBadge status={stem.provenance.verification_status} />
         <span className="meta-mono">{stem.theme} · {stem.timed_target_minutes} min</span>
+        <StatusBadge status={stem.provenance.verification_status} reviewed={stem.provenance.reviewed} />
       </div>
       <p className="font-serif text-lg leading-relaxed">{stem.stem_text}</p>
       <div className="mt-3 grid gap-2 text-xs">
