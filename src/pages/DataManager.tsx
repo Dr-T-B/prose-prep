@@ -12,6 +12,7 @@ import ContentInspector from "@/components/admin/ContentInspector";
 import ContentAudit from "@/components/admin/ContentAudit";
 import VocabularyAudit from "@/components/admin/VocabularyAudit";
 import ReviewQueue from "@/components/admin/ReviewQueue";
+import AnnotatedEssayReview from "@/components/admin/AnnotatedEssayReview";
 import UserManager from "@/components/admin/UserManager";
 import { DATASETS, type DatasetKey } from "@/lib/datasets";
 import { supabase } from "@/integrations/supabase/client";
@@ -163,6 +164,7 @@ export default function DataManager() {
               <Badge variant="destructive" className="tabular-nums h-5 px-1.5">{pendingCount}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="annotated-essays">Annotated essays</TabsTrigger>
           <TabsTrigger value="imports">Imports</TabsTrigger>
           <TabsTrigger value="validation">Validation</TabsTrigger>
           <TabsTrigger value="history" className="gap-2">
@@ -312,6 +314,10 @@ export default function DataManager() {
             initialTable={reviewSeed.table}
             initialSearch={reviewSeed.search}
           />
+        </TabsContent>
+
+        <TabsContent value="annotated-essays" className="mt-6">
+          <AnnotatedEssayReview />
         </TabsContent>
 
         <TabsContent value="imports" className="mt-6">

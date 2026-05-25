@@ -17,16 +17,15 @@ import {
 import {
   annotatedEssayPracticePack,
   type AOAnnotation,
+  type AnnotatedContentVerificationStatus,
   type AnnotatedEssayPracticePack as AnnotatedEssayPracticePackData,
   type Component2AO,
   type EssayParagraph,
   type EssayQuestion,
   type ParagraphStem,
+  type QuoteMethodLink,
 } from "@/data/annotatedEssayPracticePack";
-import {
-  loadAnnotatedEssayPracticePack,
-  type AnnotatedEssayPackLoadResult,
-} from "@/lib/prose/annotatedEssays";
+import { useAnnotatedEssayPackContent } from "@/hooks/useAnnotatedEssayPackContent";
 
 const AO_OPTIONS: Component2AO[] = ["AO1", "AO2", "AO3", "AO4"];
 type AnnotationFilter = "all" | "hide" | Component2AO;
@@ -61,14 +60,10 @@ function getParagraphAnnotations(pack: AnnotatedEssayPracticePackData, paragraph
 }
 
 export default function AnnotatedEssayPack() {
-  const [packResult, setPackResult] = useState<AnnotatedEssayPackLoadResult>({
-    pack: annotatedEssayPracticePack,
-    source: "fallback",
-    diagnostics: [],
-  });
-  const [isLoadingLiveData, setIsLoadingLiveData] = useState(true);
-  const [essayId, setEssayId] = useState(annotatedEssayPracticePack.annotated_essays[0].id);
-  const [questionId, setQuestionId] = useState(annotatedEssayPracticePack.essay_questions[0].id);
+  const { pack, source, fallbackReason, isLoading } = useAnnotatedEssayPackContent();
+
+  const [essayId, setEssayId] = useState(pack.annotated_essays[0].id);
+  const [questionId, setQuestionId] = useState(pack.essay_questions[0].id);
   const [annotationFilter, setAnnotationFilter] = useState<AnnotationFilter>("all");
   const [drillTheme, setDrillTheme] = useState("All");
   const [drillFamily, setDrillFamily] = useState("All");
@@ -82,23 +77,6 @@ export default function AnnotatedEssayPack() {
   const [practiceQuestionId, setPracticeQuestionId] = useState("eq_ht_at_children_roles_20260524");
   const [practiceResponse, setPracticeResponse] = useState("");
   const [showPracticeModel, setShowPracticeModel] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoadingLiveData(true);
-    loadAnnotatedEssayPracticePack()
-      .then((result) => {
-        if (!cancelled) setPackResult(result);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingLiveData(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const pack = packResult.pack;
 
   const essay = pack.annotated_essays.find((e) => e.id === essayId) ?? pack.annotated_essays[0];
   const essayQuestion = essay ? getQuestion(pack, essay.question_id) ?? pack.essay_questions[0] : pack.essay_questions[0];
@@ -196,16 +174,15 @@ export default function AnnotatedEssayPack() {
           <p className="text-sm text-ink-muted">
             No annotated essay content is available from Supabase or the bundled fallback data.
           </p>
-          {import.meta.env.DEV && packResult.diagnostics.length > 0 && (
+          {import.meta.env.DEV && fallbackReason && (
             <pre className="mt-4 whitespace-pre-wrap border border-rule bg-paper-dim/40 p-3 text-xs">
-              {packResult.diagnostics.join("\n")}
+              {fallbackReason}
             </pre>
           )}
         </Panel>
       </div>
     );
   }
-
   return (
     <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-8 lg:py-12">
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
@@ -221,17 +198,17 @@ export default function AnnotatedEssayPack() {
           <div className="flex flex-wrap gap-2">
             <StatusBadge status={pack.provenance.verification_status} reviewed={pack.provenance.reviewed} />
             <span className="rounded-sm border border-rule px-2 py-1 font-mono uppercase tracking-wider">
-              {packResult.source === "supabase" ? "Live Supabase" : "Bundled fallback"}
+              {source === "supabase" ? "Live Supabase" : "Bundled fallback"}
             </span>
-            {isLoadingLiveData && (
+            {isLoading && (
               <span className="rounded-sm border border-rule px-2 py-1 font-mono uppercase tracking-wider">
                 Loading live data
               </span>
             )}
           </div>
           <p className="mt-2 text-ink-muted">{pack.ao_policy_note}</p>
-          {import.meta.env.DEV && packResult.source === "fallback" && packResult.diagnostics.length > 0 && (
-            <p className="mt-2 text-ink-muted">{packResult.diagnostics[0]}</p>
+          {import.meta.env.DEV && source === "seed" && fallbackReason && (
+            <p className="mt-2 text-ink-muted">{fallbackReason}</p>
           )}
         </div>
       </header>
@@ -272,8 +249,9 @@ export default function AnnotatedEssayPack() {
                 <Meta label="Status" value={formatStatus(essay.provenance.verification_status)} />
               </div>
               <p className="mt-3 text-sm text-ink-muted">{essay.thesis}</p>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <StatusBadge status={essay.provenance.verification_status} reviewed={essay.provenance.reviewed} />
+                <StatusBadge status={essayQuestion.provenance.verification_status} reviewed={essayQuestion.provenance.reviewed} labelPrefix="Question" />
               </div>
             </div>
 
@@ -513,17 +491,28 @@ function formatStatus(status: string) {
     .join(" ");
 }
 
-function StatusBadge({ status, reviewed }: { status: string; reviewed?: boolean }) {
-  const normalized = status.toLowerCase();
+function StatusBadge({
+  status,
+  reviewed,
+  labelPrefix,
+}: {
+  status: AnnotatedContentVerificationStatus;
+  reviewed?: boolean;
+  labelPrefix?: string;
+}) {
+  const normalized = status ? status.toLowerCase() : "";
   const isReviewed = reviewed || normalized === "reviewed" || normalized === "approved";
-  const badgeClass = isReviewed
-    ? "border-green-700/30 bg-green-50 text-green-900"
-    : normalized.includes("draft") || normalized.includes("incomplete")
+  const className = isReviewed
+    ? "border-emerald-700/30 bg-emerald-50 text-emerald-900"
+    : status === "needs correction"
       ? "border-amber-700/30 bg-amber-50 text-amber-900"
-      : "border-primary/30 bg-highlight text-ink";
+      : status === "draft" || status === "retired"
+        ? "border-rule bg-paper-dim text-ink-muted"
+        : "border-primary/30 bg-highlight text-ink";
 
   return (
-    <span className={`inline-flex rounded-sm border px-2 py-1 text-[10px] font-mono uppercase tracking-wider ${badgeClass}`}>
+    <span className={`inline-flex rounded-sm border px-2 py-1 text-[10px] font-mono uppercase tracking-wider ${className}`}>
+      {labelPrefix ? `${labelPrefix}: ` : null}
       {formatStatus(status)}
     </span>
   );
@@ -647,7 +636,7 @@ function QuestionRouteView({
   question: EssayQuestion;
   essayTitle?: string;
   stems: ParagraphStem[];
-  quotes: Array<{ quotation: string; method: string; ao2_explanation: string; ao4_comparative_partner: string }>;
+  quotes: QuoteMethodLink[];
 }) {
   return (
     <div className="border border-rule bg-paper rounded-sm p-4">
@@ -669,13 +658,19 @@ function QuestionRouteView({
         <div className="mt-4">
           <p className="label-eyebrow mb-2">Key quote clusters</p>
           <div className="grid gap-2">
-            {quotes.map((quote) => (
-              <div key={`${quote.quotation}-${quote.method}`} className="border border-rule bg-paper-dim/35 rounded-sm p-2 text-xs">
-                <p className="font-serif text-sm">"{quote.quotation}" · {quote.method}</p>
-                <p className="mt-1 text-ink-muted">{quote.ao2_explanation}</p>
-                <p className="mt-1"><strong>AO4 partner:</strong> {quote.ao4_comparative_partner}</p>
-              </div>
-            ))}
+            {quotes.map((quote) => {
+              const needsCorrection = quote.verification_status === "needs correction";
+              return (
+                <div key={`${quote.quotation}-${quote.method}`} className="border border-rule bg-paper-dim/35 rounded-sm p-2 text-xs">
+                  {needsCorrection && (
+                    <StatusBadge status="needs correction" labelPrefix="Quote" />
+                  )}
+                  <p className="font-serif text-sm">"{quote.quotation}" · {quote.method}</p>
+                  <p className="mt-1 text-ink-muted">{quote.ao2_explanation}</p>
+                  <p className="mt-1"><strong>AO4 partner:</strong> {quote.ao4_comparative_partner}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -692,8 +687,14 @@ function QuestionRouteView({
 }
 
 function StemDrill({ stem }: { stem: ParagraphStem }) {
+  const needsCorrection = stem.provenance.verification_status === "needs correction";
   return (
     <div className="mt-4 border border-rule bg-paper rounded-sm p-4">
+      {needsCorrection && (
+        <div className="mb-2">
+          <StatusBadge status="needs correction" labelPrefix="Stem" />
+        </div>
+      )}
       <div className="mb-2 flex flex-wrap items-center gap-1">
         {stem.ao_focus.map((ao) => (
           <span key={ao} className={`px-1.5 py-0.5 text-[10px] rounded-sm ${aoClass[ao]}`}>{ao}</span>

@@ -1,15 +1,22 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
 import { annotatedEssayPracticePack } from "@/data/annotatedEssayPracticePack";
 import { completeAnnotatedEssayFixture } from "@/test/fixtures/annotatedEssayPracticePack.fixture";
 
-const loadAnnotatedEssayPracticePackMock = vi.hoisted(() => vi.fn());
+const useAnnotatedEssayPackContentMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/prose/annotatedEssays", () => ({
-  loadAnnotatedEssayPracticePack: loadAnnotatedEssayPracticePackMock,
+vi.mock("@/hooks/useAnnotatedEssayPackContent", () => ({
+  useAnnotatedEssayPackContent: useAnnotatedEssayPackContentMock,
 }));
 
 import AnnotatedEssayPack from "./AnnotatedEssayPack";
+
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 async function renderSettledAnnotatedEssayPack() {
   const view = render(<AnnotatedEssayPack />);
@@ -19,11 +26,12 @@ async function renderSettledAnnotatedEssayPack() {
 
 describe("AnnotatedEssayPack", () => {
   beforeEach(() => {
-    loadAnnotatedEssayPracticePackMock.mockReset();
-    loadAnnotatedEssayPracticePackMock.mockResolvedValue({
+    useAnnotatedEssayPackContentMock.mockReset();
+    useAnnotatedEssayPackContentMock.mockReturnValue({
       pack: annotatedEssayPracticePack,
-      source: "fallback",
-      diagnostics: [],
+      source: "seed",
+      fallbackReason: undefined,
+      isLoading: false,
     });
   });
 
@@ -74,10 +82,11 @@ describe("AnnotatedEssayPack", () => {
         },
       ],
     };
-    loadAnnotatedEssayPracticePackMock.mockResolvedValueOnce({
+    useAnnotatedEssayPackContentMock.mockReturnValueOnce({
       pack: livePack,
       source: "supabase",
-      diagnostics: [],
+      fallbackReason: undefined,
+      isLoading: false,
     });
 
     await renderSettledAnnotatedEssayPack();
@@ -89,10 +98,11 @@ describe("AnnotatedEssayPack", () => {
   });
 
   it("keeps bundled fallback seed data visible when live data is unavailable", async () => {
-    loadAnnotatedEssayPracticePackMock.mockResolvedValueOnce({
+    useAnnotatedEssayPackContentMock.mockReturnValueOnce({
       pack: annotatedEssayPracticePack,
-      source: "fallback",
-      diagnostics: ["Supabase returned no essay_questions rows; bundled seed data is being used."],
+      source: "seed",
+      fallbackReason: "Supabase returned no essay_questions rows; bundled seed data is being used.",
+      isLoading: false,
     });
 
     await renderSettledAnnotatedEssayPack();

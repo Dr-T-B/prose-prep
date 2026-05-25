@@ -11,20 +11,21 @@ export type AnnotationType =
   | "structural link"
   | "conclusion";
 
-export type ContentReviewStatus =
+export type AnnotatedContentVerificationStatus =
+  | "draft"
   | "teacher review required"
   | "reviewed"
   | "approved"
-  | "draft"
-  | "incomplete draft"
-  | string;
+  | "needs correction"
+  | "retired"
+  | "incomplete draft";
 
 export type AnnotatedContentProvenance = {
   source: string;
   content_type: string;
   exam_board: string;
   component: string;
-  verification_status: ContentReviewStatus;
+  verification_status: AnnotatedContentVerificationStatus;
   reviewed: boolean;
 };
 
@@ -134,7 +135,7 @@ export type QuoteMethodLink = {
   ao2_explanation: string;
   ao4_comparative_partner: string;
   quote_type: string;
-  verification_status: ContentReviewStatus;
+  verification_status: AnnotatedContentVerificationStatus;
   provenance: AnnotatedContentProvenance;
 };
 
