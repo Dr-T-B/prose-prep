@@ -36,6 +36,7 @@ import ParagraphBuilderPage from "./pages/ParagraphBuilderPage";
 import EssayMarker from "./pages/EssayMarker";
 import AnnotatedEssayPack from "./pages/AnnotatedEssayPack";
 import Phase3Dashboard from "./pages/Phase3Dashboard";
+import Phase4Workspace from "./pages/Phase4Workspace";
 import ThemeWheel from "./components/ThemeWheel";
 import ComparativeMatrix from "./components/ComparativeMatrix";
 import { ContentProvider } from "./lib/ContentProvider";
@@ -67,6 +68,7 @@ const App = () => (
                   <Route path="/builder" element={<EssayBuilder />} />
                   <Route path="/paragraph-builder" element={<ParagraphBuilderPage />} />
                   <Route path="/paragraph-engine" element={<ParagraphEnginePage />} />
+                  <Route path="/phase4" element={<Phase4Workspace />} />
                   <Route path="/timed" element={<TimedPractice />} />
                   <Route path="/toolkit" element={<RetrievalToolkit />} />
                   <Route path="/library" element={<Library />} />
