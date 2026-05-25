@@ -1,7 +1,17 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render as rtlRender, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
 import AnnotatedEssayPack from "./AnnotatedEssayPack";
 import { completeAnnotatedEssayFixture } from "@/test/fixtures/annotatedEssayPracticePack.fixture";
+
+// The page now uses react-query (via useAnnotatedEssayPackContent). The hook
+// falls back to the bundled seed when Supabase is unreachable, so tests do not
+// need a network mock — they just need a QueryClient in scope.
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return rtlRender(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 describe("AnnotatedEssayPack", () => {
   it("provides a complete reviewed-status fixture without Component 2 AO5 scoring", () => {

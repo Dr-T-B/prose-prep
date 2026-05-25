@@ -15,13 +15,15 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
-  annotatedEssayPracticePack,
   type AOAnnotation,
+  type AnnotatedContentVerificationStatus,
   type Component2AO,
   type EssayParagraph,
   type EssayQuestion,
   type ParagraphStem,
+  type QuoteMethodLink,
 } from "@/data/annotatedEssayPracticePack";
+import { useAnnotatedEssayPackContent } from "@/hooks/useAnnotatedEssayPackContent";
 
 const AO_OPTIONS: Component2AO[] = ["AO1", "AO2", "AO3", "AO4"];
 type AnnotationFilter = "all" | "hide" | Component2AO;
@@ -39,25 +41,22 @@ function hasAO(annotation: AOAnnotation, filter: AnnotationFilter) {
   return annotation.ao_tags.includes(filter);
 }
 
-function getQuestion(questionId: string) {
-  return annotatedEssayPracticePack.essay_questions.find((q) => q.id === questionId);
-}
-
-function getEssayParagraphs(essayId: string) {
-  return annotatedEssayPracticePack.essay_paragraphs
-    .filter((p) => p.essay_id === essayId)
-    .sort((a, b) => a.paragraph_number - b.paragraph_number);
-}
-
-function getParagraphAnnotations(paragraphId: string, filter: AnnotationFilter = "all") {
-  return annotatedEssayPracticePack.ao_annotations
-    .filter((a) => a.paragraph_id === paragraphId && hasAO(a, filter))
-    .sort((a, b) => a.annotation_order - b.annotation_order);
-}
-
 export default function AnnotatedEssayPack() {
-  const [essayId, setEssayId] = useState(annotatedEssayPracticePack.annotated_essays[0].id);
-  const [questionId, setQuestionId] = useState(annotatedEssayPracticePack.essay_questions[0].id);
+  const { pack, source, fallbackReason } = useAnnotatedEssayPackContent();
+
+  const getQuestion = (questionId: string) =>
+    pack.essay_questions.find((q) => q.id === questionId);
+  const getEssayParagraphs = (essayId: string) =>
+    pack.essay_paragraphs
+      .filter((p) => p.essay_id === essayId)
+      .sort((a, b) => a.paragraph_number - b.paragraph_number);
+  const getParagraphAnnotations = (paragraphId: string, filter: AnnotationFilter = "all") =>
+    pack.ao_annotations
+      .filter((a) => a.paragraph_id === paragraphId && hasAO(a, filter))
+      .sort((a, b) => a.annotation_order - b.annotation_order);
+
+  const [essayId, setEssayId] = useState(pack.annotated_essays[0].id);
+  const [questionId, setQuestionId] = useState(pack.essay_questions[0].id);
   const [annotationFilter, setAnnotationFilter] = useState<AnnotationFilter>("all");
   const [drillTheme, setDrillTheme] = useState("All");
   const [drillFamily, setDrillFamily] = useState("All");
@@ -70,54 +69,60 @@ export default function AnnotatedEssayPack() {
   const [practiceResponse, setPracticeResponse] = useState("");
   const [showPracticeModel, setShowPracticeModel] = useState(false);
 
-  const essay = annotatedEssayPracticePack.annotated_essays.find((e) => e.id === essayId)!;
-  const essayQuestion = getQuestion(essay.question_id)!;
-  const selectedQuestion = getQuestion(questionId)!;
-  const selectedPracticeQuestion = getQuestion(practiceQuestionId)!;
+  // Defensive lookups: if an admin retires a row, the previously-selected ID may
+  // not exist in the current pack. Fall back to the first available entry so the
+  // page keeps rendering instead of throwing.
+  const essay = pack.annotated_essays.find((e) => e.id === essayId) ?? pack.annotated_essays[0];
+  const essayQuestion = getQuestion(essay.question_id) ?? pack.essay_questions[0];
+  const selectedQuestion = getQuestion(questionId) ?? pack.essay_questions[0];
+  const selectedPracticeQuestion =
+    getQuestion(practiceQuestionId) ?? pack.essay_questions[0];
   const paragraphs = getEssayParagraphs(essay.id);
 
   const themes = useMemo(
-    () => ["All", ...Array.from(new Set(annotatedEssayPracticePack.paragraph_stems.map((s) => s.theme))).sort()],
-    [],
+    () => ["All", ...Array.from(new Set(pack.paragraph_stems.map((s) => s.theme))).sort()],
+    [pack.paragraph_stems],
   );
   const families = useMemo(
-    () => ["All", ...Array.from(new Set(annotatedEssayPracticePack.paragraph_stems.map((s) => s.question_family))).sort()],
-    [],
+    () => ["All", ...Array.from(new Set(pack.paragraph_stems.map((s) => s.question_family))).sort()],
+    [pack.paragraph_stems],
   );
   const characters = useMemo(
     () => [
       "All",
       ...Array.from(
-        new Set(annotatedEssayPracticePack.paragraph_stems.flatMap((s) => s.compatible_characters)),
+        new Set(pack.paragraph_stems.flatMap((s) => s.compatible_characters)),
       ).sort(),
     ],
-    [],
+    [pack.paragraph_stems],
   );
 
   const filteredStems = useMemo(() => {
-    return annotatedEssayPracticePack.paragraph_stems.filter((stem) => {
+    return pack.paragraph_stems.filter((stem) => {
       if (drillTheme !== "All" && stem.theme !== drillTheme) return false;
       if (drillFamily !== "All" && stem.question_family !== drillFamily) return false;
       if (drillCharacter !== "All" && !stem.compatible_characters.includes(drillCharacter)) return false;
       if (drillAO !== "All" && !stem.ao_focus.includes(drillAO)) return false;
       return stem.timed_target_minutes <= Number(timedTarget || "60");
     });
-  }, [drillTheme, drillFamily, drillCharacter, drillAO, timedTarget]);
+  }, [drillTheme, drillFamily, drillCharacter, drillAO, pack.paragraph_stems, timedTarget]);
 
-  const activeDrill = filteredStems[0] ?? annotatedEssayPracticePack.paragraph_stems[0];
-  const routeEssay = annotatedEssayPracticePack.annotated_essays.find((e) => e.question_id === selectedQuestion.id);
-  const routeStems = annotatedEssayPracticePack.paragraph_stems.filter((s) =>
+  const activeDrill = filteredStems[0] ?? pack.paragraph_stems[0];
+  const routeEssay = pack.annotated_essays.find((e) => e.question_id === selectedQuestion.id);
+  const routeStems = pack.paragraph_stems.filter((s) =>
     selectedQuestion.linked_paragraph_stem_ids.includes(s.id),
   );
-  const routeQuotes = annotatedEssayPracticePack.quote_method_links.filter(
+  const routeQuotes = pack.quote_method_links.filter(
     (q) => q.essay_question_id === selectedQuestion.id,
   );
-  const overlayParagraph = annotatedEssayPracticePack.essay_paragraphs.find((p) => p.id === overlayParagraphId)!;
+  const overlayParagraph =
+    pack.essay_paragraphs.find((p) => p.id === overlayParagraphId) ??
+    pack.essay_paragraphs[0];
   const overlayAnnotations = getParagraphAnnotations(overlayParagraph.id, "all");
-  const practiceEssay = annotatedEssayPracticePack.annotated_essays.find(
+  const practiceEssay = pack.annotated_essays.find(
     (e) => e.question_id === selectedPracticeQuestion.id,
   );
-  const practiceStems = annotatedEssayPracticePack.paragraph_stems.filter((s) =>
+  const practiceStems = pack.paragraph_stems.filter((s) =>
     selectedPracticeQuestion.linked_paragraph_stem_ids.includes(s.id),
   );
   const wordCount = practiceResponse.trim().split(/\s+/).filter(Boolean).length;
@@ -127,23 +132,27 @@ export default function AnnotatedEssayPack() {
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="label-eyebrow mb-1">Pearson Edexcel · 9ET0/02 · Component 2 Prose</p>
-          <h1 className="font-serif text-3xl lg:text-4xl">{annotatedEssayPracticePack.title}</h1>
+          <h1 className="font-serif text-3xl lg:text-4xl">{pack.title}</h1>
           <p className="mt-2 max-w-4xl text-sm text-ink-muted leading-relaxed">
-            {annotatedEssayPracticePack.description}
+            {pack.description}
           </p>
         </div>
         <div className="border border-rule bg-paper p-3 rounded-sm text-xs max-w-sm">
           <p className="font-mono uppercase tracking-wider text-ink-muted mb-1">Review status</p>
-          <p className="font-medium">{annotatedEssayPracticePack.provenance.verification_status}</p>
-          <p className="mt-2 text-ink-muted">{annotatedEssayPracticePack.ao_policy_note}</p>
+          <StatusBadge status={pack.provenance.verification_status} />
+          <p className="mt-1 text-ink-muted">
+            Content source: {source === "supabase" ? "live Supabase" : "bundled seed"}
+            {source === "seed" && fallbackReason ? ` (${fallbackReason})` : null}
+          </p>
+          <p className="mt-2 text-ink-muted">{pack.ao_policy_note}</p>
         </div>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Metric icon={BookOpen} label="Past-paper prompts" value={annotatedEssayPracticePack.essay_questions.length} />
-        <Metric icon={PenLine} label="Annotated essays" value={annotatedEssayPracticePack.annotated_essays.length} />
-        <Metric icon={Layers3} label="AO spans" value={annotatedEssayPracticePack.ao_annotations.length} />
-        <Metric icon={ListChecks} label="Paragraph stems" value={annotatedEssayPracticePack.paragraph_stems.length} />
+        <Metric icon={BookOpen} label="Past-paper prompts" value={pack.essay_questions.length} />
+        <Metric icon={PenLine} label="Annotated essays" value={pack.annotated_essays.length} />
+        <Metric icon={Layers3} label="AO spans" value={pack.ao_annotations.length} />
+        <Metric icon={ListChecks} label="Paragraph stems" value={pack.paragraph_stems.length} />
       </section>
 
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
@@ -159,7 +168,7 @@ export default function AnnotatedEssayPack() {
                 onChange={(event) => setEssayId(event.target.value)}
                 className="border border-rule bg-paper rounded-sm px-2 py-1 text-xs"
               >
-                {annotatedEssayPracticePack.annotated_essays.map((item) => (
+                {pack.annotated_essays.map((item) => (
                   <option key={item.id} value={item.id}>{item.title}</option>
                 ))}
               </select>
@@ -172,6 +181,10 @@ export default function AnnotatedEssayPack() {
                 <Meta label="Target" value={`${essay.target_band} · ${essay.estimated_mark_range}`} />
                 <Meta label="Timing" value={`${essay.timed_condition_minutes} minutes · ${essay.word_count_band} words`} />
                 <Meta label="Source" value={essay.provenance.source} />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <StatusBadge status={essay.provenance.verification_status} />
+                <StatusBadge status={essayQuestion.provenance.verification_status} labelPrefix="Question" />
               </div>
               <p className="mt-3 text-sm text-ink-muted">{essay.thesis}</p>
             </div>
@@ -206,7 +219,7 @@ export default function AnnotatedEssayPack() {
           <Panel icon={Route} eyebrow="Essay route view" title="Question Route, Links And Pitfalls">
             <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
               <div className="space-y-2">
-                {annotatedEssayPracticePack.essay_questions.map((question) => (
+                {pack.essay_questions.map((question) => (
                   <button
                     key={question.id}
                     type="button"
@@ -219,6 +232,9 @@ export default function AnnotatedEssayPack() {
                   >
                     <span className="label-eyebrow block mb-1">{question.theme}</span>
                     <span className="font-serif leading-snug">{question.question_text}</span>
+                    <span className="mt-2 block">
+                      <StatusBadge status={question.provenance.verification_status} />
+                    </span>
                   </button>
                 ))}
               </div>
@@ -308,7 +324,7 @@ export default function AnnotatedEssayPack() {
                 }}
                 className="w-full border border-rule bg-paper rounded-sm px-2 py-1.5 text-sm"
               >
-                {annotatedEssayPracticePack.essay_questions.map((question) => (
+                {pack.essay_questions.map((question) => (
                   <option key={question.id} value={question.id}>{question.question_text}</option>
                 ))}
               </select>
@@ -360,7 +376,7 @@ export default function AnnotatedEssayPack() {
 
           <Panel icon={Sparkles} eyebrow="Misconception and upgrade engine" title="Common Weaknesses">
             <div className="space-y-3">
-              {annotatedEssayPracticePack.misconception_upgrades.map((item) => (
+              {pack.misconception_upgrades.map((item) => (
                 <article key={item.id} className="border border-rule bg-paper rounded-sm p-3">
                   <h3 className="font-serif text-base">{item.weakness}</h3>
                   <p className="text-xs text-ink-muted mt-1">{item.diagnosis}</p>
@@ -386,6 +402,40 @@ function Metric({ icon: Icon, label, value }: { icon: LucideIcon; label: string;
       <p className="font-serif text-3xl">{value}</p>
       <p className="label-eyebrow">{label}</p>
     </div>
+  );
+}
+
+function formatStatus(status: string) {
+  return status
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function StatusBadge({
+  status,
+  labelPrefix,
+}: {
+  status: AnnotatedContentVerificationStatus;
+  labelPrefix?: string;
+}) {
+  const className =
+    status === "approved"
+      ? "border-emerald-700/30 bg-emerald-50 text-emerald-900"
+      : status === "reviewed"
+        ? "border-sky-700/30 bg-sky-50 text-sky-900"
+        : status === "needs correction"
+          ? "border-amber-700/30 bg-amber-50 text-amber-900"
+          : status === "draft" || status === "retired"
+            ? "border-rule bg-paper-dim text-ink-muted"
+            : "border-primary/30 bg-highlight text-ink";
+
+  return (
+    <span className={`inline-flex rounded-sm border px-2 py-1 text-[10px] font-mono uppercase tracking-wider ${className}`}>
+      {labelPrefix ? `${labelPrefix}: ` : null}
+      {formatStatus(status)}
+    </span>
   );
 }
 
@@ -507,12 +557,15 @@ function QuestionRouteView({
   question: EssayQuestion;
   essayTitle?: string;
   stems: ParagraphStem[];
-  quotes: Array<{ quotation: string; method: string; ao2_explanation: string; ao4_comparative_partner: string }>;
+  quotes: QuoteMethodLink[];
 }) {
   return (
     <div className="border border-rule bg-paper rounded-sm p-4">
       <p className="label-eyebrow mb-1">{question.theme} · {question.marks} marks</p>
       <h3 className="font-serif text-xl leading-snug">{question.question_text}</h3>
+      <div className="mt-2">
+        <StatusBadge status={question.provenance.verification_status} />
+      </div>
       <div className="mt-4 grid gap-3">
         <Meta label="Thesis route" value={question.level_5_upgrade_moves[0]} />
         <Meta label="Paragraph route" value={question.likely_routes.join(" → ")} />
@@ -526,13 +579,19 @@ function QuestionRouteView({
         <div className="mt-4">
           <p className="label-eyebrow mb-2">Key quote clusters</p>
           <div className="grid gap-2">
-            {quotes.map((quote) => (
-              <div key={`${quote.quotation}-${quote.method}`} className="border border-rule bg-paper-dim/35 rounded-sm p-2 text-xs">
-                <p className="font-serif text-sm">"{quote.quotation}" · {quote.method}</p>
-                <p className="mt-1 text-ink-muted">{quote.ao2_explanation}</p>
-                <p className="mt-1"><strong>AO4 partner:</strong> {quote.ao4_comparative_partner}</p>
-              </div>
-            ))}
+            {quotes.map((quote) => {
+              const needsCorrection = quote.verification_status === "needs correction";
+              return (
+                <div key={`${quote.quotation}-${quote.method}`} className="border border-rule bg-paper-dim/35 rounded-sm p-2 text-xs">
+                  {needsCorrection && (
+                    <StatusBadge status="needs correction" labelPrefix="Quote" />
+                  )}
+                  <p className="font-serif text-sm">"{quote.quotation}" · {quote.method}</p>
+                  <p className="mt-1 text-ink-muted">{quote.ao2_explanation}</p>
+                  <p className="mt-1"><strong>AO4 partner:</strong> {quote.ao4_comparative_partner}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -549,12 +608,19 @@ function QuestionRouteView({
 }
 
 function StemDrill({ stem }: { stem: ParagraphStem }) {
+  const needsCorrection = stem.provenance.verification_status === "needs correction";
   return (
     <div className="mt-4 border border-rule bg-paper rounded-sm p-4">
+      {needsCorrection && (
+        <div className="mb-2">
+          <StatusBadge status="needs correction" labelPrefix="Stem" />
+        </div>
+      )}
       <div className="mb-2 flex flex-wrap items-center gap-1">
         {stem.ao_focus.map((ao) => (
           <span key={ao} className={`px-1.5 py-0.5 text-[10px] rounded-sm ${aoClass[ao]}`}>{ao}</span>
         ))}
+        <StatusBadge status={stem.provenance.verification_status} />
         <span className="meta-mono">{stem.theme} · {stem.timed_target_minutes} min</span>
       </div>
       <p className="font-serif text-lg leading-relaxed">{stem.stem_text}</p>

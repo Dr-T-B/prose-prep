@@ -11,13 +11,21 @@ export type AnnotationType =
   | "structural link"
   | "conclusion";
 
+export type AnnotatedContentVerificationStatus =
+  | "draft"
+  | "teacher review required"
+  | "reviewed"
+  | "approved"
+  | "needs correction"
+  | "retired";
+
 export type AnnotatedContentProvenance = {
-  source: "ChatGPT session, 24 May 2026";
+  source: string;
   content_type: "annotated essay practice";
   exam_board: "Pearson Edexcel";
   component: "Component 2 Prose";
-  verification_status: "teacher review required";
-  reviewed: false;
+  verification_status: AnnotatedContentVerificationStatus;
+  reviewed: boolean;
 };
 
 export type EssayQuestion = {
@@ -126,7 +134,7 @@ export type QuoteMethodLink = {
   ao2_explanation: string;
   ao4_comparative_partner: string;
   quote_type: "verified quotation" | "quote anchor / paraphrase";
-  verification_status: "teacher review required" | "verified";
+  verification_status: AnnotatedContentVerificationStatus;
   provenance: AnnotatedContentProvenance;
 };
 
