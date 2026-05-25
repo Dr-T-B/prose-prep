@@ -4,9 +4,10 @@ import {
 } from '@/types/essayEngine';
 
 // Client-side qualitative LLM calibration is disabled in this build: the
-// previous implementation read VITE_GEMINI_API_KEY at the client and called
-// Gemini directly, shipping the key into the browser bundle. Re-enable
-// behind a server-side proxy before reintroducing.
+// previous implementation called a hosted LLM directly from the browser,
+// which would have shipped a provider key into the client bundle. Re-enable
+// behind the server-side `generate-model-essay` edge function before
+// reintroducing.
 export async function generateQualitativeFeedback(
   _request: EvaluationRequest,
   localResult: EvaluationResult
