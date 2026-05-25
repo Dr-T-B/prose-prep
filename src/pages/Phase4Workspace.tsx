@@ -138,14 +138,14 @@ export default function Phase4Workspace() {
   }, [comparative_matrix, selectedAxisId]);
 
   const filteredHardTimesQuotes = useMemo(() => {
-    if (!selectedAxis) return quote_methods.filter((q) => q.source_text === "Hard Times");
+    if (!selectedAxis) return [];
     return quote_methods.filter(
       (q) => q.source_text === "Hard Times" && q.best_themes.some((t) => selectedAxis.themes.includes(t))
     );
   }, [selectedAxis, quote_methods]);
 
   const filteredAtonementQuotes = useMemo(() => {
-    if (!selectedAxis) return quote_methods.filter((q) => q.source_text === "Atonement");
+    if (!selectedAxis) return [];
     return quote_methods.filter(
       (q) => q.source_text === "Atonement" && q.best_themes.some((t) => selectedAxis.themes.includes(t))
     );
@@ -421,9 +421,12 @@ export default function Phase4Workspace() {
                         hardTimesMethod: quoteObj?.method || null
                       }));
                     }}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-sm py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-primary-soft transition-colors"
+                    disabled={!selectedAxis}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-sm py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-primary-soft transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <option value="">-- Select Quote --</option>
+                    <option value="">
+                      {!selectedAxis ? "Select an axis first..." : "-- Select Applicable Quote --"}
+                    </option>
                     {filteredHardTimesQuotes.map((q) => (
                       <option key={q.id} value={q.quote_text}>
                         "{q.quote_text.slice(0, 30)}..." ({q.method})
@@ -448,9 +451,12 @@ export default function Phase4Workspace() {
                         atonementMethod: quoteObj?.method || null
                       }));
                     }}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-sm py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-primary-soft transition-colors"
+                    disabled={!selectedAxis}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-sm py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-primary-soft transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <option value="">-- Select Quote --</option>
+                    <option value="">
+                      {!selectedAxis ? "Select an axis first..." : "-- Select Applicable Quote --"}
+                    </option>
                     {filteredAtonementQuotes.map((q) => (
                       <option key={q.id} value={q.quote_text}>
                         "{q.quote_text.slice(0, 30)}..." ({q.method})
