@@ -193,9 +193,20 @@ already has the negative-assertion scaffolding.
 
 ---
 
+## PR D2 verification outcome (recorded 2026-05-25)
+
+PR D2 ([#30](https://github.com/Dr-T-B/prose-prep/pull/30)) merged at `77cf765`. Secret-name rename ([#32](https://github.com/Dr-T-B/prose-prep/pull/32)) merged at `632fea4`. Edge Function now reads `ANTHROPIC_API_KEY` from Supabase secrets (already configured on project `nxlxunygoccbnzdopqna`; no stale `MODEL_PROVIDER_API_KEY` present in the project).
+
+Deployed live. Live probes:
+
+- `OPTIONS /functions/v1/generate-model-essay` → 200, CORS headers intact (`access-control-allow-origin: *`, methods `POST, OPTIONS`, headers `authorization, x-client-info, apikey, content-type`).
+- Unauthenticated `POST` → 401 with `sb-error-code: UNAUTHORIZED_NO_AUTH_HEADER`. JWT gate enforced at the Supabase gateway; request never reaches the function body.
+
+**End-to-end provider call against a signed-in user is still pending.** A signed-in `/compass` submission needs to be inspected against the four failure modes (fabricated quotations, critic-name leakage, locator references, AO5 leakage) before this design pass is treated as fully grounded. The doc will be updated once that response is observed.
+
 ## D3 / D4 backlog (carried from D2 review)
 
-- **Rename `MODEL_PROVIDER_API_KEY` → `ANTHROPIC_API_KEY`** in [index.ts:60](../supabase/functions/generate-model-essay/index.ts), to match the convention the Anthropic SDK auto-detects and to be clearer to anyone reading. One-line change. Deploy-blocking if the secret is set under one name and read under the other.
+- ~~Rename `MODEL_PROVIDER_API_KEY` → `ANTHROPIC_API_KEY`~~ — done in [#32](https://github.com/Dr-T-B/prose-prep/pull/32).
 - **Add an explanatory comment on the "full essay" UI placeholder string** in [ProseCompass.tsx:184](../src/pages/ProseCompass.tsx) so the next repo-wide grep doesn't flag it. Trivial.
 - **Critic allowlist** — design alongside the evidence-source decision (see above).
 - **Sanitiser context-dependence** — once retrieval lands, the sanitiser needs the evidence batch as input. Refactor `sanitiseProviderPlan` accordingly.
