@@ -13,7 +13,7 @@
 // endpoint, gated on a server-side quote-bank exact-match validator.
 
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
-import { buildPlaceholderResponse, validateInput } from './validation.ts';
+import { buildPlaceholderResponse, buildSafeErrorBody, validateInput } from './validation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -35,25 +35,33 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
 
-  const authHeader = req.headers.get('Authorization') ?? '';
-  if (!authHeader.toLowerCase().startsWith('bearer ')) {
-    return json(401, { error: 'Missing or malformed Authorization header' });
-  }
-  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const { data: userData, error: userErr } = await userClient.auth.getUser();
-  if (userErr || !userData?.user) return json(401, { error: 'Invalid or expired JWT' });
-
-  let parsed: unknown;
   try {
-    parsed = await req.json();
-  } catch {
-    return json(400, { error: 'Body must be valid JSON' });
+    const authHeader = req.headers.get('Authorization') ?? '';
+    if (!authHeader.toLowerCase().startsWith('bearer ')) {
+      return json(401, { error: 'Missing or malformed Authorization header' });
+    }
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !userData?.user) return json(401, { error: 'Invalid or expired JWT' });
+
+    let parsed: unknown;
+    try {
+      parsed = await req.json();
+    } catch {
+      return json(400, { error: 'Body must be valid JSON' });
+    }
+
+    const validated = validateInput(parsed);
+    if (!validated.ok) return json(validated.status, { error: validated.error });
+
+    return json(200, buildPlaceholderResponse(validated.value));
+  } catch (err) {
+    // PR D2 will introduce provider calls that can throw. Centralise the
+    // failure envelope here so raw provider/stack details never reach the
+    // client. Log server-side only.
+    console.error('generate-model-essay unhandled error', err);
+    return json(500, buildSafeErrorBody());
   }
-
-  const validated = validateInput(parsed);
-  if (!validated.ok) return json(validated.status, { error: validated.error });
-
-  return json(200, buildPlaceholderResponse(validated.value));
 });

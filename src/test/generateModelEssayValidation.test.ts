@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildLimitedEvidenceResponse,
   buildPlaceholderResponse,
+  buildSafeErrorBody,
+  MAX_OUTPUT_TOKENS,
+  MAX_PROVIDER_CALLS_PER_REQUEST,
+  PROVIDER_TIMEOUT_MS,
   QUESTION_TEXT_MAX,
   QUESTION_TEXT_MIN,
+  SAFE_GENERATOR_ERROR_MESSAGE,
   validateInput,
 } from '../../supabase/functions/generate-model-essay/validation';
 
@@ -67,5 +73,51 @@ describe('generate-model-essay buildPlaceholderResponse', () => {
     expect(payload.essayPlan.assessmentObjectives).toEqual(['AO1', 'AO2', 'AO3', 'AO4']);
     expect(payload.essayPlan.quotePolicy).toBe('verified_quote_bank_only');
     expect(JSON.stringify(payload)).not.toMatch(/AO5/);
+  });
+});
+
+describe('generate-model-essay buildLimitedEvidenceResponse', () => {
+  it('returns the same outer contract as the placeholder, with limited_evidence status', () => {
+    const r = validateInput({ questionText: validQuestion, theme: 'memory' });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const payload = buildLimitedEvidenceResponse(r.value, 'no verified quotes for theme=memory');
+    expect(payload.status).toBe('limited_evidence');
+    expect(payload.echoed.theme).toBe('memory');
+    expect(payload.essayPlan.assessmentObjectives).toEqual(['AO1', 'AO2', 'AO3', 'AO4']);
+    expect(payload.essayPlan.quotePolicy).toBe('verified_quote_bank_only');
+    expect(payload.safety.clientSideLLM).toBe(false);
+    expect(payload.safety.quoteConstraint).toMatch(/Limited evidence/);
+    expect(payload.safety.quoteConstraint).toMatch(/No generated quotations/);
+    expect(JSON.stringify(payload)).not.toMatch(/AO5/);
+  });
+
+  it('shares the response shape with the placeholder builder', () => {
+    const r = validateInput({ questionText: validQuestion });
+    if (!r.ok) throw new Error('precondition failed');
+    const a = buildPlaceholderResponse(r.value);
+    const b = buildLimitedEvidenceResponse(r.value, 'sparse bank');
+    expect(Object.keys(a).sort()).toEqual(Object.keys(b).sort());
+    expect(Object.keys(a.essayPlan).sort()).toEqual(Object.keys(b.essayPlan).sort());
+    expect(Object.keys(a.safety).sort()).toEqual(Object.keys(b.safety).sort());
+    expect(Object.keys(a.echoed).sort()).toEqual(Object.keys(b.echoed).sort());
+  });
+});
+
+describe('generate-model-essay safe error body', () => {
+  it('returns a generic message with no provider name or stack detail', () => {
+    const body = buildSafeErrorBody();
+    expect(body.error).toBe(SAFE_GENERATOR_ERROR_MESSAGE);
+    expect(body.error).not.toMatch(/anthropic|openai|gemini|stack|undefined|TypeError/i);
+  });
+});
+
+describe('generate-model-essay server-side budget constants', () => {
+  it('enforces one provider call per request and a bounded output size', () => {
+    expect(MAX_PROVIDER_CALLS_PER_REQUEST).toBe(1);
+    expect(MAX_OUTPUT_TOKENS).toBeGreaterThan(0);
+    expect(MAX_OUTPUT_TOKENS).toBeLessThanOrEqual(4000);
+    expect(PROVIDER_TIMEOUT_MS).toBeGreaterThan(0);
+    expect(PROVIDER_TIMEOUT_MS).toBeLessThanOrEqual(60_000);
   });
 });

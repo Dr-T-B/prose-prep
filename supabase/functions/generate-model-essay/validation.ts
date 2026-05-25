@@ -1,10 +1,28 @@
 // Pure helpers for the generate-model-essay edge function.
 // No Deno-specific imports — also consumed by Vitest tests in src/test/.
 //
-// Scope of this PR (foundation only):
+// Scope:
 // - Validate request shape and bounds.
-// - Build a controlled placeholder response.
-// - No live LLM call. No quote generation. AO1–AO4 only.
+// - Build the response envelope (placeholder / limited-evidence) within
+//   a single stable contract shape consumed by ProseCompass.
+// - Centralise cost-cap constants and redacted error messages so PR D2's
+//   provider integration cannot drift on budget or leak raw errors.
+// - No live LLM call here. No quote generation. AO1–AO4 only.
+
+// Server-side budget — PR D2 provider integration imports these directly
+// so the limits can never drift from the contract.
+export const MAX_PROVIDER_CALLS_PER_REQUEST = 1;
+export const MAX_OUTPUT_TOKENS = 1500;
+export const PROVIDER_TIMEOUT_MS = 20_000;
+
+// Client-facing error copy. Never include provider names, stack traces, or
+// upstream error text in responses returned to the browser.
+export const SAFE_GENERATOR_ERROR_MESSAGE =
+  'The model essay generator is temporarily unavailable. Try again shortly.';
+
+export function buildSafeErrorBody(): { error: string } {
+  return { error: SAFE_GENERATOR_ERROR_MESSAGE };
+}
 
 export type TargetLevel = 'L4' | 'L5';
 
@@ -108,8 +126,15 @@ function normaliseShort(raw: unknown, fieldName: string): ShortFieldResult {
   return { ok: true, value: trimmed };
 }
 
-export type PlaceholderResponse = {
-  status: 'placeholder';
+// Response envelope is a single stable shape. Every successful (HTTP 200)
+// response — placeholder, real generation, or limited-evidence fallback —
+// satisfies this contract so the ProseCompass UI does not need to switch on
+// `status`. The `status` discriminator is metadata for telemetry and for
+// future renderer enhancements.
+export type GenerateModelEssayStatus = 'placeholder' | 'ok' | 'limited_evidence';
+
+export type GenerateModelEssayResponse = {
+  status: GenerateModelEssayStatus;
   message: string;
   echoed: {
     questionTextPreview: string;
@@ -130,27 +155,36 @@ export type PlaceholderResponse = {
   };
 };
 
-export function buildPlaceholderResponse(input: ValidatedInput): PlaceholderResponse {
+// Backwards-compatible alias for the ProseCompass UI import.
+export type PlaceholderResponse = GenerateModelEssayResponse;
+
+function buildEchoed(input: ValidatedInput): GenerateModelEssayResponse['echoed'] {
+  return {
+    questionTextPreview: input.questionText.slice(0, 120),
+    theme: input.theme,
+    thesisAxis: input.thesisAxis,
+    targetLevel: input.targetLevel,
+  };
+}
+
+const DEFAULT_PARAGRAPH_MOVES: GenerateModelEssayResponse['essayPlan']['paragraphMoves'] = [
+  'Establish thesis with comparative axis',
+  'Develop first paragraph movement (AO1/AO2)',
+  'Pivot via contextual contrast (AO3)',
+  'Sustain comparison and methods commentary (AO4)',
+  'Resolve thesis with evaluative final move',
+];
+
+export function buildPlaceholderResponse(input: ValidatedInput): GenerateModelEssayResponse {
   return {
     status: 'placeholder',
     message:
       'Server-side model essay generator foundation. Live generation is not yet wired; this endpoint returns a controlled plan placeholder.',
-    echoed: {
-      questionTextPreview: input.questionText.slice(0, 120),
-      theme: input.theme,
-      thesisAxis: input.thesisAxis,
-      targetLevel: input.targetLevel,
-    },
+    echoed: buildEchoed(input),
     essayPlan: {
       thesis:
         'Placeholder thesis axis to be replaced by server-side Anthropic generation in a follow-up PR.',
-      paragraphMoves: [
-        'Establish thesis with comparative axis',
-        'Develop first paragraph movement (AO1/AO2)',
-        'Pivot via contextual contrast (AO3)',
-        'Sustain comparison and methods commentary (AO4)',
-        'Resolve thesis with evaluative final move',
-      ],
+      paragraphMoves: DEFAULT_PARAGRAPH_MOVES,
       quotePolicy: 'verified_quote_bank_only',
       assessmentObjectives: ['AO1', 'AO2', 'AO3', 'AO4'],
     },
@@ -159,6 +193,33 @@ export function buildPlaceholderResponse(input: ValidatedInput): PlaceholderResp
       serverSideProviderPlanned: 'anthropic',
       quoteConstraint:
         'No generated quotations until quote-bank exact-match validation is implemented.',
+    },
+  };
+}
+
+// Returned by PR D2 when the request is valid but the quote bank cannot
+// support the requested theme/axis combination. Same outer shape — never
+// fabricates quotations, always preserves the AO1–AO4 contract.
+export function buildLimitedEvidenceResponse(
+  input: ValidatedInput,
+  reason: string,
+): GenerateModelEssayResponse {
+  return {
+    status: 'limited_evidence',
+    message:
+      'The quote bank does not yet contain sufficient verified evidence for this request. Returning a plan-only response with no generated quotations.',
+    echoed: buildEchoed(input),
+    essayPlan: {
+      thesis:
+        'Plan-only thesis returned because the quote bank lacks sufficient verified evidence for this question.',
+      paragraphMoves: DEFAULT_PARAGRAPH_MOVES,
+      quotePolicy: 'verified_quote_bank_only',
+      assessmentObjectives: ['AO1', 'AO2', 'AO3', 'AO4'],
+    },
+    safety: {
+      clientSideLLM: false,
+      serverSideProviderPlanned: 'anthropic',
+      quoteConstraint: `Limited evidence: ${reason}. No generated quotations.`,
     },
   };
 }
