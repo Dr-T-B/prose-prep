@@ -14,6 +14,10 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { id: "test-user" }, loading: false }),
+}));
+
 describe("Dashboard", () => {
   beforeEach(() => {
     mockSupabase.from.mockReset();
@@ -33,11 +37,13 @@ describe("Dashboard", () => {
     readiness = [],
     themes = [],
     quotes = [],
+    markerResults = [],
     readinessError = null,
   }: {
     readiness?: unknown[];
     themes?: unknown[];
     quotes?: unknown[];
+    markerResults?: unknown[];
     readinessError?: { message: string } | null;
   }) {
     mockSupabase.from.mockImplementation((table: string) => {
@@ -45,16 +51,23 @@ describe("Dashboard", () => {
         ao_readiness: { data: readiness, error: readinessError },
         themes: { data: themes, error: null },
         quotes: { data: quotes, error: null },
+        essay_marker_results: { data: markerResults, error: null },
       };
       const response = responses[table];
       if (!response) throw new Error(`Unexpected table: ${table}`);
-      const result = Promise.resolve(response);
-      return {
-        select: vi.fn(() => ({
-          order: vi.fn(() => result),
-          then: result.then.bind(result),
-        })),
+      const promise = Promise.resolve(response);
+      const builder: {
+        select: ReturnType<typeof vi.fn>;
+        order: ReturnType<typeof vi.fn>;
+        limit: ReturnType<typeof vi.fn>;
+        then: typeof promise.then;
+      } = {
+        select: vi.fn(() => builder),
+        order: vi.fn(() => builder),
+        limit: vi.fn(() => builder),
+        then: promise.then.bind(promise),
       };
+      return builder;
     });
   }
 

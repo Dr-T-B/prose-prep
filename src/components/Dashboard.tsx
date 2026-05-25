@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useGradeBMode } from "@/contexts/GradeBModeContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Component2Dashboard
  * -------------------
- * Wired panels (AO readiness, theme readiness, quote recall) read from
- * Supabase. Essay history and weakness diagnosis remain mock pending real
- * data — flagged with per-panel "Sample data" pills.
+ * All six panels (AO readiness, theme readiness, quote recall, essay history,
+ * weakness diagnosis, printable summary) now read from Supabase.
  *
  * Pearson Edexcel A-Level English Literature
  * Component 2: Prose · 9ET0/02 — assesses AO1–AO4 only.
@@ -44,28 +45,29 @@ type Essay = {
   id: string;
   date: string;
   question: string;
-  themeId: string;
-  mark: number;
+  level: number | null;
   band: "C" | "B" | "A" | "A*";
   weakest: AO;
 };
 
-// TODO: wire to essay_plans or timed_sessions when real data accrues
-const ESSAYS: Essay[] = [
-  { id: "e1", date: "12 Apr", question: "Compare presentations of guilt and the possibility of atonement.", themeId: "guilt", mark: 26, band: "B", weakest: "AO4" },
-  { id: "e2", date: "26 Apr", question: "'Imagination is more dangerous than ignorance.'", themeId: "education", mark: 29, band: "B", weakest: "AO4" },
-  { id: "e3", date: "08 May", question: "Compare the corrupting effects of social class.", themeId: "class", mark: 31, band: "A", weakest: "AO3" },
-  { id: "e4", date: "13 May", question: "Compare uses of narrative form to shape moral response.", themeId: "narrative", mark: 28, band: "B", weakest: "AO2" },
-];
+interface Weakness {
+  id: string;
+  title: string;
+  detail: string;
+  aos: AO[];
+  severity: "high" | "med" | "low";
+}
 
-// TODO: wire to essay_plans or timed_sessions when real data accrues
-const WEAKNESSES: Array<{ id: string; title: string; severity: "high" | "med" | "low"; detail: string; aos: AO[] }> = [
-  { id: "w1", title: "AO4 paragraph drift", severity: "high", aos: ["AO4"], detail: "Paragraphs 3–4 default to single-text analysis. Open every ¶ with a comparative claim." },
-  { id: "w2", title: "Atonement context shallow", severity: "high", aos: ["AO3"], detail: "Postwar Britain, metafiction debates, McEwan on Lola's silence — currently 2 quotable references." },
-  { id: "w3", title: "Critic citations missing", severity: "med", aos: ["AO3"], detail: "Bring in Leavis (HT) and Currie / Head (Atonement) by name to anchor critical context." },
-  { id: "w4", title: "Method vocabulary repetitive", severity: "med", aos: ["AO2"], detail: "Rotate: free indirect discourse, prolepsis, syndeton, synecdoche, focalisation." },
-  { id: "w5", title: "Memory & truth thin on HT side", severity: "low", aos: ["AO4"], detail: "Only 30% theme readiness for Hard Times — pull Sissy / Stephen exchanges." },
-];
+interface DashboardMarkerRow {
+  id: string;
+  created_at: string;
+  question_stem: string | null;
+  provisional_level: string | null;
+  result_json: {
+    aoFeedback?: Partial<Record<AO, { level?: string; weakness?: string }>>;
+    priorityWeaknesses?: string[];
+  };
+}
 
 const PRINT_SUMMARY = {
   thesisTemplates: [
@@ -93,6 +95,61 @@ function bandFor(score: number): "C" | "B" | "A" | "A*" {
   if (score >= 75) return "A";
   if (score >= 60) return "B";
   return "C";
+}
+
+const MARKER_DATE_FMT = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" });
+
+function formatMarkerDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return MARKER_DATE_FMT.format(d);
+}
+
+function parseLevel(s: string | null | undefined): number | null {
+  if (!s) return null;
+  const m = s.match(/(\d+)\s*$/);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function levelToBand(provisional_level: string | null): "C" | "B" | "A" | "A*" {
+  switch (provisional_level) {
+    case "Level 5":
+      return "A*";
+    case "Level 4":
+      return "A";
+    case "Level 3":
+      return "B";
+    default:
+      return "C";
+  }
+}
+
+const AO_ORDER: AO[] = ["AO1", "AO2", "AO3", "AO4"];
+
+function weakestAo(
+  aoFeedback: DashboardMarkerRow["result_json"]["aoFeedback"] | undefined,
+): AO {
+  if (!aoFeedback) return "AO2";
+  let chosen: AO | null = null;
+  let chosenLevel = Number.POSITIVE_INFINITY;
+  for (const ao of AO_ORDER) {
+    const lvl = parseLevel(aoFeedback[ao]?.level);
+    if (lvl === null) continue;
+    if (lvl < chosenLevel) {
+      chosen = ao;
+      chosenLevel = lvl;
+    }
+  }
+  return chosen ?? "AO2";
+}
+
+function severityForLevel(level: number | null): "high" | "med" | "low" {
+  if (level === null) return "med";
+  if (level <= 3) return "high";
+  if (level === 4) return "med";
+  return "low";
 }
 
 function connectionLabel(ht: number, at: number): string {
@@ -135,11 +192,13 @@ function quoteMatchesThemeTag(themeId: string, themeLabel: string, tags: string[
 
 export function Component2Dashboard() {
   const { gradeBMode } = useGradeBMode();
+  const { user, loading: authLoading } = useAuth();
   const days = daysUntil(EXAM_DATE_ISO);
 
   const [readiness, setReadiness] = useState<AoReadinessRow[]>([]);
   const [themes, setThemes] = useState<ThemeRow[]>([]);
   const [quoteProgress, setQuoteProgress] = useState<QuoteProgressRow[]>([]);
+  const [markerResults, setMarkerResults] = useState<DashboardMarkerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -165,8 +224,15 @@ export function Component2Dashboard() {
       .from("quotes")
       .select("id, source, theme_tags, is_verified");
 
-    Promise.all([readinessPromise, themesPromise, quotesPromise]).then(
-      ([rRes, tRes, qRes]) => {
+    const markerResultsPromise = (supabase.from as unknown as (t: string) => ReturnType<typeof supabase.from>)(
+      "essay_marker_results",
+    )
+      .select("id, created_at, question_stem, provisional_level, result_json")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    Promise.all([readinessPromise, themesPromise, quotesPromise, markerResultsPromise]).then(
+      ([rRes, tRes, qRes, mRes]) => {
         if (cancelled) return;
         if (rRes.error) {
           setError(rRes.error.message);
@@ -180,6 +246,11 @@ export function Component2Dashboard() {
         }
         if (qRes.error) {
           setError(qRes.error.message);
+          setLoading(false);
+          return;
+        }
+        if (mRes.error) {
+          setError(mRes.error.message);
           setLoading(false);
           return;
         }
@@ -235,12 +306,28 @@ export function Component2Dashboard() {
           (q) => q.source === "atonement" && q.is_verified === true,
         ).length;
 
+        const markerRows: DashboardMarkerRow[] = ((mRes.data ?? []) as unknown[]).map((r) => {
+          const row = r as Record<string, unknown>;
+          const json = (row.result_json ?? {}) as DashboardMarkerRow["result_json"];
+          return {
+            id: row.id as string,
+            created_at: row.created_at as string,
+            question_stem: (row.question_stem as string | null) ?? null,
+            provisional_level: (row.provisional_level as string | null) ?? null,
+            result_json: {
+              aoFeedback: json.aoFeedback,
+              priorityWeaknesses: json.priorityWeaknesses,
+            },
+          };
+        });
+
         setReadiness(aoRows);
         setThemes(themeRows);
         setQuoteProgress([
           { text: "Hard Times", learned: htLearned, total: htTotal },
           { text: "Atonement", learned: atLearned, total: atTotal },
         ]);
+        setMarkerResults(markerRows);
         setLoading(false);
       },
     );
@@ -260,11 +347,74 @@ export function Component2Dashboard() {
   }, [readiness]);
 
   const overallBand = bandFor(overall);
+  const showAnon = !authLoading && !user;
+
+  const essays = useMemo<Essay[]>(() => {
+    return markerResults.map((mr) => ({
+      id: mr.id,
+      date: formatMarkerDate(mr.created_at),
+      question: mr.question_stem ?? "Untitled attempt",
+      level: parseLevel(mr.provisional_level),
+      band: levelToBand(mr.provisional_level),
+      weakest: weakestAo(mr.result_json.aoFeedback),
+    }));
+  }, [markerResults]);
+
+  const mostRecentDate = essays[0]?.date ?? "";
+
+  const weaknesses = useMemo<Weakness[]>(() => {
+    type Carrier = Weakness & { _createdAt: string };
+    const carriers: Carrier[] = [];
+    for (const mr of markerResults) {
+      const items = mr.result_json.priorityWeaknesses ?? [];
+      const ao = weakestAo(mr.result_json.aoFeedback);
+      const aoLevel = parseLevel(mr.result_json.aoFeedback?.[ao]?.level);
+      const severity = severityForLevel(aoLevel);
+      const take = items.slice(0, 2);
+      take.forEach((text, index) => {
+        const detail = text ?? "";
+        const truncated = detail.length > 60;
+        const title = truncated ? `${detail.slice(0, 60)}…` : detail;
+        carriers.push({
+          id: `${mr.id}:${index}`,
+          title,
+          detail,
+          aos: [ao],
+          severity,
+          _createdAt: mr.created_at,
+        });
+      });
+    }
+
+    const seen = new Set<string>();
+    const deduped: Carrier[] = [];
+    for (const c of carriers) {
+      const key = c.detail.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(c);
+    }
+
+    deduped.sort((a, b) => {
+      const sev = sevWeight(b.severity) - sevWeight(a.severity);
+      if (sev !== 0) return sev;
+      return b._createdAt.localeCompare(a._createdAt);
+    });
+
+    return deduped.slice(0, 5).map(({ _createdAt: _omit, ...w }) => w);
+  }, [markerResults]);
 
   const nextTask = useMemo(() => {
-    const top = [...WEAKNESSES].sort(
-      (a, b) => sevWeight(b.severity) - sevWeight(a.severity),
-    )[0];
+    if (weaknesses.length === 0) {
+      return {
+        title: "Draft one comparative paragraph",
+        reason:
+          "No diagnostic data yet — set a 25-minute timer and write one comparative paragraph using a verbatim quotation from each text.",
+        action: "Pick any theme from the wheel; open Plan when you're ready to save it.",
+        minutes: 25,
+      };
+    }
+    const top = weaknesses[0];
     if (gradeBMode) {
       return {
         title: "Build one comparative paragraph in 4 steps",
@@ -279,7 +429,7 @@ export function Component2Dashboard() {
       action: "Use Atonement Part Three opening + Sissy/Stephen exchange (HT Bk II Ch. 6).",
       minutes: 25,
     };
-  }, [gradeBMode]);
+  }, [gradeBMode, weaknesses]);
 
   if (loading) {
     return (
@@ -390,67 +540,78 @@ export function Component2Dashboard() {
           </Section>
 
           <Section title="Comparative Essay Practice" eyebrow="Build → Test → Refine">
-            <SampleDataPill />
-            <div className="border border-rule mt-3">
-              <div className="grid grid-cols-[60px_1fr_60px_50px] text-[10px] uppercase tracking-[0.2em] text-ink-muted bg-paper-dim border-b border-rule">
-                <div className="px-3 py-2">Date</div>
-                <div className="px-3 py-2">Question</div>
-                <div className="px-3 py-2 text-right">Mark</div>
-                <div className="px-3 py-2 text-right">Band</div>
-              </div>
-              {ESSAYS.map((e) => (
-                <div
-                  key={e.id}
-                  className="grid grid-cols-[60px_1fr_60px_50px] items-center border-b border-rule last:border-b-0 text-sm"
-                >
-                  <div className="px-3 py-3 text-xs text-ink-muted">{e.date}</div>
-                  <div className="px-3 py-3">
-                    <div className="font-serif leading-snug">{e.question}</div>
-                    <div className="text-[10px] uppercase tracking-wider text-ink-muted mt-1">
-                      Weakest: {e.weakest}
+            {showAnon ? (
+              <MarkerEmptyState variant="anonymous" />
+            ) : essays.length === 0 ? (
+              <MarkerEmptyState variant="empty" />
+            ) : (
+              <>
+                <div className="border border-rule">
+                  <div className="grid grid-cols-[60px_1fr_60px_50px] text-[10px] uppercase tracking-[0.2em] text-ink-muted bg-paper-dim border-b border-rule">
+                    <div className="px-3 py-2">Date</div>
+                    <div className="px-3 py-2">Question</div>
+                    <div className="px-3 py-2 text-right">Level</div>
+                    <div className="px-3 py-2 text-right">Band</div>
+                  </div>
+                  {essays.slice(0, 5).map((e) => (
+                    <div
+                      key={e.id}
+                      className="grid grid-cols-[60px_1fr_60px_50px] items-center border-b border-rule last:border-b-0 text-sm"
+                    >
+                      <div className="px-3 py-3 text-xs text-ink-muted">{e.date}</div>
+                      <div className="px-3 py-3">
+                        <div className="font-serif leading-snug">{e.question}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-ink-muted mt-1">
+                          Weakest: {e.weakest}
+                        </div>
+                      </div>
+                      <div className="px-3 py-3 text-right font-serif">{e.level ?? "—"}</div>
+                      <div className="px-3 py-3 text-right">
+                        <BandPill band={e.band} />
+                      </div>
                     </div>
-                  </div>
-                  <div className="px-3 py-3 text-right font-serif">{e.mark}</div>
-                  <div className="px-3 py-3 text-right">
-                    <BandPill band={e.band} />
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-ink-muted">
-              4 timed essays · trend{" "}
-              <span className="text-ink font-semibold">+5 marks</span> over last
-              month.
-            </p>
+                <p className="mt-3 text-xs text-ink-muted">
+                  {essays.length} marked attempt{essays.length === 1 ? "" : "s"}
+                  {mostRecentDate ? ` · most recent: ${mostRecentDate}` : ""}
+                </p>
+              </>
+            )}
           </Section>
         </div>
 
         {/* Row 5: Weakness diagnosis */}
         <Section title="Weakness Diagnosis" eyebrow="Where marks are leaking">
-          <SampleDataPill />
-          <ul className="divide-y divide-rule border-y border-rule mt-3">
-            {WEAKNESSES.map((w) => (
-              <li key={w.id} className="py-4 grid md:grid-cols-[100px_1fr_auto] gap-4 items-start">
-                <SeverityPill severity={w.severity} />
-                <div>
-                  <div className="font-serif text-base">{w.title}</div>
-                  <p className="text-sm text-ink-muted mt-1 leading-relaxed">
-                    {w.detail}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-1 justify-end">
-                  {w.aos.map((a) => (
-                    <span
-                      key={a}
-                      className="text-[10px] border border-ink px-1.5 py-0.5"
-                    >
-                      {a}
-                    </span>
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ul>
+          {showAnon ? (
+            <MarkerEmptyState variant="anonymous" />
+          ) : weaknesses.length === 0 ? (
+            <MarkerEmptyState variant="empty" />
+          ) : (
+            <ul className="divide-y divide-rule border-y border-rule">
+              {weaknesses.map((w) => (
+                <li key={w.id} className="py-4 grid md:grid-cols-[100px_1fr_auto] gap-4 items-start">
+                  <SeverityPill severity={w.severity} />
+                  <div>
+                    <div className="font-serif text-base">{w.title}</div>
+                    <p className="text-sm text-ink-muted mt-1 leading-relaxed">
+                      {w.detail}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    {w.aos.map((a) => (
+                      <span
+                        key={a}
+                        className="text-[10px] border border-ink px-1.5 py-0.5"
+                      >
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </Section>
 
         {/* Row 6: Printable revision summary */}
@@ -530,11 +691,24 @@ export function Component2Dashboard() {
 
 export default Component2Dashboard;
 
-function SampleDataPill() {
+function MarkerEmptyState({ variant }: { variant: "anonymous" | "empty" }) {
+  if (variant === "anonymous") {
+    return (
+      <p className="text-sm text-ink-muted leading-relaxed">
+        <Link to="/auth" className="underline underline-offset-2 hover:text-ink">
+          Sign in to see your marked attempts.
+        </Link>
+      </p>
+    );
+  }
   return (
-    <span className="text-ao1 border border-rule px-2 py-0.5 rounded text-xs">
-      Sample data
-    </span>
+    <p className="text-sm text-ink-muted leading-relaxed">
+      No marked attempts yet. Submit an essay in{" "}
+      <Link to="/essay-marker" className="underline underline-offset-2 hover:text-ink">
+        /mark
+      </Link>{" "}
+      to see diagnostic feedback here.
+    </p>
   );
 }
 
