@@ -11,11 +11,12 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 
 const FORBIDDEN = [
-  { pattern: /VITE_GEMINI_API_KEY/, label: 'VITE_GEMINI_API_KEY' },
+  { pattern: /GEMINI_API_KEY/, label: 'GEMINI_API_KEY (with or without VITE_ prefix)' },
   { pattern: /GoogleGenAI/, label: 'GoogleGenAI symbol' },
   { pattern: /@google\/genai/, label: '@google/genai import' },
   { pattern: /new\s+GoogleGenAI/, label: 'new GoogleGenAI(' },
   { pattern: /import\.meta\.env\.VITE_GEMINI/, label: 'import.meta.env.VITE_GEMINI*' },
+  { pattern: /process\.env\.GEMINI/, label: 'process.env.GEMINI*' },
 ];
 
 const SCAN_TARGETS = [
