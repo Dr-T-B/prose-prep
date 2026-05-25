@@ -129,7 +129,7 @@ export function evaluateParagraph(request: EvaluationRequest): EvaluationResult 
   }
 
   // C. Comparative Pivot Check
-  let pivotIndex = -1;
+  const pivotIndex = -1;
   let weakConnectiveFound: string | null = null;
   let weakConnectiveStart = -1;
   let weakConnectiveEnd = -1;
