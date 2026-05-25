@@ -90,7 +90,7 @@ export const CharacterPairingCard: React.FC<Props> = ({ pairing }) => {
 
       </div>
 
-      {/* Synthesis & AO5 Section */}
+      {/* Synthesis Section: Comparative Pivot (AO4) + Phase 3 lenses */}
       <div className="p-6 bg-slate-900 border-t border-slate-700 space-y-6">
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
