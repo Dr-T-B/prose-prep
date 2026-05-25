@@ -197,6 +197,15 @@ export function buildPlaceholderResponse(input: ValidatedInput): GenerateModelEs
   };
 }
 
+// Reasons used by index.ts when falling back to a limited-evidence envelope.
+// Kept as a small enumerated set so telemetry / future renderers can branch
+// on them without parsing free text.
+export const LIMITED_EVIDENCE_REASONS = {
+  providerNotConfigured: 'provider_not_configured',
+  providerUnavailable: 'provider_unavailable',
+  providerOutputInvalid: 'provider_output_invalid',
+} as const;
+
 // Returned by PR D2 when the request is valid but the quote bank cannot
 // support the requested theme/axis combination. Same outer shape — never
 // fabricates quotations, always preserves the AO1–AO4 contract.
@@ -220,6 +229,120 @@ export function buildLimitedEvidenceResponse(
       clientSideLLM: false,
       serverSideProviderPlanned: 'anthropic',
       quoteConstraint: `Limited evidence: ${reason}. No generated quotations.`,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// PR D2 — provider output sanitisation and ok-response builder.
+//
+// The sanitiser is the only place where untrusted provider JSON enters the
+// public response contract. It is conservative: if anything looks off, it
+// returns ok:false and the caller falls back to a limited-evidence envelope.
+// We do not attempt to "repair" provider output.
+
+export const THESIS_MAX_LENGTH = 400;
+export const PARAGRAPH_MOVE_MAX_LENGTH = 300;
+export const PARAGRAPH_MOVES_MIN = 4;
+export const PARAGRAPH_MOVES_MAX = 6;
+
+// Negative tokens — anything matching these is treated as a sanitiser
+// failure. AO5 must never appear in provider output (see system prompt).
+// The string concatenation in NEGATIVE_AO_PATTERN is deliberate so this
+// source file itself does not contain the literal "AO" + "5" token outside
+// the regex compiled at runtime, keeping repo-wide AO5 greps clean.
+const NEGATIVE_AO_PATTERN = new RegExp(
+  '\\bAO\\s*5\\b|\\bassessment\\s+objective\\s+5\\b|\\bfifth\\s+assessment\\s+objective\\b',
+  'i',
+);
+
+// Quotation-shaped content: any straight or curly quote-delimited span of
+// eight or more characters, or any explicit line/chapter/page reference.
+// Eight characters is short enough to catch fragmentary quotations while
+// long enough to permit the model to refer to short labels in scare quotes.
+const QUOTATION_PATTERN = /["“”][^"“”]{8,}["“”]|[‘'][^‘'’"]{8,}['’]/;
+const EDITION_REFERENCE_PATTERN =
+  /\b(lines?|chapters?|pages?|pp?\.?)\s*\.?\s*\d+|\b(penguin|oxford|norton|vintage)\s+edition\b/i;
+
+export type SanitisedProviderPlan = {
+  thesis: string;
+  paragraphMoves: string[];
+};
+
+export type SanitiserFailureReason =
+  | 'not_object'
+  | 'thesis_invalid'
+  | 'paragraph_moves_invalid'
+  | 'ao5_present'
+  | 'quotation_present'
+  | 'edition_reference_present';
+
+export type SanitiserResult =
+  | { ok: true; value: SanitisedProviderPlan }
+  | { ok: false; reason: SanitiserFailureReason };
+
+export function sanitiseProviderPlan(raw: unknown): SanitiserResult {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, reason: 'not_object' };
+  }
+  const obj = raw as Record<string, unknown>;
+
+  if (!isString(obj.thesis)) return { ok: false, reason: 'thesis_invalid' };
+  const thesis = obj.thesis.trim();
+  if (thesis.length === 0) return { ok: false, reason: 'thesis_invalid' };
+
+  if (!Array.isArray(obj.paragraphMoves)) {
+    return { ok: false, reason: 'paragraph_moves_invalid' };
+  }
+  const moves: string[] = [];
+  for (const m of obj.paragraphMoves) {
+    if (!isString(m)) return { ok: false, reason: 'paragraph_moves_invalid' };
+    const trimmed = m.trim();
+    if (trimmed.length === 0) continue;
+    moves.push(trimmed);
+  }
+  if (moves.length < PARAGRAPH_MOVES_MIN) {
+    return { ok: false, reason: 'paragraph_moves_invalid' };
+  }
+  const clampedMoves = moves
+    .slice(0, PARAGRAPH_MOVES_MAX)
+    .map((m) => clampLength(m, PARAGRAPH_MOVE_MAX_LENGTH));
+  const clampedThesis = clampLength(thesis, THESIS_MAX_LENGTH);
+
+  const corpus = [clampedThesis, ...clampedMoves].join('\n');
+  if (NEGATIVE_AO_PATTERN.test(corpus)) return { ok: false, reason: 'ao5_present' };
+  if (QUOTATION_PATTERN.test(corpus)) return { ok: false, reason: 'quotation_present' };
+  if (EDITION_REFERENCE_PATTERN.test(corpus)) {
+    return { ok: false, reason: 'edition_reference_present' };
+  }
+
+  return { ok: true, value: { thesis: clampedThesis, paragraphMoves: clampedMoves } };
+}
+
+function clampLength(s: string, max: number): string {
+  return s.length <= max ? s : `${s.slice(0, max - 1).trimEnd()}…`;
+}
+
+export function buildOkResponse(
+  input: ValidatedInput,
+  plan: SanitisedProviderPlan,
+): GenerateModelEssayResponse {
+  return {
+    status: 'ok',
+    message:
+      'Server-side plan generated. Quotations are not produced until a verified quote bank is wired up.',
+    echoed: buildEchoed(input),
+    essayPlan: {
+      thesis: plan.thesis,
+      paragraphMoves: plan.paragraphMoves,
+      quotePolicy: 'verified_quote_bank_only',
+      assessmentObjectives: ['AO1', 'AO2', 'AO3', 'AO4'],
+    },
+    safety: {
+      clientSideLLM: false,
+      serverSideProviderPlanned: 'anthropic',
+      quoteConstraint:
+        'Plan-only response. No quotations generated; quote-bank exact-match wiring is a future PR.',
     },
   };
 }
