@@ -13,7 +13,16 @@
 // endpoint, gated on a server-side quote-bank exact-match validator.
 
 import { createClient } from 'npm:@supabase/supabase-js@2.95.0';
-import { buildPlaceholderResponse, buildSafeErrorBody, validateInput } from './validation.ts';
+import { buildSystemPrompt, buildUserPrompt } from './prompt.ts';
+import { callAnthropic, DEFAULT_ANTHROPIC_MODEL } from './provider.ts';
+import {
+  buildLimitedEvidenceResponse,
+  buildOkResponse,
+  buildSafeErrorBody,
+  LIMITED_EVIDENCE_REASONS,
+  sanitiseProviderPlan,
+  validateInput,
+} from './validation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,7 +65,40 @@ Deno.serve(async (req) => {
     const validated = validateInput(parsed);
     if (!validated.ok) return json(validated.status, { error: validated.error });
 
-    return json(200, buildPlaceholderResponse(validated.value));
+    const apiKey = Deno.env.get('MODEL_PROVIDER_API_KEY');
+    if (!apiKey) {
+      return json(
+        200,
+        buildLimitedEvidenceResponse(validated.value, LIMITED_EVIDENCE_REASONS.providerNotConfigured),
+      );
+    }
+    const model = Deno.env.get('MODEL_PROVIDER_MODEL') ?? DEFAULT_ANTHROPIC_MODEL;
+
+    const result = await callAnthropic({
+      apiKey,
+      model,
+      system: buildSystemPrompt(),
+      user: buildUserPrompt(validated.value),
+    });
+
+    if (!result.ok) {
+      console.error('generate-model-essay provider failure', result.reason);
+      return json(
+        200,
+        buildLimitedEvidenceResponse(validated.value, LIMITED_EVIDENCE_REASONS.providerUnavailable),
+      );
+    }
+
+    const sanitised = sanitiseProviderPlan(result.json);
+    if (!sanitised.ok) {
+      console.error('generate-model-essay sanitiser rejected output', sanitised.reason);
+      return json(
+        200,
+        buildLimitedEvidenceResponse(validated.value, LIMITED_EVIDENCE_REASONS.providerOutputInvalid),
+      );
+    }
+
+    return json(200, buildOkResponse(validated.value, sanitised.value));
   } catch (err) {
     // PR D2 will introduce provider calls that can throw. Centralise the
     // failure envelope here so raw provider/stack details never reach the
