@@ -13,8 +13,10 @@ import {
   removeBuilderHandoff,
   type BuilderHandoffItem,
 } from "@/lib/builderHandoff";
-import { persistPlan } from "@/lib/persistence";
+import { saveCurrentPlanHybrid, listCloudPlans, setLocalCurrentPlan } from "@/lib/planRepository";
+import { useAuth } from "@/contexts/AuthContext";
 import { useContent } from "@/lib/ContentProvider";
+import { formatDistanceToNow } from "date-fns";
 import {
   findThesis, resolveParagraphJobs, findQuotesForFamily, groupQuotesBySource,
   findInterpretiveExtensions, getQuestion, getRoute, renderPlanText,
@@ -33,6 +35,7 @@ const LEVEL_BAND_LABEL: Record<string, string> = { secure: "Secure", strong: "St
 export default function EssayBuilder() {
   const { plan, update } = useCurrentPlan();
   const { gradeBMode } = useGradeBMode();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const content = useContent();
@@ -187,10 +190,9 @@ export default function EssayBuilder() {
     setSaving(true);
     const stamped = { ...plan, thesis_id: thesis?.id };
     savePlan(stamped);
-    const res = await persistPlan(stamped, question?.stem);
+    const saved = await saveCurrentPlanHybrid(stamped);
     setSaving(false);
-    const planId = res.remoteId ?? plan.id;
-    navigate(`/timed?plan_id=${encodeURIComponent(planId)}`);
+    navigate(`/timed?plan_id=${encodeURIComponent(saved.id)}`);
   };
 
   const handleSave = async () => {
@@ -198,9 +200,9 @@ export default function EssayBuilder() {
     setSaving(true);
     const stamped = { ...plan, thesis_id: thesis?.id };
     savePlan(stamped);
-    const res = await persistPlan(stamped, question?.stem);
+    await saveCurrentPlanHybrid(stamped);
     setSaving(false);
-    if (res.ok) {
+    if (user) {
       toast.success("Saved to your account", {
         description: (plan.builder_handoffs?.length ?? 0) > 0
           ? "Core plan saved across devices. Imported Explore notes stay on this device."
@@ -257,6 +259,10 @@ export default function EssayBuilder() {
 
           {/* 1. Question */}
           <Section eyebrow="01" title="Choose a question">
+            <RecentPlansPanel
+              questions={QUESTIONS}
+              onResume={(p) => { setLocalCurrentPlan(p); update(p); }}
+            />
             <div className="flex flex-wrap gap-2 mb-4">
               {families.map((f) => (
                 <button
@@ -997,6 +1003,55 @@ function LiveOutput({ plan }: { plan: EssayPlan }) {
           </section>
         )}
       </article>
+    </div>
+  );
+}
+
+/* ----- Recent plans (cloud-only, signed-in students) ----- */
+function RecentPlansPanel({
+  questions,
+  onResume,
+}: {
+  questions: { id: string; stem: string; family?: string }[];
+  onResume: (plan: EssayPlan) => void;
+}) {
+  const [recent, setRecent] = useState<EssayPlan[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listCloudPlans().then((plans) => {
+      if (!cancelled) setRecent(plans.slice(0, 5));
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!recent || recent.length === 0) return null;
+
+  return (
+    <div className="mb-5 border border-rule rounded-sm bg-paper-dim/40 p-3">
+      <p className="label-eyebrow mb-2">Recent plans</p>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {recent.map((p) => {
+          const stem = questions.find((q) => q.id === p.question_id)?.stem ?? "Untitled plan";
+          const familyLabel = p.family
+            ? (QUESTION_FAMILY_LABELS[p.family as QuestionFamily] ?? p.family.replace(/_/g, " "))
+            : "—";
+          const updated = p.updated_at ? formatDistanceToNow(new Date(p.updated_at), { addSuffix: true }) : "";
+          return (
+            <button
+              key={p.id}
+              onClick={() => onResume(p)}
+              className="shrink-0 w-64 text-left p-3 bg-paper border border-rule rounded-sm hover:border-rule-strong transition-colors"
+            >
+              <p className="font-serif text-sm leading-snug line-clamp-2">{stem}</p>
+              <p className="meta-mono mt-2 text-ink-muted">
+                {familyLabel}
+                {updated && <span> · {updated}</span>}
+              </p>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
