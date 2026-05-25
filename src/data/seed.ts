@@ -982,21 +982,12 @@ export const SYMBOLS: SymbolEntry[] = [
 /* ---------------- COMPARATIVE MATRIX (lightweight retrieval) ---------------- */
 export interface ComparativeMatrixEntry {
   id: string;
-  axis?: string;
-  hard_times?: string;
-  atonement?: string;
-  divergence?: string;
-  themes?: QuestionFamily[];
+  axis: string;
+  hard_times: string;
+  atonement: string;
+  divergence: string;
+  themes: QuestionFamily[];
   level_band?: string | null;
-
-  // New optional fields for high-tier character pairings
-  title?: string;
-  theme?: string;
-  description?: string;
-  pedagogicalFocus?: string;
-  criticalLenses?: string[];
-  textATargets?: string[];
-  textBTargets?: string[];
 }
 export const COMPARATIVE_MATRIX: ComparativeMatrixEntry[] = [
   {
@@ -1055,24 +1046,4 @@ export const COMPARATIVE_MATRIX: ComparativeMatrixEntry[] = [
     divergence: "Dickens permits consolation; McEwan grants it only to expose it.",
     themes: ["endings", "guilt", "truth", "narrative_authority"],
   },
-  {
-    id: "matrix-bounderby-marshall",
-    title: "Josiah Bounderby vs. Paul Marshall",
-    theme: "Social Divisions",
-    description: "The Architecture of Exploitation and Moral Hypocrisy.",
-    pedagogicalFocus: "Bounderby's fraudulent, self-made biographical myth used to justify the brutal economic subjugation of the Coketown proletariat vs. Paul Marshall's interwar war-profiteering and sexual predation shielded by upper-class institutional privilege.",
-    criticalLenses: ["Marxist (Bourgeois Hegemony & Capital Accumulation)", "Feminist/Gender Critique (The Commodification of Vulnerability)"],
-    textATargets: ["Bounderby", "Capitalism", "Coketown Hegemony"],
-    textBTargets: ["Paul Marshall", "Class Privilege", "War Profiteering"]
-  },
-  {
-    id: "matrix-sissy-cecilia",
-    title: "Sissy Jupe vs. Cecilia Tallis",
-    theme: "Childhood",
-    description: "Transgression, Emotional Empathy, and Defiance of Ideological Control.",
-    pedagogicalFocus: "Sissy's preservation of organic human empathy and 'wonder' acting as the vital antidote to the geometric sterility of the Utilitarian schoolroom vs. Cecilia's visceral defiance of country house aristocratic codes through her cross-class passion for Robbie and her escape to the traumatic spaces of wartime London.",
-    criticalLenses: ["Psychoanalytic (Libidinal Drive vs. Societal Repression)", "Structuralist (Subversion of Domestic Enclosures)"],
-    textATargets: ["Sissy Jupe", "Sleary Circus", "Fancy"],
-    textBTargets: ["Cecilia Tallis", "Fountain Incident", "Domestic Transgression"]
-  }
 ];
