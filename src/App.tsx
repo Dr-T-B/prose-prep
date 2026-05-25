@@ -35,6 +35,7 @@ import InterpretiveFlex from "./pages/InterpretiveFlex";
 import ParagraphBuilderPage from "./pages/ParagraphBuilderPage";
 import EssayMarker from "./pages/EssayMarker";
 import AnnotatedEssayPack from "./pages/AnnotatedEssayPack";
+import Phase3Dashboard from "./pages/Phase3Dashboard";
 import ThemeWheel from "./components/ThemeWheel";
 import ComparativeMatrix from "./components/ComparativeMatrix";
 import { ContentProvider } from "./lib/ContentProvider";
@@ -92,6 +93,7 @@ const App = () => (
                   <Route path="/revise" element={<Revise />} />
                   <Route path="/compare" element={<Compare />} />
                   <Route path="/admin" element={<ProtectedRoute requireAdmin><DataManager /></ProtectedRoute>} />
+                  <Route path="/admin/character-pairings" element={<ProtectedRoute requireAdmin><Phase3Dashboard /></ProtectedRoute>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
