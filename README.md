@@ -258,6 +258,14 @@ Current published app:
 
 - https://prose-craft-aid.lovable.app
 
+### Canonical hosting status
+
+- The current published app is `https://prose-craft-aid.lovable.app`.
+- `https://prosetutor.netlify.app` currently returns HTTP 503 and should not be treated as canonical unless restored.
+- Any future Netlify restoration requires a smoke test before student use.
+
+Historical deployment notes referencing `prosetutor.netlify.app` (in `docs/`) describe a previous Netlify deploy state and are retained for traceability; they do not reflect the current canonical URL.
+
 ## Quote bank generation
 
 Component 1 Drama (Hamlet, The Duchess of Malfi) and Component 2 Prose (Hard Times, Atonement) quote bank rows are generated from modular prompts in [`prompts/`](./prompts/README.md), then imported into Supabase via `npm run import-quotes`.
