@@ -682,7 +682,7 @@ function ExploreIntake({
   }, [items]);
 
   return (
-    <Section eyebrow="Explore" title="Imported from Explore">
+    <Section eyebrow="Plan" title="Planning notes attached to this essay">
       <div className="border border-rule bg-paper rounded-sm shadow-card p-4">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="text-sm text-ink-muted leading-relaxed space-y-1">
