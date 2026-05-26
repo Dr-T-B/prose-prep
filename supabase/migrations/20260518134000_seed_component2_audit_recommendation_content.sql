@@ -333,7 +333,7 @@ with mappings(quote_id, question_id, relevance_score, rationale) as (
     ('qm_at_12', 'q-love', 92, 'The vase scene crystallises desire and rupture.'),
     ('qm_at_12', 'q-settings', 88, 'The fountain setting makes domestic space symbolic.'),
     ('qm_at_13', 'q-critique-of-society', 94, 'The line directly shows interest and class-shaped misrecognition.'),
-    ('qm_at_13', 'q-critique-of-society', 86, 'It exposes the social convenience of misreading Robbie.'),
+    ('qm_at_13', 'q-changing-relationships', 86, 'It exposes the social convenience of misreading Robbie.'),
     ('qm_at_14', 'q-love', 94, 'The imperative is central to separated love.'),
     ('qm_at_14', 'q-conflict', 86, 'War makes reunion urgent and uncertain.'),
     ('qm_at_15', 'q-hope', 96, 'The fifty-nine-year question is a final test of atonement.'),
