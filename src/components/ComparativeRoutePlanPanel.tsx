@@ -79,13 +79,14 @@ export function ComparativeRoutePlanPanel({ pairing }: { pairing: ComparativeRou
           </div>
         )}
 
-        <div className="flex items-center gap-3 pt-1">
+        <div className="flex flex-wrap items-center gap-3 pt-1">
           <button
             type="button"
             onClick={handleCopy}
+            aria-label="Copy Component 2 essay route plan scaffold"
             className="px-3 py-1.5 border border-rule-strong bg-paper text-xs font-mono rounded-sm hover:bg-paper-dim transition-colors"
           >
-            Copy route as essay plan
+            Copy timed essay-plan scaffold
           </button>
           {copied && (
             <span role="status" className="text-[10px] font-mono text-primary">
