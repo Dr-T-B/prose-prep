@@ -34,8 +34,20 @@ describe("Compare", () => {
     expect(screen.getByText("AO2")).toBeInTheDocument();
     expect(screen.getByText("AO3")).toBeInTheDocument();
     expect(screen.getByText("AO4")).toBeInTheDocument();
+    expect(screen.getByText("Thesis")).toBeInTheDocument();
+    expect(screen.getByText("Character")).toBeInTheDocument();
+    expect(screen.getByText("Narrative")).toBeInTheDocument();
+    expect(screen.getByText("Structure")).toBeInTheDocument();
+    expect(screen.getByText("Exam fit")).toBeInTheDocument();
+    expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
+
+    expect(screen.getByText(/AO2 method detail/)).toBeInTheDocument();
+    expect(screen.getByText(/AO3 context detail/)).toBeInTheDocument();
+    expect(screen.getByText(/AO4 comparison detail/)).toBeInTheDocument();
     expect(screen.getByText(/Both novels use childhood/)).toBeInTheDocument();
+    expect(screen.getByText(/Louisa and Briony expose/)).toBeInTheDocument();
     expect(screen.getByText(/Narrative perspective controls/)).toBeInTheDocument();
+    expect(screen.getByText(/The opening formation shapes/)).toBeInTheDocument();
     expect(screen.getByText(/2023 Q2 direct fit/)).toBeInTheDocument();
   });
 });
