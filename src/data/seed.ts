@@ -988,6 +988,14 @@ export interface ComparativeMatrixEntry {
   divergence: string;
   themes: QuestionFamily[];
   level_band?: string | null;
+  ao2?: string | null;
+  ao3?: string | null;
+  ao4?: string | null;
+  thesis?: string | null;
+  character?: string | null;
+  narrative?: string | null;
+  structure?: string | null;
+  exam_fit?: string | null;
 }
 export const COMPARATIVE_MATRIX: ComparativeMatrixEntry[] = [
   {

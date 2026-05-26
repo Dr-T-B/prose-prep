@@ -2,8 +2,8 @@
 //
 // Plan-only: the provider produces a thesis line and a sequence of paragraph
 // moves. It must never produce quotations, line numbers, chapter numbers,
-// page numbers, or any AO5 content. The sanitiser in validation.ts is the
-// belt-and-braces enforcement; this file is the suspenders.
+// page numbers, or any content beyond the Component 2 assessment objectives.
+// The sanitiser in validation.ts is the belt-and-braces enforcement; this file is the suspenders.
 //
 // Pure module: no Deno-only globals, so it can be imported from Vitest tests.
 

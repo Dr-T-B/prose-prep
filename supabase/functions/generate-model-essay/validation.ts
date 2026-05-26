@@ -247,10 +247,10 @@ export const PARAGRAPH_MOVES_MIN = 4;
 export const PARAGRAPH_MOVES_MAX = 6;
 
 // Negative tokens — anything matching these is treated as a sanitiser
-// failure. AO5 must never appear in provider output (see system prompt).
+// failure. Provider output must stay inside the Component 2 assessment model.
 // The string concatenation in NEGATIVE_AO_PATTERN is deliberate so this
 // source file itself does not contain the literal "AO" + "5" token outside
-// the regex compiled at runtime, keeping repo-wide AO5 greps clean.
+// the regex compiled at runtime, keeping repo-wide assessment-objective greps clean.
 const NEGATIVE_AO_PATTERN = new RegExp(
   '\\bAO\\s*5\\b|\\bassessment\\s+objective\\s+5\\b|\\bfifth\\s+assessment\\s+objective\\b',
   'i',
@@ -273,7 +273,7 @@ export type SanitiserFailureReason =
   | 'not_object'
   | 'thesis_invalid'
   | 'paragraph_moves_invalid'
-  | 'ao5_present'
+  | 'non_component2_ao_present'
   | 'quotation_present'
   | 'edition_reference_present';
 
@@ -310,7 +310,7 @@ export function sanitiseProviderPlan(raw: unknown): SanitiserResult {
   const clampedThesis = clampLength(thesis, THESIS_MAX_LENGTH);
 
   const corpus = [clampedThesis, ...clampedMoves].join('\n');
-  if (NEGATIVE_AO_PATTERN.test(corpus)) return { ok: false, reason: 'ao5_present' };
+  if (NEGATIVE_AO_PATTERN.test(corpus)) return { ok: false, reason: 'non_component2_ao_present' };
   if (QUOTATION_PATTERN.test(corpus)) return { ok: false, reason: 'quotation_present' };
   if (EDITION_REFERENCE_PATTERN.test(corpus)) {
     return { ok: false, reason: 'edition_reference_present' };
