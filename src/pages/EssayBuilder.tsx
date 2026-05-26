@@ -25,6 +25,7 @@ import { useGradeBMode } from "@/contexts/GradeBModeContext";
 import { getHandoffGradeBHints } from "@/lib/gradeBSupport";
 import ParagraphEngine from "@/components/ParagraphEngine";
 import { LocalOnlyNotice } from "@/components/LocalOnlyNotice";
+import { ComparativeRoutePlanPanel } from "@/components/ComparativeRoutePlanPanel";
 
 const STEPS = ["Question", "Route", "Thesis", "Paragraphs", "Critical Readings", "Save / Export"] as const;
 const LEVELS: Level[] = ["secure", "strong", "top_band"];
@@ -94,7 +95,7 @@ export default function EssayBuilder() {
   }), [pairings]);
 
   const selectedPairing = useMemo(
-    () => pairings.find((p) => p.id === selectedPairingId) ?? pairingGroups.secure[0] ?? null,
+    () => pairings.find((p) => p.id === selectedPairingId) ?? pairingGroups.secure[0] ?? pairings[0] ?? null,
     [pairings, selectedPairingId, pairingGroups],
   );
 
@@ -410,6 +411,7 @@ export default function EssayBuilder() {
                         <p className="label-eyebrow mb-1 text-[10px]">The key divergence</p>
                         <p className="text-xs text-ink-muted italic leading-relaxed">{selectedPairing.divergence}</p>
                       </div>
+                      <ComparativeRoutePlanPanel pairing={selectedPairing} />
                     </div>
                   )}
                 </div>
