@@ -81,6 +81,48 @@ const FAILING_CATEGORIES = new Set([
   "component2_import_blocker",
   "component2_schema_snapshot_blocker"
 ]);
+const COMPARATIVE_MATRIX_AO_FIELDS = [
+  "ao2",
+  "ao3",
+  "ao4",
+  "thesis",
+  "character",
+  "narrative",
+  "structure",
+  "exam_fit"
+];
+const COMPARATIVE_MATRIX_CONTRACT_FILES = [
+  {
+    path: "src/data/seed.ts",
+    description: "local seed type",
+    tokens: COMPARATIVE_MATRIX_AO_FIELDS.map((field) => `${field}?: string | null`)
+  },
+  {
+    path: "src/pages/Compare.tsx",
+    description: "Compare page renderer",
+    tokens: COMPARATIVE_MATRIX_AO_FIELDS.map((field) => `c.${field}`)
+  },
+  {
+    path: "src/components/admin/ContentAudit.tsx",
+    description: "Content Audit coverage",
+    tokens: COMPARATIVE_MATRIX_AO_FIELDS.map((field) => `"${field}"`)
+  },
+  {
+    path: "src/components/admin/ContentInspector.tsx",
+    description: "Content Inspector coverage",
+    tokens: COMPARATIVE_MATRIX_AO_FIELDS.map((field) => `"${field}"`)
+  },
+  {
+    path: "supabase/functions/apply-staged-change/index.ts",
+    description: "staged-change allowlist",
+    tokens: COMPARATIVE_MATRIX_AO_FIELDS.map((field) => `"${field}"`)
+  },
+  {
+    path: "supabase/migrations/20260516115407_a1_extend_comparative_matrix.sql",
+    description: "database schema migration",
+    tokens: COMPARATIVE_MATRIX_AO_FIELDS.map((field) => `ADD COLUMN IF NOT EXISTS ${field} text`)
+  }
+];
 
 function toPosix(filePath) {
   return path.relative(repoRoot, filePath).split(path.sep).join("/");
@@ -116,6 +158,29 @@ function readManifest() {
   }
   if (!Array.isArray(manifest.excluded_sources) || manifest.excluded_sources.length === 0) {
     fail("Manifest must list excluded_sources.");
+  }
+}
+
+function assertComparativeMatrixContract() {
+  const failures = [];
+
+  for (const check of COMPARATIVE_MATRIX_CONTRACT_FILES) {
+    const filePath = path.join(repoRoot, check.path);
+    if (!fs.existsSync(filePath)) {
+      failures.push(`${check.path}: missing ${check.description} file`);
+      continue;
+    }
+
+    const text = fs.readFileSync(filePath, "utf8");
+    for (const token of check.tokens) {
+      if (!text.includes(token)) {
+        failures.push(`${check.path}: ${check.description} is missing ${token}`);
+      }
+    }
+  }
+
+  if (failures.length > 0) {
+    fail(`Comparative Matrix AO-content contract incomplete:\n${failures.join("\n")}`);
   }
 }
 
@@ -293,6 +358,7 @@ function printResults({ files, missingOptional, offences, allowed }) {
 }
 
 readManifest();
+assertComparativeMatrixContract();
 const { files, missingOptional } = collectFiles();
 const allOffences = [];
 const allAllowed = [];
