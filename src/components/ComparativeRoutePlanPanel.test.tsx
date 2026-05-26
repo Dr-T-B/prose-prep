@@ -1,9 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ComparativeRoutePlanPanel } from "./ComparativeRoutePlanPanel";
 import { buildEssayPlanScaffold } from "@/lib/comparativeRouteScaffold";
+import { ROUTE_HANDOFF_ID } from "@/lib/builderHandoff";
+import { getCurrentPlan, setCurrentPlan, emptyPlan } from "@/lib/planStore";
 
 const fullPairing = {
+  id: "cmx_childhood",
   axis: "Childhood formation",
   thesis: "Both novels make childhood formation the origin of later damage.",
   ao2: "Track child focalisation, classroom dialogue, and recurring images of order.",
@@ -13,11 +16,20 @@ const fullPairing = {
   narrative: "Narrative perspective controls how each childhood is judged.",
   structure: "Opening formation shapes the consequences that follow.",
   exam_fit: "2023 Q2 direct fit.",
+  hard_times: "Coketown classroom flattens fancy.",
+  atonement: "Briony's misreading is born of the nursery.",
+  divergence: "External regimentation versus internal misreading.",
+  themes: ["education"],
 };
 
 describe("ComparativeRoutePlanPanel", () => {
+  beforeEach(() => {
+    setCurrentPlan(emptyPlan());
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
+    setCurrentPlan(emptyPlan());
   });
 
   it("surfaces comparative matrix AO-content as essay-planning route material", () => {
@@ -95,6 +107,53 @@ describe("ComparativeRoutePlanPanel", () => {
     expect(payload).not.toMatch(/AO5/i);
 
     expect(await screen.findByText(/copied to clipboard/i)).toBeInTheDocument();
+  });
+
+  it("exposes a 'Use this route for paragraph drafting' action when route data exists", () => {
+    render(<ComparativeRoutePlanPanel pairing={fullPairing} />);
+    expect(
+      screen.getByRole("button", { name: /use this route for paragraph drafting/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render the route panel at all when no route data is present", () => {
+    const { container } = render(<ComparativeRoutePlanPanel pairing={{}} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("writes a single route handoff into the current plan and replaces on re-click", () => {
+    render(<ComparativeRoutePlanPanel pairing={fullPairing} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /use this route for paragraph drafting/i }));
+
+    const handoffs1 = getCurrentPlan().builder_handoffs ?? [];
+    expect(handoffs1).toHaveLength(1);
+    expect(handoffs1[0].id).toBe(ROUTE_HANDOFF_ID);
+    expect(handoffs1[0].kind).toBe("comparison");
+    expect(handoffs1[0].metadata?.thesis).toBe(fullPairing.thesis);
+    expect(handoffs1[0].metadata?.axis).toBe(fullPairing.axis);
+    expect(handoffs1[0].metadata?.ao2).toBe(fullPairing.ao2);
+    expect(handoffs1[0].metadata?.ao3).toBe(fullPairing.ao3);
+    expect(handoffs1[0].metadata?.ao4).toBe(fullPairing.ao4);
+    expect(handoffs1[0].metadata?.character).toBe(fullPairing.character);
+    expect(handoffs1[0].metadata?.narrative).toBe(fullPairing.narrative);
+    expect(handoffs1[0].metadata?.structure).toBe(fullPairing.structure);
+    expect(handoffs1[0].metadata?.exam_fit).toBe(fullPairing.exam_fit);
+    expect(handoffs1[0].metadata?.hard_times).toBe(fullPairing.hard_times);
+    expect(handoffs1[0].metadata?.atonement).toBe(fullPairing.atonement);
+    expect(handoffs1[0].metadata?.divergence).toBe(fullPairing.divergence);
+    expect(JSON.stringify(handoffs1[0])).not.toMatch(/AO5/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /use this route for paragraph drafting/i }));
+    const handoffs2 = getCurrentPlan().builder_handoffs ?? [];
+    expect(handoffs2).toHaveLength(1);
+    expect(handoffs2[0].id).toBe(ROUTE_HANDOFF_ID);
+  });
+
+  it("does not pre-fill or mutate paragraph_cards when the route handoff is applied", () => {
+    render(<ComparativeRoutePlanPanel pairing={fullPairing} />);
+    fireEvent.click(screen.getByRole("button", { name: /use this route for paragraph drafting/i }));
+    expect(getCurrentPlan().paragraph_cards ?? []).toEqual([]);
   });
 });
 

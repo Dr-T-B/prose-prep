@@ -411,7 +411,14 @@ export default function EssayBuilder() {
                         <p className="label-eyebrow mb-1 text-[10px]">The key divergence</p>
                         <p className="text-xs text-ink-muted italic leading-relaxed">{selectedPairing.divergence}</p>
                       </div>
-                      <ComparativeRoutePlanPanel pairing={selectedPairing} />
+                      <ComparativeRoutePlanPanel
+                        pairing={selectedPairing}
+                        onApplyRouteHandoff={(item) =>
+                          update(
+                            mergeBuilderHandoffsIntoPlan(plan, [item]) as Partial<EssayPlan>,
+                          )
+                        }
+                      />
                     </div>
                   )}
                 </div>
@@ -505,7 +512,7 @@ export default function EssayBuilder() {
                 </div>
               )}
 
-              <ParagraphEngine embedded />
+              <ParagraphEngine embedded handoffs={plan.builder_handoffs} />
             </Section>
           )}
 
