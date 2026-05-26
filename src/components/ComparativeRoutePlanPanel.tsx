@@ -3,12 +3,62 @@ import {
   buildEssayPlanScaffold,
   type ComparativeRoutePlanPairing,
 } from "@/lib/comparativeRouteScaffold";
+import {
+  integrateBuilderHandoffsIntoCurrentPlan,
+  ROUTE_HANDOFF_ID,
+  type BuilderHandoffItem,
+} from "@/lib/builderHandoff";
 
 const hasText = (value?: string | null) => !!value?.trim();
 
-export function ComparativeRoutePlanPanel({ pairing }: { pairing: ComparativeRoutePlanPairing }) {
+function buildRouteHandoffItem(pairing: ComparativeRoutePlanPairing): BuilderHandoffItem {
+  const metadata: Record<string, string | string[]> = {};
+  const put = (key: string, value?: string | null) => {
+    if (hasText(value)) metadata[key] = value!.trim();
+  };
+  put("thesis", pairing.thesis);
+  put("axis", pairing.axis);
+  put("ao2", pairing.ao2);
+  put("ao3", pairing.ao3);
+  put("ao4", pairing.ao4);
+  put("character", pairing.character);
+  put("narrative", pairing.narrative);
+  put("structure", pairing.structure);
+  put("exam_fit", pairing.exam_fit);
+  put("hard_times", pairing.hard_times);
+  put("atonement", pairing.atonement);
+  put("divergence", pairing.divergence);
+  if (pairing.themes && pairing.themes.length) metadata.themes = pairing.themes;
+
+  const family =
+    pairing.themes && pairing.themes.length ? (pairing.themes[0] as BuilderHandoffItem["family"]) : undefined;
+
+  return {
+    id: ROUTE_HANDOFF_ID,
+    kind: "comparison",
+    originModule: "comparison",
+    label: "Route hints",
+    title: pairing.axis?.trim() || "Selected comparative route",
+    text: pairing.thesis?.trim() || pairing.divergence?.trim() || "Route hints applied to paragraph drafting.",
+    canonicalId: pairing.id ?? undefined,
+    family,
+    metadata,
+  };
+}
+
+export function ComparativeRoutePlanPanel({
+  pairing,
+  onApplyRouteHandoff,
+}: {
+  pairing: ComparativeRoutePlanPairing;
+  /** When supplied, EssayBuilder owns the integration so its useCurrentPlan
+   *  state updates and child consumers re-render. Without it, the panel falls
+   *  back to writing through the plan-store helper directly. */
+  onApplyRouteHandoff?: (item: BuilderHandoffItem) => void;
+}) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
+  const [handoffApplied, setHandoffApplied] = useState(false);
 
   const aoItems = [
     { label: "AO2 method angle", value: pairing.ao2 },
@@ -40,6 +90,17 @@ export function ComparativeRoutePlanPanel({ pairing }: { pairing: ComparativeRou
       setCopyError(true);
       setCopied(false);
     }
+  };
+
+  const handleUseForParagraphDrafting = () => {
+    const item = buildRouteHandoffItem(pairing);
+    if (onApplyRouteHandoff) {
+      onApplyRouteHandoff(item);
+    } else {
+      integrateBuilderHandoffsIntoCurrentPlan([item]);
+    }
+    setHandoffApplied(true);
+    window.setTimeout(() => setHandoffApplied(false), 1800);
   };
 
   return (
@@ -88,9 +149,22 @@ export function ComparativeRoutePlanPanel({ pairing }: { pairing: ComparativeRou
           >
             Copy timed essay-plan scaffold
           </button>
+          <button
+            type="button"
+            onClick={handleUseForParagraphDrafting}
+            aria-label="Use this route for paragraph drafting"
+            className="px-3 py-1.5 border border-rule-strong bg-paper text-xs font-mono rounded-sm hover:bg-paper-dim transition-colors"
+          >
+            Use this route for paragraph drafting
+          </button>
           {copied && (
             <span role="status" className="text-[10px] font-mono text-primary">
               Copied to clipboard
+            </span>
+          )}
+          {handoffApplied && (
+            <span role="status" className="text-[10px] font-mono text-primary">
+              Route hints applied
             </span>
           )}
           {copyError && (

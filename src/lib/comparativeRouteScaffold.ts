@@ -1,4 +1,5 @@
 export type ComparativeRoutePlanPairing = {
+  id?: string | null;
   axis?: string | null;
   thesis?: string | null;
   ao2?: string | null;
@@ -8,6 +9,10 @@ export type ComparativeRoutePlanPairing = {
   narrative?: string | null;
   structure?: string | null;
   exam_fit?: string | null;
+  hard_times?: string | null;
+  atonement?: string | null;
+  divergence?: string | null;
+  themes?: string[];
 };
 
 const hasText = (value?: string | null) => !!value?.trim();

@@ -10,6 +10,10 @@ import type {
 } from "@/lib/libraryAdapters";
 import { getCurrentPlan, setCurrentPlan } from "@/lib/planStore";
 
+// Stable id used by the "Use this route for paragraph drafting" action so a
+// new selection replaces the prior route handoff rather than stacking.
+export const ROUTE_HANDOFF_ID = "comparison:selected-route";
+
 export type BuilderHandoffKind =
   | "question"
   | "quote"

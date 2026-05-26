@@ -15,6 +15,7 @@ import {
   savePlan,
   type ParagraphCard,
 } from "@/lib/planStore";
+import { ROUTE_HANDOFF_ID, type BuilderHandoffItem } from "@/lib/builderHandoff";
 import { persistPlan } from "@/lib/persistence";
 import { LocalOnlyNotice } from "@/components/LocalOnlyNotice";
 import {
@@ -49,9 +50,14 @@ import {
 interface Props {
   /** When true, omits the page-level outer chrome (used inside Essay Builder). */
   embedded?: boolean;
+  /** Optional override for builder_handoffs — supplied by EssayBuilder so the
+   *  route-hints banner reacts to its parent's plan state in real time. The
+   *  standalone /paragraph-engine page leaves this undefined and the banner
+   *  stays hidden by design. */
+  handoffs?: BuilderHandoffItem[];
 }
 
-export default function ParagraphEngine({ embedded = false }: Props) {
+export default function ParagraphEngine({ embedded = false, handoffs }: Props) {
   const { gradeBMode } = useGradeBMode();
   const { plan, update } = useCurrentPlan();
   const content = useContent();
@@ -408,6 +414,7 @@ export default function ParagraphEngine({ embedded = false }: Props) {
       <div className="grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6">
         {/* LEFT: card list */}
         <section className="flex flex-col gap-4">
+          {embedded && <RouteHintsBanner handoffs={handoffs ?? plan.builder_handoffs} />}
           {cards.map((card, i) => (
             <CardEditor
               key={card.id}
@@ -495,6 +502,55 @@ export default function ParagraphEngine({ embedded = false }: Props) {
 }
 
 /* ============================== sub-components ============================ */
+
+const ROUTE_HINT_ROWS: { key: string; label: string }[] = [
+  { key: "thesis", label: "Thesis" },
+  { key: "axis", label: "Comparative axis" },
+  { key: "ao2", label: "AO2 method focus" },
+  { key: "ao3", label: "AO3 context focus" },
+  { key: "ao4", label: "AO4 comparative link" },
+  { key: "character", label: "Character" },
+  { key: "narrative", label: "Narrative" },
+  { key: "structure", label: "Structure" },
+  { key: "exam_fit", label: "Exam fit" },
+];
+
+function RouteHintsBanner({
+  handoffs,
+}: {
+  handoffs: BuilderHandoffItem[] | undefined;
+}) {
+  const handoff = handoffs?.find((h) => h.id === ROUTE_HANDOFF_ID);
+  if (!handoff) return null;
+  const metadata = handoff.metadata ?? {};
+  const rows = ROUTE_HINT_ROWS.map(({ key, label }) => {
+    const raw = metadata[key];
+    const value = typeof raw === "string" ? raw.trim() : "";
+    return value ? { label, value } : null;
+  }).filter((row): row is { label: string; value: string } => row !== null);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <aside
+      aria-label="Route hints for paragraph drafting"
+      className="border border-rule rounded-sm bg-paper-dim/40 p-4"
+    >
+      <p className="label-eyebrow mb-2 text-[10px]">Route hints for paragraph drafting</p>
+      <p className="text-xs text-ink-muted leading-relaxed mb-3">
+        Read-only reference from the selected comparative route. Hints do not edit your paragraph cards.
+      </p>
+      <dl className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
+        {rows.map((row) => (
+          <div key={row.label} className="flex flex-col">
+            <dt className="label-eyebrow text-[10px]">{row.label}</dt>
+            <dd className="text-xs text-ink leading-relaxed">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </aside>
+  );
+}
 
 function EmptyState({ embedded }: { embedded: boolean }) {
   const Wrapper = embedded ? EmbeddedWrapper : PageWrapper;
