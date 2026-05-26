@@ -185,7 +185,7 @@ describe('sanitiseProviderPlan', () => {
         'Resolve through method comparison.',
       ],
     });
-    expect(r).toEqual({ ok: false, reason: 'ao5_present' });
+    expect(r).toEqual({ ok: false, reason: 'non_component2_ao_present' });
   });
 
   it('rejects fabricated quotations', () => {

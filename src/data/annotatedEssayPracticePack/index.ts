@@ -1056,7 +1056,7 @@ export const annotatedEssayPracticePack: AnnotatedEssayPracticePack = {
     "Structured Pearson Edexcel Component 2 practice content converting today's annotated essay work into questions, model essays, AO annotations, examiner commentary, stems, quote-method links and upgrade drills.",
   provenance: PACK_PROVENANCE,
   ao_policy_note:
-    "Pearson Edexcel Component 2 Prose assesses AO1, AO2, AO3 and AO4. This pack does not create AO5 scoring fields; interpretive debate is labelled as interpretive nuance or critical perspective only.",
+    "Pearson Edexcel Component 2 Prose assesses AO1, AO2, AO3 and AO4. This pack does not create scoring fields beyond those objectives; interpretive debate is labelled as interpretive nuance or critical perspective only.",
   essay_questions: essayQuestions,
   annotated_essays: annotatedEssays,
   essay_paragraphs: essayParagraphs,

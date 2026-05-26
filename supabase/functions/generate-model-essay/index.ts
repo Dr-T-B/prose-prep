@@ -1,7 +1,7 @@
 // generate-model-essay
 //
 // Server-side foundation for the future ProseCompass model-essay generator.
-// AO1–AO4 only — AO5 is deliberately excluded.
+// AO1-AO4 only; no additional assessment objective is included.
 //
 // PR B scope (this file):
 //   - Establish the safe server-side boundary.
