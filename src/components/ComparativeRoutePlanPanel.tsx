@@ -1,17 +1,15 @@
-type ComparativeRoutePlanPairing = {
-  thesis?: string | null;
-  ao2?: string | null;
-  ao3?: string | null;
-  ao4?: string | null;
-  character?: string | null;
-  narrative?: string | null;
-  structure?: string | null;
-  exam_fit?: string | null;
-};
+import { useState } from "react";
+import {
+  buildEssayPlanScaffold,
+  type ComparativeRoutePlanPairing,
+} from "@/lib/comparativeRouteScaffold";
 
 const hasText = (value?: string | null) => !!value?.trim();
 
 export function ComparativeRoutePlanPanel({ pairing }: { pairing: ComparativeRoutePlanPairing }) {
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
+
   const aoItems = [
     { label: "AO2 method angle", value: pairing.ao2 },
     { label: "AO3 context angle", value: pairing.ao3 },
@@ -30,6 +28,19 @@ export function ComparativeRoutePlanPanel({ pairing }: { pairing: ComparativeRou
     planningItems.some((item) => hasText(item.value));
 
   if (!hasPlanningRoute) return null;
+
+  const handleCopy = async () => {
+    const scaffold = buildEssayPlanScaffold(pairing);
+    try {
+      await navigator.clipboard.writeText(scaffold);
+      setCopied(true);
+      setCopyError(false);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopyError(true);
+      setCopied(false);
+    }
+  };
 
   return (
     <div className="border-t border-rule pt-3">
@@ -67,6 +78,26 @@ export function ComparativeRoutePlanPanel({ pairing }: { pairing: ComparativeRou
             ))}
           </div>
         )}
+
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="px-3 py-1.5 border border-rule-strong bg-paper text-xs font-mono rounded-sm hover:bg-paper-dim transition-colors"
+          >
+            Copy route as essay plan
+          </button>
+          {copied && (
+            <span role="status" className="text-[10px] font-mono text-primary">
+              Copied to clipboard
+            </span>
+          )}
+          {copyError && (
+            <span role="status" className="text-[10px] font-mono text-ink-muted">
+              Copy failed — select and copy the panel text instead
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
