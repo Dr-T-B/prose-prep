@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ComparativeRoutePlanPanel, buildEssayPlanScaffold } from "./ComparativeRoutePlanPanel";
+import { ComparativeRoutePlanPanel } from "./ComparativeRoutePlanPanel";
+import { buildEssayPlanScaffold } from "@/lib/comparativeRouteScaffold";
 
 const fullPairing = {
   axis: "Childhood formation",
