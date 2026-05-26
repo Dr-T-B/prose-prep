@@ -789,8 +789,53 @@ function CardEditor({
           <AOPill name="AO3" {...coverage.ao3} colorVar="--ao3" />
           <AOPill name="AO4" {...coverage.ao4} colorVar="--ao4" />
         </div>
+
+        <SelfAssessmentChecklist />
       </div>
     </article>
+  );
+}
+
+/** Static, presentational self-review checklist surfaced inside each paragraph
+ *  card. Default-collapsed via a native <details> element. Holds no state,
+ *  writes nothing, and uses no scoring or grading language. */
+function SelfAssessmentChecklist() {
+  return (
+    <details
+      className="mt-1 border-t border-rule pt-2"
+      aria-label="Paragraph quality check"
+    >
+      <summary className="cursor-pointer text-xs meta-mono text-ink-muted hover:text-ink list-none flex items-center gap-1.5 select-none">
+        <span aria-hidden="true" className="inline-block transition-transform">›</span>
+        Paragraph quality check
+      </summary>
+      <ul className="mt-2 grid gap-1.5 text-xs text-ink-muted pl-1">
+        <li>
+          <span className="meta-mono text-ink mr-1.5">AO1</span>
+          Is the comparative argument clear and sustained?
+        </li>
+        <li>
+          <span className="meta-mono text-ink mr-1.5">AO2</span>
+          Is a writerly method named and analysed, not just spotted?
+        </li>
+        <li>
+          <span className="meta-mono text-ink mr-1.5">AO3</span>
+          Is context integrated into meaning rather than bolted on?
+        </li>
+        <li>
+          <span className="meta-mono text-ink mr-1.5">AO4</span>
+          Are Hard Times and Atonement compared directly?
+        </li>
+        <li>
+          <span className="meta-mono text-ink mr-1.5">Evidence</span>
+          Is at least one precise textual reference or quotation used?
+        </li>
+        <li>
+          <span className="meta-mono text-ink mr-1.5">Development</span>
+          Does the paragraph explain why the comparison matters?
+        </li>
+      </ul>
+    </details>
   );
 }
 

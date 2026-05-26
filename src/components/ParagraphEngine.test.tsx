@@ -178,6 +178,176 @@ describe("ParagraphEngine — Route hints banner", () => {
     expect(screen.queryByLabelText(/route hints for paragraph drafting/i)).not.toBeInTheDocument();
   });
 
+});
+
+describe("ParagraphEngine — Self-assessment checklist", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  const setPlanWithOneCard = () => {
+    setCurrentPlan({
+      id: "plan-checklist",
+      updated_at: 1,
+      family: "childhood",
+      question_id: "q-childhood",
+      route_id: "r-childhood",
+      thesis_level: "strong",
+      selected_quote_ids: [],
+      interpretive_extension_enabled: false,
+      selected_interpretive_extension_ids: [],
+      paragraph_cards: [
+        {
+          id: "card_one",
+          title: "Existing card",
+          claim: "A student claim.",
+          comparative_direction: "",
+          evidence_ht_ids: [],
+          evidence_at_ids: [],
+          evidence_cmp_ids: [],
+          method_focus: "",
+          context_anchor: "",
+          analytical_position_prompt: "",
+          notes: "",
+        },
+      ],
+      builder_handoffs: [],
+    });
+  };
+
+  it("renders a checklist inside every paragraph card", () => {
+    setCurrentPlan({
+      id: "plan-checklist-multi",
+      updated_at: 1,
+      family: "childhood",
+      question_id: "q-childhood",
+      route_id: "r-childhood",
+      thesis_level: "strong",
+      selected_quote_ids: [],
+      interpretive_extension_enabled: false,
+      selected_interpretive_extension_ids: [],
+      paragraph_cards: [
+        {
+          id: "card_a",
+          title: "Card A",
+          claim: "",
+          comparative_direction: "",
+          evidence_ht_ids: [],
+          evidence_at_ids: [],
+          evidence_cmp_ids: [],
+          method_focus: "",
+          context_anchor: "",
+          analytical_position_prompt: "",
+          notes: "",
+        },
+        {
+          id: "card_b",
+          title: "Card B",
+          claim: "",
+          comparative_direction: "",
+          evidence_ht_ids: [],
+          evidence_at_ids: [],
+          evidence_cmp_ids: [],
+          method_focus: "",
+          context_anchor: "",
+          analytical_position_prompt: "",
+          notes: "",
+        },
+      ],
+      builder_handoffs: [],
+    });
+
+    renderEmbedded();
+
+    const checklists = screen.getAllByLabelText(/paragraph quality check/i);
+    expect(checklists).toHaveLength(2);
+  });
+
+  it("is collapsible via a native <details> element, default-closed", () => {
+    setPlanWithOneCard();
+    renderEmbedded();
+
+    const checklist = screen.getAllByLabelText(/paragraph quality check/i)[0];
+    expect(checklist.tagName.toLowerCase()).toBe("details");
+    expect((checklist as HTMLDetailsElement).open).toBe(false);
+  });
+
+  it("lists AO1, AO2, AO3, AO4 plus Evidence and Development prompts", () => {
+    setPlanWithOneCard();
+    renderEmbedded();
+
+    const checklist = screen.getAllByLabelText(/paragraph quality check/i)[0];
+    const text = checklist.textContent ?? "";
+
+    expect(text).toMatch(/AO1/);
+    expect(text).toMatch(/AO2/);
+    expect(text).toMatch(/AO3/);
+    expect(text).toMatch(/AO4/);
+    expect(text).toMatch(/Evidence/);
+    expect(text).toMatch(/Development/);
+    expect(text).toMatch(/comparative argument/i);
+    expect(text).toMatch(/writerly method/i);
+    expect(text).toMatch(/context integrated/i);
+    expect(text).toMatch(/Hard Times.*Atonement/i);
+    expect(text).toMatch(/precise textual reference|quotation/i);
+    expect(text).toMatch(/why the comparison matters/i);
+  });
+
+  it("does not reference AO5", () => {
+    setPlanWithOneCard();
+    renderEmbedded();
+
+    const checklist = screen.getAllByLabelText(/paragraph quality check/i)[0];
+    expect(checklist.textContent ?? "").not.toMatch(/AO\s*5/i);
+  });
+
+  it("does not contain scoring, grade, or marking language", () => {
+    setPlanWithOneCard();
+    renderEmbedded();
+
+    const checklist = screen.getAllByLabelText(/paragraph quality check/i)[0];
+    const text = checklist.textContent ?? "";
+
+    expect(text).not.toMatch(/score/i);
+    expect(text).not.toMatch(/grade/i);
+    expect(text).not.toMatch(/\bmark(s|ing)?\b/i);
+    expect(text).not.toMatch(/\bband\b/i);
+  });
+
+  it("does not mutate paragraph card data when rendered", () => {
+    setPlanWithOneCard();
+    renderEmbedded();
+
+    const cards = getCurrentPlan().paragraph_cards ?? [];
+    expect(cards).toHaveLength(1);
+    expect(cards[0].claim).toBe("A student claim.");
+    expect(cards[0].method_focus).toBe("");
+    expect(cards[0].context_anchor).toBe("");
+    expect(cards[0].comparative_direction).toBe("");
+    expect(cards[0].notes).toBe("");
+  });
+
+  it("renders the same static prompts regardless of card content (sparse-safe)", () => {
+    setPlanWithOneCard();
+    renderEmbedded();
+
+    const sparseText =
+      screen.getAllByLabelText(/paragraph quality check/i)[0].textContent ?? "";
+
+    expect(sparseText).toMatch(/AO1/);
+    expect(sparseText).toMatch(/AO4/);
+    expect(sparseText).toMatch(/Evidence/);
+    expect(sparseText).toMatch(/Development/);
+  });
+});
+
+describe("ParagraphEngine — Route hints banner: card-mutation guard (legacy)", () => {
+  // Original test relocated here verbatim to keep its assertions intact
+  // alongside the new checklist describe-block.
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it("does not mutate paragraph_cards when a route handoff is present", () => {
     setCurrentPlan({
       id: "plan-no-mutate",
