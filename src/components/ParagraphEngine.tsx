@@ -410,11 +410,12 @@ export default function ParagraphEngine({ embedded = false, handoffs }: Props) {
         </div>
       </header>
 
+      {embedded && <RouteHintsBanner handoffs={handoffs ?? plan.builder_handoffs} />}
+
       {/* Two-column workspace */}
       <div className="grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6">
         {/* LEFT: card list */}
         <section className="flex flex-col gap-4">
-          {embedded && <RouteHintsBanner handoffs={handoffs ?? plan.builder_handoffs} />}
           {cards.map((card, i) => (
             <CardEditor
               key={card.id}
@@ -532,23 +533,29 @@ function RouteHintsBanner({
   if (rows.length === 0) return null;
 
   return (
-    <aside
+    <details
+      open
       aria-label="Route hints for paragraph drafting"
-      className="border border-rule rounded-sm bg-paper-dim/40 p-4"
+      className="group border border-rule rounded-sm bg-paper-dim/40"
     >
-      <p className="label-eyebrow mb-2 text-[10px]">Route hints for paragraph drafting</p>
-      <p className="text-xs text-ink-muted leading-relaxed mb-3">
-        Read-only reference from the selected comparative route. Hints do not edit your paragraph cards.
-      </p>
-      <dl className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
-        {rows.map((row) => (
-          <div key={row.label} className="flex flex-col">
-            <dt className="label-eyebrow text-[10px]">{row.label}</dt>
-            <dd className="text-xs text-ink leading-relaxed">{row.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </aside>
+      <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between hover:bg-paper-dim/60">
+        <span className="label-eyebrow text-[10px]">Route hints for paragraph drafting</span>
+        <span className="meta-mono text-[10px] group-open:rotate-90 transition-transform text-ink-muted">›</span>
+      </summary>
+      <div className="px-4 pb-4 pt-3 border-t border-rule">
+        <p className="text-xs text-ink-muted leading-relaxed mb-3">
+          Read-only reference from the selected comparative route. Hints do not edit your paragraph cards.
+        </p>
+        <dl className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
+          {rows.map((row) => (
+            <div key={row.label} className="flex flex-col">
+              <dt className="label-eyebrow text-[10px]">{row.label}</dt>
+              <dd className="text-xs text-ink leading-relaxed">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </details>
   );
 }
 
