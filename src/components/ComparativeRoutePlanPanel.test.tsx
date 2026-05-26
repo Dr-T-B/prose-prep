@@ -44,11 +44,12 @@ describe("ComparativeRoutePlanPanel", () => {
     expect(screen.getByText(/2023 Q2 direct fit/)).toBeInTheDocument();
   });
 
-  it("exposes a 'Copy route as essay plan' action", () => {
+  it("exposes a timed essay scaffold copy action with an accessible label", () => {
     render(<ComparativeRoutePlanPanel pairing={fullPairing} />);
     expect(
-      screen.getByRole("button", { name: /copy route as essay plan/i }),
+      screen.getByRole("button", { name: /copy component 2 essay route plan scaffold/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Copy timed essay-plan scaffold")).toBeInTheDocument();
   });
 
   it("writes the polished timed-writing scaffold to the clipboard when the action is used", async () => {
@@ -56,7 +57,9 @@ describe("ComparativeRoutePlanPanel", () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     render(<ComparativeRoutePlanPanel pairing={fullPairing} />);
-    fireEvent.click(screen.getByRole("button", { name: /copy route as essay plan/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /copy component 2 essay route plan scaffold/i }),
+    );
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const payload = writeText.mock.calls[0][0] as string;
