@@ -41,8 +41,10 @@ export default function Component2ComparativeMatrix() {
   const [error, setError] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [lens, setLens] = useState<LensKey>("all");
+  const [aoFilter, setAoFilter] = useState<"all" | "ao2" | "ao3" | "ao4">("all");
   const [query, setQuery] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [printMode, setPrintMode] = useState<"compact" | "cards" | "teacher">("compact");
 
   useEffect(() => {
     let cancelled = false;
@@ -86,12 +88,21 @@ export default function Component2ComparativeMatrix() {
   }, [reloadKey]);
 
   const filtered = useMemo(() => {
+    let result = rows;
+    if (aoFilter !== "all") {
+      result = result.filter(r => !!r[aoFilter as keyof Row]);
+    }
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) =>
+    if (!q) return result;
+    return result.filter((r) =>
       Object.values(r).join(" ").toLowerCase().includes(q),
     );
-  }, [rows, query]);
+  }, [rows, query, aoFilter]);
+
+  const getSubtitle = (ht: string, at: string) => {
+    const getFocus = (str: string) => str.split(/[.,;]/)[0];
+    return `${getFocus(ht)} ↔ ${getFocus(at)}`;
+  };
 
   if (loading) {
     return (
@@ -133,12 +144,31 @@ export default function Component2ComparativeMatrix() {
           </p>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 print:hidden">
+            <span className="text-sm text-ink-muted font-medium w-full mb-2">
+              Showing {filtered.length} of {rows.length} comparative routes
+              {aoFilter !== "all" ? ` (${aoFilter.toUpperCase()} filter active)` : ""}
+            </span>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search rows (e.g. Briony, Coketown, Dunkirk)…"
               className="w-72 rounded-md border border-rule bg-paper px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ink"
             />
+            <div className="flex flex-wrap gap-1 rounded-md border border-rule p-1">
+              {(["all", "ao2", "ao3", "ao4"] as const).map(ao => (
+                <button
+                  key={ao}
+                  onClick={() => setAoFilter(ao)}
+                  className={`rounded px-3 py-1 text-xs font-medium transition ${
+                    aoFilter === ao
+                      ? "bg-ink text-paper"
+                      : "text-ink-muted hover:bg-rule"
+                  }`}
+                >
+                  {ao === "all" ? "All AOs" : ao.toUpperCase()}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap gap-1 rounded-md border border-rule p-1">
               {LENS_OPTIONS.map((opt) => (
                 <button
@@ -154,17 +184,28 @@ export default function Component2ComparativeMatrix() {
                 </button>
               ))}
             </div>
-            <button
-              onClick={() => window.print()}
-              className="ml-auto rounded-md border border-rule px-3 py-2 text-xs font-medium hover:bg-rule"
-            >
-              Print matrix
-            </button>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <select
+                value={printMode}
+                onChange={(e) => setPrintMode(e.target.value as any)}
+                className="rounded-md border border-rule bg-paper px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ink"
+              >
+                <option value="compact">Compact Matrix</option>
+                <option value="cards">Revision Cards</option>
+                <option value="teacher">Teacher Pack</option>
+              </select>
+              <button
+                onClick={() => window.print()}
+                className="rounded-md border border-rule px-3 py-2 text-xs font-medium hover:bg-rule"
+              >
+                Print {printMode === "compact" ? "compact matrix" : printMode === "cards" ? "revision cards" : "teacher pack"}
+              </button>
+            </div>
           </div>
         </header>
 
         {/* Wide-screen matrix */}
-        <div className="hidden overflow-x-auto rounded-lg border border-rule lg:block print:block">
+        <div className={`hidden overflow-x-auto rounded-lg border border-rule lg:block ${printMode === 'compact' ? 'print:block' : 'print:hidden'}`}>
           <table className="w-full border-collapse text-left text-sm">
             <thead className="bg-rule/50">
               <tr>
@@ -197,6 +238,9 @@ export default function Component2ComparativeMatrix() {
                     className="sticky left-0 z-10 w-48 border-t border-rule bg-inherit p-3 align-top font-serif text-base font-semibold"
                   >
                     {row.theme}
+                    <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted font-normal leading-tight">
+                      {getSubtitle(row.hardTimes, row.atonement)}
+                    </div>
                   </th>
                   {visibleCols(lens).map((c) => (
                     <td
@@ -213,7 +257,7 @@ export default function Component2ComparativeMatrix() {
         </div>
 
         {/* Mobile / tablet accordion */}
-        <div className="space-y-3 lg:hidden print:hidden">
+        <div className={`space-y-3 lg:hidden ${printMode === 'cards' ? 'print:block' : 'print:hidden'}`}>
           {filtered.map((row) => {
             const open = openId === row.id;
             return (
@@ -225,9 +269,14 @@ export default function Component2ComparativeMatrix() {
                   onClick={() => setOpenId(open ? null : row.id)}
                   className="flex w-full items-center justify-between bg-rule/30 px-4 py-3 text-left"
                 >
-                  <span className="font-serif text-lg font-semibold">
-                    {row.theme}
-                  </span>
+                  <div className="flex-1 pr-4">
+                    <span className="block font-serif text-lg font-semibold">
+                      {row.theme}
+                    </span>
+                    <span className="block mt-1 font-mono text-[10px] uppercase text-ink-muted leading-tight">
+                      {getSubtitle(row.hardTimes, row.atonement)}
+                    </span>
+                  </div>
                   <span className="font-mono text-xs text-ink-muted">
                     {open ? "Hide" : "Open"}
                   </span>
@@ -236,9 +285,28 @@ export default function Component2ComparativeMatrix() {
                   <div className="space-y-4 p-4">
                     <Pair label="Hard Times" body={row.hardTimes} />
                     <Pair label="Atonement" body={row.atonement} />
-                    <AO label="AO2 · Method" body={row.ao2} />
-                    <AO label="AO3 · Context" body={row.ao3} />
-                    <AO label="AO4 · Comparison" body={row.ao4} />
+                    {(() => {
+                      const aoItems = [
+                        { key: "ao2", label: "AO2 Method", body: row.ao2 },
+                        { key: "ao3", label: "AO3 Context", body: row.ao3 },
+                        { key: "ao4", label: "AO4 Compare", body: row.ao4 },
+                      ];
+                      
+                      if (aoFilter !== "all") {
+                        const selectedIdx = aoItems.findIndex(i => i.key === aoFilter);
+                        if (selectedIdx > -1) {
+                          const selected = aoItems.splice(selectedIdx, 1)[0];
+                          if (aoFilter === "ao2") selected.label = "Method";
+                          if (aoFilter === "ao3") selected.label = "Context";
+                          if (aoFilter === "ao4") selected.label = "Comparative Link";
+                          aoItems.unshift(selected);
+                        }
+                      }
+
+                      return aoItems.map(item => (
+                        <AO key={item.key} label={item.label} body={item.body} />
+                      ));
+                    })()}
                     <div className="rounded-md border-l-4 border-ink bg-ink/5 p-3">
                       <p className="font-mono text-[10px] uppercase tracking-wider text-ink">
                         Thesis starter
@@ -261,7 +329,7 @@ export default function Component2ComparativeMatrix() {
         </div>
 
         {/* Printable full dump */}
-        <section className="hidden print:block">
+        <section className={`hidden ${printMode === 'teacher' ? 'print:block' : 'print:hidden'}`}>
           <div className="space-y-6 pt-4">
             {rows.map((row) => (
               <div key={row.id} className="break-inside-avoid border-t border-rule pt-4">
