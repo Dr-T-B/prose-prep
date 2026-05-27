@@ -135,12 +135,20 @@ describe("EssayBuilder", () => {
     expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
 
     expect(screen.getByText(/childhood formation/)).toBeInTheDocument();
-    expect(screen.getByText(/classroom dialogue/)).toBeInTheDocument();
+    expect(screen.getAllByText(/classroom dialogue/).length).toBeGreaterThan(0);
     expect(screen.getByText(/utilitarian schooling/)).toBeInTheDocument();
     expect(screen.getByText(/external pressure/)).toBeInTheDocument();
     expect(screen.getByText(/Louisa and Briony/)).toBeInTheDocument();
     expect(screen.getByText(/Narrative perspective controls/)).toBeInTheDocument();
     expect(screen.getByText(/Opening formation shapes/)).toBeInTheDocument();
     expect(screen.getByText(/2023 Q2 direct fit/)).toBeInTheDocument();
+
+    expect(screen.getByText("Suggested AO Route Combination")).toBeInTheDocument();
+    expect(screen.getByText("AO1 thesis route")).toBeInTheDocument();
+    expect(screen.getByText("AO2 method routes")).toBeInTheDocument();
+    expect(screen.getByText("AO3 context routes")).toBeInTheDocument();
+    expect(screen.getByText("AO4 comparative hinge routes")).toBeInTheDocument();
+    expect(screen.getByText("AO3 Context Routes")).toBeInTheDocument();
+    expect(screen.getByText("Core AO3 Context Claim")).toBeInTheDocument();
   });
 });
