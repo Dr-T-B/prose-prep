@@ -210,4 +210,106 @@ describe("ComparativeMatrix", () => {
     });
     expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
   });
+
+  it("sets aria-expanded when a route accordion is toggled", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const articles = screen.getAllByRole("article");
+    const toggleBtn = within(articles[0]).getByRole("button");
+
+    expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("allows multiple comparative routes to remain expanded simultaneously", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const articles = screen.getAllByRole("article");
+    const toggle1 = within(articles[0]).getByRole("button");
+    const toggle2 = within(articles[1]).getByRole("button");
+
+    fireEvent.click(toggle1);
+    fireEvent.click(toggle2);
+
+    expect(toggle1).toHaveAttribute("aria-expanded", "true");
+    expect(toggle2).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("expands and collapses all visible routes", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+
+    for (const article of screen.getAllByRole("article")) {
+      expect(within(article).getByRole("button")).toHaveAttribute("aria-expanded", "true");
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse all" }));
+
+    for (const article of screen.getAllByRole("article")) {
+      expect(within(article).getByRole("button")).toHaveAttribute("aria-expanded", "false");
+    }
+  });
+
+  it("clears search and filters and restores the full result count", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText(/Search rows/i), {
+      target: { value: "setting" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "AO2" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+    expect(screen.getByPlaceholderText(/Search rows/i)).toHaveValue("");
+  });
+
+  it("renders sparse comparative rows without crashing", async () => {
+    mockComparativeRows.setRows([
+      {
+        id: "sparse-1",
+        axis: "Sparse route",
+        hard_times: "Some Dickens content.",
+        atonement: "Some McEwan content.",
+        ao2: "",
+        ao3: "",
+        ao4: "",
+        thesis: "",
+        character: "",
+        narrative: "",
+        structure: "",
+        exam_fit: "",
+      },
+    ]);
+
+    render(<ComparativeMatrix />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 1 comparative routes/i)).toBeInTheDocument();
+    });
+    expect(screen.getAllByText(/Sparse route/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
+  });
 });

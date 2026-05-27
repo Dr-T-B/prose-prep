@@ -39,7 +39,7 @@ export default function Component2ComparativeMatrix() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [lens, setLens] = useState<LensKey>("all");
   const [aoFilter, setAoFilter] = useState<"all" | "ao2" | "ao3" | "ao4">("all");
   const [query, setQuery] = useState("");
@@ -79,7 +79,6 @@ export default function Component2ComparativeMatrix() {
           examFit: ((r as { exam_fit?: string }).exam_fit) ?? "",
         }));
         setRows(mapped);
-        if (mapped.length > 0) setOpenId((prev) => prev ?? mapped[0].id);
         setLoading(false);
       });
     return () => {
@@ -102,6 +101,23 @@ export default function Component2ComparativeMatrix() {
   const getSubtitle = (ht: string, at: string) => {
     const getFocus = (str: string) => str.split(/[.,;]/)[0];
     return `${getFocus(ht)} ↔ ${getFocus(at)}`;
+  };
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const expandAll = () => setExpandedIds(new Set(filtered.map((r) => r.id)));
+  const collapseAll = () => setExpandedIds(new Set());
+  const clearFilters = () => {
+    setQuery("");
+    setAoFilter("all");
+    setLens("all");
   };
 
   if (loading) {
@@ -184,6 +200,11 @@ export default function Component2ComparativeMatrix() {
                 </button>
               ))}
             </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={expandAll} className="rounded-md border border-rule px-3 py-1 text-xs font-medium hover:bg-rule">Expand all</button>
+              <button type="button" onClick={collapseAll} className="rounded-md border border-rule px-3 py-1 text-xs font-medium hover:bg-rule">Collapse all</button>
+              <button type="button" onClick={clearFilters} className="rounded-md border border-rule px-3 py-1 text-xs font-medium hover:bg-rule">Clear filters</button>
+            </div>
             <div className="ml-auto flex flex-wrap items-center gap-2">
               <select
                 value={printMode}
@@ -259,14 +280,16 @@ export default function Component2ComparativeMatrix() {
         {/* Mobile / tablet accordion */}
         <div className={`space-y-3 lg:hidden ${printMode === 'cards' ? 'print:block' : 'print:hidden'}`}>
           {filtered.map((row) => {
-            const open = openId === row.id;
+            const open = expandedIds.has(row.id);
             return (
               <article
                 key={row.id}
                 className="overflow-hidden rounded-lg border border-rule"
               >
                 <button
-                  onClick={() => setOpenId(open ? null : row.id)}
+                  onClick={() => toggleExpanded(row.id)}
+                  aria-expanded={open}
+                  aria-controls={`comparative-matrix-route-${row.id}`}
                   className="flex w-full items-center justify-between bg-rule/30 px-4 py-3 text-left"
                 >
                   <div className="flex-1 pr-4">
@@ -282,7 +305,7 @@ export default function Component2ComparativeMatrix() {
                   </span>
                 </button>
                 {open && (
-                  <div className="space-y-4 p-4">
+                  <div id={`comparative-matrix-route-${row.id}`} className="space-y-4 p-4">
                     <Pair label="Hard Times" body={row.hardTimes} />
                     <Pair label="Atonement" body={row.atonement} />
                     {(() => {
