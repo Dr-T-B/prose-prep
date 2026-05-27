@@ -26,6 +26,10 @@ import { getHandoffGradeBHints } from "@/lib/gradeBSupport";
 import ParagraphEngine from "@/components/ParagraphEngine";
 import { LocalOnlyNotice } from "@/components/LocalOnlyNotice";
 import { ComparativeRoutePlanPanel } from "@/components/ComparativeRoutePlanPanel";
+import Ao3ContextRoutePanel from "@/components/Ao3ContextRoutePanel";
+import { getAo3ContextRouteById, getAo3RoutesForTheme, getCoreAo3Routes } from "@/lib/ao3ContextRoutes";
+import AoRouteCombinationPanel from "@/components/AoRouteCombinationPanel";
+import { getAoRouteCombinationsForTheme, getResolvedAoRouteCombination } from "@/lib/aoRouteCombinations";
 
 const STEPS = ["Question", "Route", "Thesis", "Paragraphs", "Critical Readings", "Save / Export"] as const;
 const LEVELS: Level[] = ["secure", "strong", "top_band"];
@@ -119,6 +123,57 @@ export default function EssayBuilder() {
   const paragraphJobs = resolveParagraphJobs(plan.family, plan.route_id, thesis, content);
   const quoteGroups = groupQuotesBySource(findQuotesForFamily(plan.family, content));
   const interpretiveTensions = findInterpretiveExtensions(plan.family, content);
+  const aoRouteCombination = useMemo(() => {
+    const themeLabel = plan.family ? QUESTION_FAMILY_LABELS[plan.family] ?? plan.family : "";
+    const terms = [
+      plan.family,
+      themeLabel,
+      question?.stem,
+      route?.name,
+      selectedPairing?.axis,
+    ].filter((term): term is string => Boolean(term?.trim()));
+    const byId = new Map<string, ReturnType<typeof getAoRouteCombinationsForTheme>[number]>();
+    terms.forEach((term) => {
+      getAoRouteCombinationsForTheme(term).forEach((combination) => byId.set(combination.id, combination));
+    });
+    const selectedCombination = Array.from(byId.values())[0];
+    return selectedCombination ? getResolvedAoRouteCombination(selectedCombination.id) : undefined;
+  }, [plan.family, question?.stem, route?.name, selectedPairing?.axis]);
+  const ao3ContextRouteMatches = useMemo(() => {
+    const themeLabel = plan.family ? QUESTION_FAMILY_LABELS[plan.family] ?? plan.family : "";
+    const terms = [
+      plan.family,
+      themeLabel,
+      question?.stem,
+      route?.name,
+      selectedPairing?.axis,
+    ].filter((term): term is string => Boolean(term?.trim()));
+    const byId = new Map<string, ReturnType<typeof getAo3RoutesForTheme>[number]>();
+    terms.forEach((term) => {
+      getAo3RoutesForTheme(term).forEach((ao3Route) => byId.set(ao3Route.id, ao3Route));
+    });
+    const matches = Array.from(byId.values());
+    return matches.length > 0 ? matches : getCoreAo3Routes();
+  }, [plan.family, question?.stem, route?.name, selectedPairing?.axis]);
+  const ao3UsingFallback = useMemo(() => {
+    if (!plan.family && !question?.stem && !route?.name && !selectedPairing?.axis) return true;
+    const themeLabel = plan.family ? QUESTION_FAMILY_LABELS[plan.family] ?? plan.family : "";
+    return [plan.family, themeLabel, question?.stem, route?.name, selectedPairing?.axis]
+      .filter((term): term is string => Boolean(term?.trim()))
+      .every((term) => getAo3RoutesForTheme(term).length === 0);
+  }, [plan.family, question?.stem, route?.name, selectedPairing?.axis]);
+  const [selectedAo3RouteId, setSelectedAo3RouteId] = useState<string | null>(null);
+  const selectedAo3RouteCandidate = selectedAo3RouteId ? getAo3ContextRouteById(selectedAo3RouteId) : undefined;
+  const selectedAo3Route =
+    selectedAo3RouteCandidate &&
+    ao3ContextRouteMatches.some((ao3Route) => ao3Route.id === selectedAo3RouteCandidate.id)
+      ? selectedAo3RouteCandidate
+      : ao3ContextRouteMatches[0];
+
+  useEffect(() => {
+    if (!selectedAo3Route || ao3ContextRouteMatches.some((ao3Route) => ao3Route.id === selectedAo3RouteId)) return;
+    setSelectedAo3RouteId(selectedAo3Route.id);
+  }, [ao3ContextRouteMatches, selectedAo3Route, selectedAo3RouteId]);
 
   // Step progress
   const stepIdx = (() => {
@@ -421,6 +476,54 @@ export default function EssayBuilder() {
                       />
                     </div>
                   )}
+                </div>
+              )}
+
+              {aoRouteCombination && (
+                <div className="mt-4">
+                  <AoRouteCombinationPanel combination={aoRouteCombination} />
+                </div>
+              )}
+
+              {ao3ContextRouteMatches.length > 0 && selectedAo3Route && (
+                <div className="mt-4 border border-rule bg-paper rounded-sm p-4">
+                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="label-eyebrow">AO3 Context Routes</p>
+                    {ao3UsingFallback && (
+                      <span className="w-fit rounded-sm border border-rule bg-paper-dim px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-ink-muted">
+                        CORE fallback
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    role="tablist"
+                    aria-label="AO3 Context Routes"
+                    className="mb-3 flex gap-1 overflow-x-auto border-b border-rule pb-2 print:hidden"
+                  >
+                    {ao3ContextRouteMatches.map((ao3Route) => {
+                      const active = ao3Route.id === selectedAo3Route.id;
+                      return (
+                        <button
+                          key={ao3Route.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={active}
+                          onClick={() => setSelectedAo3RouteId(ao3Route.id)}
+                          className={`shrink-0 rounded-sm border px-3 py-2 text-left text-xs transition-colors ${
+                            active
+                              ? "border-primary bg-highlight text-ink"
+                              : "border-rule bg-paper hover:border-rule-strong hover:bg-paper-dim"
+                          }`}
+                        >
+                          <span className="block font-mono text-[10px] uppercase tracking-wider text-ink-muted">
+                            {ao3Route.id} - {ao3Route.priority}
+                          </span>
+                          <span className="block max-w-52 truncate font-medium">{ao3Route.themeExamRoute}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Ao3ContextRoutePanel route={selectedAo3Route} />
                 </div>
               )}
             </Section>
