@@ -96,7 +96,7 @@ export const ao2MethodRoutes: Ao2MethodRoute[] = [
     atonementAo2Effect: "Time jumps create hindsight, rupture and belated understanding.",
     comparativeAo4Hinge: "Dickens structures causation; McEwan structures retrospection.",
     bestThemes: "guilt; childhood; education; memory",
-    examSentenceStem: "Dickens patterns ___ as consequence, while McEwan fragments time to show ___.",
+    examSentenceStem: "Dickens patterns educational repression as consequence through repeated classroom and domestic structures, while McEwan fragments time to show how a child's misreading is retrospectively reconstructed as adult guilt.",
     priority: "CORE",
   },
   {
