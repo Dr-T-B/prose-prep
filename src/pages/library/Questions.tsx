@@ -63,7 +63,7 @@ function QuestionCard({ question, onUse }: { question: LibraryQuestion; onUse: (
 }
 
 export default function LibraryQuestions() {
-  const { questions, routes } = useContent();
+  const { questions, routes, question_source_status } = useContent();
   const navigate = useNavigate();
   const libraryQuestions = useMemo(() => toLibraryQuestions(questions, routes), [questions, routes]);
   const [q, setQ] = useState("");
@@ -105,6 +105,12 @@ export default function LibraryQuestions() {
           <PrintButton />
         </div>
       </div>
+
+      {question_source_status?.isOverridingLocal && (
+        <div className="mb-6 px-4 py-3 rounded-sm border border-rule bg-paper-sunken text-xs text-ink-muted">
+          <strong>Content source note:</strong> showing {question_source_status.remoteCount} live Supabase questions; local fallback seed contains {question_source_status.localCount} questions. Remote content currently takes priority.
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-3 lg:items-center mb-5">
         <div className="flex-1"><SearchInput value={q} onChange={setQ} placeholder="Search question stems…" /></div>
