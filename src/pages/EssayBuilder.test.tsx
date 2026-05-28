@@ -320,7 +320,7 @@ describe("EssayBuilder", () => {
       </GradeBModeProvider>,
     );
 
-    expect(screen.getByText("Paragraph cards")).toBeInTheDocument();
+    expect(screen.getAllByText("Paragraph cards").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Roles of children").length).toBeGreaterThan(0);
     expect(screen.getAllByText("AO2 Method:").length).toBeGreaterThan(0);
     expect(screen.getAllByText("AO2 method detail for classroom dialogue and child focalisation.").length).toBeGreaterThan(0);
@@ -331,6 +331,64 @@ describe("EssayBuilder", () => {
     expect(screen.getAllByText(/Hard Times: Dickens tests childhood/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Final checklist").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/comparison remains active/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
+  });
+
+  it("shows current builder selections summary which updates upon interactions", async () => {
+    setCurrentPlan({
+      id: "plan-empty",
+      updated_at: 1,
+      selected_quote_ids: [],
+      interpretive_extension_enabled: false,
+      selected_interpretive_extension_ids: [],
+      paragraph_cards: [],
+      builder_handoffs: [],
+    } as any);
+
+    render(
+      <GradeBModeProvider>
+        <MemoryRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          <EssayBuilder />
+        </MemoryRouter>
+      </GradeBModeProvider>,
+    );
+
+    // Verify summary is present
+    expect(await screen.findByText("Current builder selections")).toBeInTheDocument();
+
+    // Default state: 2 'Not selected yet' (Question, Route). Thesis defaults to Strong.
+    const notSelected = screen.getAllByText("Not selected yet");
+    expect(notSelected.length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("Strong").length).toBeGreaterThan(0);
+
+    // Initial counts
+    expect(screen.getByText("0 selected quotes")).toBeInTheDocument();
+    expect(screen.getByText("0 cards in plan")).toBeInTheDocument();
+
+    // Select family then Question
+    fireEvent.click(screen.getByText("Childhood"));
+    fireEvent.click(screen.getByText("Compare the roles of children in both novels."));
+
+    // Verify Question updated in summary
+    // It's in the wizard AND the summary now, so length > 1
+    const questionTexts = await screen.findAllByText("Compare the roles of children in both novels.");
+    expect(questionTexts.length).toBeGreaterThan(1);
+
+    // Select Route
+    fireEvent.click(screen.getAllByText("Childhood formation")[0]);
+
+    // Verify Route updated in summary
+    const routeTexts = await screen.findAllByText("Childhood formation");
+    expect(routeTexts.length).toBeGreaterThan(1);
+
+    // Select Thesis Level (Strong)
+    fireEvent.click(screen.getAllByText("Strong")[0]);
+
+    // Verify Thesis updated in summary
+    const thesisTexts = await screen.findAllByText("Strong");
+    expect(thesisTexts.length).toBeGreaterThan(1);
+
+    // Ensure AO5 does not appear
     expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
   });
 });

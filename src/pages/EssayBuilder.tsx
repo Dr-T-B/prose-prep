@@ -1091,6 +1091,35 @@ function LiveOutput({ plan }: { plan: EssayPlan }) {
           )}
         </header>
 
+        <section className="bg-paper-dim/30 border border-rule rounded-sm p-4 print:hidden">
+          <p className="label-eyebrow mb-3">Current builder selections</p>
+          <dl className="grid sm:grid-cols-2 gap-y-3 gap-x-4 text-sm">
+            <div>
+              <dt className="text-[10px] uppercase tracking-wider font-mono text-ink-muted mb-0.5">Question</dt>
+              <dd className="font-medium text-ink">{q ? q.stem : <span className="italic text-ink-muted">Not selected yet</span>}</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] uppercase tracking-wider font-mono text-ink-muted mb-0.5">Route</dt>
+              <dd className="font-medium text-ink">{r ? r.name : <span className="italic text-ink-muted">Not selected yet</span>}</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] uppercase tracking-wider font-mono text-ink-muted mb-0.5">Thesis level</dt>
+              <dd className="font-medium text-ink">{plan.thesis_level === "secure" ? "Secure" : plan.thesis_level === "strong" ? "Strong" : plan.thesis_level === "top_band" ? "Top-band" : <span className="italic text-ink-muted">Not selected yet</span>}</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] uppercase tracking-wider font-mono text-ink-muted mb-0.5">Selected evidence</dt>
+              <dd className="font-medium text-ink">{plan.selected_quote_ids.length} selected quote{plan.selected_quote_ids.length === 1 ? "" : "s"}</dd>
+            </div>
+            <div>
+              <dt className="text-[10px] uppercase tracking-wider font-mono text-ink-muted mb-0.5">Paragraph cards</dt>
+              <dd className="font-medium text-ink">{(plan.paragraph_cards?.length) || 0} card{(plan.paragraph_cards?.length) === 1 ? "" : "s"} in plan</dd>
+            </div>
+          </dl>
+          <p className="text-xs text-ink-muted mt-3 pt-3 border-t border-rule/50 leading-relaxed">
+            This summary tracks your current Builder choices. Paragraph cards below show saved planning notes.
+          </p>
+        </section>
+
         {empty && (
           <p className="text-sm text-ink-muted">
             Pick a question family on the left to begin. The plan updates live as you make choices.
