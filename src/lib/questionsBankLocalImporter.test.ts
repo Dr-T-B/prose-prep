@@ -3,7 +3,12 @@ import {
   runQuestionsBankLocalImporter,
   type QuestionsBankLocalImportClient,
 } from "./questionsBankLocalImporter";
-import type { LocalQuestionForDryRun, QuestionImportPayload } from "./questionsBankDryRun";
+import {
+  checksumQuestionImportPayloads,
+  toQuestionImportPayload,
+  type LocalQuestionForDryRun,
+  type QuestionImportPayload,
+} from "./questionsBankDryRun";
 
 const validQuestion: LocalQuestionForDryRun = {
   id: "c2-class-01",
@@ -28,8 +33,16 @@ function approvalArtifact(overrides: {
   supabaseWrites?: string;
   migrations?: string;
   generated?: number;
+  checksum?: string | null;
   approvedBy?: string;
+  approvedBranch?: string;
+  approvedCommitSha?: string;
+  generatedAt?: string;
 } = {}) {
+  const checksumLine = overrides.checksum === null
+    ? ""
+    : `- payloadChecksum: ${overrides.checksum ?? checksumQuestionImportPayloads([toQuestionImportPayload(validQuestion)])}\n`;
+
   return `Question Bank Import Approval Artifact
 
 Status: ${overrides.status ?? "APPROVED_FOR_IMPORT_IMPLEMENTATION_ONLY"}
@@ -38,7 +51,8 @@ Supabase writes performed: ${overrides.supabaseWrites ?? "NO"}
 Migrations performed: ${overrides.migrations ?? "NO"}
 
 Dry-run summary:
-- generated: ${overrides.generated ?? 1}
+- generatedPayloadCount: ${overrides.generated ?? 1}
+${checksumLine}- generated: ${overrides.generated ?? 1}
 - errors: 0
 - warnings: 0
 - AO compliance: passed
@@ -46,6 +60,9 @@ Dry-run summary:
 
 Approval:
 - approvedBy: ${overrides.approvedBy ?? "Dr T"}
+- approvedBranch: ${overrides.approvedBranch ?? "feat/questions-bank-importer-local-only"}
+- approvedCommitSha: ${overrides.approvedCommitSha ?? "abc123"}
+- generatedAt: ${overrides.generatedAt ?? "2026-05-28T16:00:00.000Z"}
 `;
 }
 
@@ -66,11 +83,14 @@ function baseInput(overrides: Partial<Parameters<typeof runQuestionsBankLocalImp
     approvalArtifactPath: "docs/approval.md",
     approvalArtifactMarkdown: approvalArtifact(),
     questions: [validQuestion],
+    sourceIds: [],
     client: client(),
+    currentBranch: "feat/questions-bank-importer-local-only",
     command: 'npm run questions:import:local -- --approval-artifact docs/approval.md --approved-by "Dr T" --write',
     commitSha: "abc123",
     timestamp: "2026-05-28T16:00:00.000Z",
     env: {},
+    preflightReceipt: vi.fn(async () => undefined),
     ...overrides,
   };
 }
@@ -129,6 +149,30 @@ describe("questions bank local importer", () => {
     expect(importClient.insertQuestions).not.toHaveBeenCalled();
   });
 
+  it("fails when the approval artifact has no payloadChecksum", async () => {
+    const importClient = client();
+    const result = await runQuestionsBankLocalImporter(baseInput({
+      approvalArtifactMarkdown: approvalArtifact({ checksum: null }),
+      client: importClient,
+    }));
+
+    expect(result.ok).toBe(false);
+    expect(result.reasons).toContain("approval artifact must include payloadChecksum.");
+    expect(importClient.insertQuestions).not.toHaveBeenCalled();
+  });
+
+  it("fails when the approval artifact commit does not match the current commit", async () => {
+    const importClient = client();
+    const result = await runQuestionsBankLocalImporter(baseInput({
+      approvalArtifactMarkdown: approvalArtifact({ approvedCommitSha: "older123" }),
+      client: importClient,
+    }));
+
+    expect(result.ok).toBe(false);
+    expect(result.reasons).toContain("approval artifact approvedCommitSha must match the current commit.");
+    expect(importClient.insertQuestions).not.toHaveBeenCalled();
+  });
+
   it("fails if the fresh dry-run has errors", async () => {
     const importClient = client();
     const result = await runQuestionsBankLocalImporter(baseInput({
@@ -175,6 +219,18 @@ describe("questions bank local importer", () => {
     expect(importClient.insertQuestions).not.toHaveBeenCalled();
   });
 
+  it("fails in write mode when the source/import-ID conflict check has not run", async () => {
+    const importClient = client();
+    const result = await runQuestionsBankLocalImporter(baseInput({
+      sourceIds: undefined,
+      client: importClient,
+    }));
+
+    expect(result.ok).toBe(false);
+    expect(result.reasons).toContain("source/import-ID conflict check must run before write mode.");
+    expect(importClient.insertQuestions).not.toHaveBeenCalled();
+  });
+
   it("only calls the write function when --write is present and every gate passes", async () => {
     const dryRunClient = client();
     const dryRunResult = await runQuestionsBankLocalImporter(baseInput({
@@ -193,6 +249,38 @@ describe("questions bank local importer", () => {
     expect(writeResult.wrote).toBe(true);
     expect(writeClient.insertQuestions).toHaveBeenCalledTimes(1);
     expect(writeResult.insertedIds).toEqual(["c2-class-01"]);
+  });
+
+  it("preflights the receipt path before the mocked insert function is called", async () => {
+    const events: string[] = [];
+    const importClient = client();
+    importClient.insertQuestions.mockImplementation(async (payloads: QuestionImportPayload[]) => {
+      events.push("insert");
+      return payloads.map((payload) => payload.id);
+    });
+
+    const result = await runQuestionsBankLocalImporter(baseInput({
+      client: importClient,
+      preflightReceipt: vi.fn(async () => {
+        events.push("preflight");
+      }),
+    }));
+
+    expect(result.ok).toBe(true);
+    expect(events).toEqual(["preflight", "insert"]);
+  });
+
+  it("does not insert if receipt preflight fails", async () => {
+    const importClient = client();
+
+    await expect(runQuestionsBankLocalImporter(baseInput({
+      client: importClient,
+      preflightReceipt: vi.fn(async () => {
+        throw new Error("receipt path is not writable");
+      }),
+    }))).rejects.toThrow("receipt path is not writable");
+
+    expect(importClient.insertQuestions).not.toHaveBeenCalled();
   });
 
   it("generates an import receipt after a successful mocked write", async () => {

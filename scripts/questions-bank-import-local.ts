@@ -2,8 +2,8 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { dirname, extname, resolve } from "node:path";
 import { QUESTIONS, ROUTES } from "../src/data/seed";
 import {
   buildQuestionsBankLocalDryRun,
@@ -18,6 +18,7 @@ type CliOptions = {
   approvedBy: string;
   approvalArtifactPath?: string;
   receiptOutPath?: string;
+  sourceIdsPath?: string;
 };
 
 function parseArgs(argv: string[]): CliOptions {
@@ -52,9 +53,15 @@ function parseArgs(argv: string[]): CliOptions {
       continue;
     }
 
+    if (arg === "--source-ids") {
+      options.sourceIdsPath = argv[i + 1];
+      i += 1;
+      continue;
+    }
+
     if (arg === "--help") {
       console.log(
-        "Usage: npm run questions:import:local -- [--approval-artifact <path>] [--approved-by <name>] [--write] [--receipt-out <path>]",
+        "Usage: npm run questions:import:local -- [--approval-artifact <path>] [--approved-by <name>] [--source-ids <path>] [--write] [--receipt-out <path>]",
       );
       process.exit(0);
     }
@@ -142,6 +149,37 @@ function defaultReceiptPath(timestamp: string): string {
   return `docs/import-receipts/question-bank-import-receipt-${safeTimestamp}.md`;
 }
 
+function readSourceIds(path: string | undefined): string[] | undefined {
+  if (!path) return undefined;
+  const absolutePath = resolve(process.cwd(), path);
+  const raw = readFileSync(absolutePath, "utf8");
+
+  if (extname(path).toLowerCase() === ".json") {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === "string")) {
+      throw new Error("--source-ids JSON must contain an array of strings.");
+    }
+    return parsed.map((item) => item.trim()).filter(Boolean);
+  }
+
+  return raw
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith("#"));
+}
+
+function preflightReceiptPath(receiptPath: string) {
+  const absoluteReceiptPath = resolve(process.cwd(), receiptPath);
+  if (existsSync(absoluteReceiptPath)) {
+    throw new Error(`Import receipt already exists: ${receiptPath}`);
+  }
+
+  mkdirSync(dirname(absoluteReceiptPath), { recursive: true });
+  const probePath = `${absoluteReceiptPath}.preflight-${process.pid}-${Date.now()}.tmp`;
+  writeFileSync(probePath, "receipt preflight\n", { flag: "wx" });
+  unlinkSync(probePath);
+}
+
 function printDryRunOnly() {
   console.log("DRY RUN ONLY — no Supabase writes performed.");
   console.log("To write, rerun with --write and --approval-artifact <path>.");
@@ -153,12 +191,15 @@ async function main() {
   const options = parseArgs(args);
   const routeIds = new Set(ROUTES.map((route) => route.id));
   const commitSha = readGitValue(["rev-parse", "HEAD"]);
+  const currentBranch = readGitValue(["branch", "--show-current"]);
   const timestamp = new Date().toISOString();
   const command = renderCommand(args);
+  const sourceIds = readSourceIds(options.sourceIdsPath);
+  const receiptPath = options.receiptOutPath ?? defaultReceiptPath(timestamp);
 
   if (!options.write && !options.approvalArtifactPath) {
     printDryRunOnly();
-    const dryRun = buildQuestionsBankLocalDryRun(QUESTIONS, { routeIds });
+    const dryRun = buildQuestionsBankLocalDryRun(QUESTIONS, { routeIds, sourceIds });
     console.log(dryRun.reportMarkdown);
     console.log(`Payload checksum: ${dryRun.payloadChecksum}`);
     console.log(`Planned inserts: ${dryRun.payloads.map((payload) => payload.id).join(", ") || "none"}`);
@@ -178,11 +219,14 @@ async function main() {
     approvalArtifactMarkdown,
     questions: QUESTIONS,
     routeIds,
+    sourceIds,
     client: importClient,
+    currentBranch,
     command,
     commitSha,
     timestamp,
     env: process.env,
+    preflightReceipt: options.write ? async () => preflightReceiptPath(receiptPath) : undefined,
   });
 
   if (!options.write) {
@@ -214,9 +258,7 @@ async function main() {
     throw new Error("Import succeeded but no receipt was generated.");
   }
 
-  const receiptPath = options.receiptOutPath ?? defaultReceiptPath(timestamp);
   const absoluteReceiptPath = resolve(process.cwd(), receiptPath);
-  mkdirSync(dirname(absoluteReceiptPath), { recursive: true });
   writeFileSync(absoluteReceiptPath, result.receipt);
 
   console.log("");

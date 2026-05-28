@@ -1,5 +1,6 @@
 import {
   buildDryRunSummary,
+  checksumQuestionImportPayloads,
   selectReviewedPriorityQuestions,
   toQuestionImportPayload,
   validateQuestionImportPayloads,
@@ -23,11 +24,14 @@ export type QuestionsBankLocalImportRunInput = {
   approvalArtifactMarkdown?: string;
   questions: LocalQuestionForDryRun[];
   routeIds?: Set<string>;
+  sourceIds?: Iterable<string>;
   client?: QuestionsBankLocalImportClient;
+  currentBranch: string;
   command: string;
   commitSha: string;
   timestamp: string;
   env?: Record<string, string | undefined>;
+  preflightReceipt?: () => Promise<void>;
 };
 
 export type ParsedQuestionBankApprovalArtifact = {
@@ -38,6 +42,9 @@ export type ParsedQuestionBankApprovalArtifact = {
   generatedCount?: number;
   payloadChecksum?: string;
   approvedBy?: string;
+  approvedBranch?: string;
+  approvedCommitSha?: string;
+  generatedAt?: string;
 };
 
 export type QuestionsBankLocalDryRun = {
@@ -71,35 +78,8 @@ function readBullet(markdown: string, label: string): string | undefined {
   return match?.[1]?.trim();
 }
 
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(stableJson).join(",")}]`;
-  }
-
-  if (value && typeof value === "object") {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, nested]) => `${JSON.stringify(key)}:${stableJson(nested)}`)
-      .join(",")}}`;
-  }
-
-  return JSON.stringify(value);
-}
-
-export function checksumQuestionImportPayloads(payloads: QuestionImportPayload[]): string {
-  const canonical = stableJson([...payloads].sort((left, right) => left.id.localeCompare(right.id)));
-  let hash = 0x811c9dc5;
-
-  for (let i = 0; i < canonical.length; i += 1) {
-    hash ^= canonical.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-
-  return hash.toString(16).padStart(8, "0");
-}
-
 export function parseQuestionBankApprovalArtifact(markdown: string): ParsedQuestionBankApprovalArtifact {
-  const generated = readBullet(markdown, "generated");
+  const generated = readBullet(markdown, "generatedPayloadCount") ?? readBullet(markdown, "generated");
 
   return {
     status: readLine(markdown, "Status"),
@@ -107,8 +87,11 @@ export function parseQuestionBankApprovalArtifact(markdown: string): ParsedQuest
     supabaseWritesPerformed: readLine(markdown, "Supabase writes performed"),
     migrationsPerformed: readLine(markdown, "Migrations performed"),
     generatedCount: generated && /^\d+$/.test(generated) ? Number(generated) : undefined,
-    payloadChecksum: readBullet(markdown, "payload checksum"),
+    payloadChecksum: readBullet(markdown, "payloadChecksum"),
     approvedBy: readBullet(markdown, "approvedBy"),
+    approvedBranch: readBullet(markdown, "approvedBranch"),
+    approvedCommitSha: readBullet(markdown, "approvedCommitSha"),
+    generatedAt: readBullet(markdown, "generatedAt"),
   };
 }
 
@@ -167,7 +150,7 @@ function validateLocalOnlyEnvironment(env: Record<string, string | undefined> | 
 function validateApprovalArtifact(
   artifact: ParsedQuestionBankApprovalArtifact | undefined,
   dryRun: QuestionsBankLocalDryRun,
-  approvedBy: string | undefined,
+  input: Pick<QuestionsBankLocalImportRunInput, "approvedBy" | "commitSha" | "currentBranch">,
 ): string[] {
   const reasons: string[] = [];
 
@@ -192,24 +175,44 @@ function validateApprovalArtifact(
     reasons.push("approval artifact must confirm Migrations performed: NO.");
   }
 
-  if (!approvedBy?.trim()) {
+  if (!input.approvedBy?.trim()) {
     reasons.push("approvedBy is required in write/preflight mode.");
-  } else if (artifact.approvedBy && artifact.approvedBy !== approvedBy) {
+  } else if (artifact.approvedBy && artifact.approvedBy !== input.approvedBy) {
     reasons.push("approvedBy must match the approval artifact.");
   }
 
-  if (typeof artifact.generatedCount === "number" && artifact.generatedCount !== dryRun.summary.totalPayloadsGenerated) {
+  if (typeof artifact.generatedCount !== "number") {
+    reasons.push("approval artifact must include generatedPayloadCount.");
+  } else if (artifact.generatedCount !== dryRun.summary.totalPayloadsGenerated) {
     reasons.push("fresh dry-run payload count must match the approval artifact.");
   }
 
-  if (artifact.payloadChecksum && artifact.payloadChecksum !== dryRun.payloadChecksum) {
+  if (!artifact.payloadChecksum) {
+    reasons.push("approval artifact must include payloadChecksum.");
+  } else if (artifact.payloadChecksum !== dryRun.payloadChecksum) {
     reasons.push("fresh dry-run payload checksum must match the approval artifact.");
+  }
+
+  if (!artifact.approvedCommitSha) {
+    reasons.push("approval artifact must include approvedCommitSha.");
+  } else if (artifact.approvedCommitSha !== input.commitSha) {
+    reasons.push("approval artifact approvedCommitSha must match the current commit.");
+  }
+
+  if (!artifact.approvedBranch) {
+    reasons.push("approval artifact must include approvedBranch.");
+  } else if (artifact.approvedBranch !== input.currentBranch) {
+    reasons.push("approval artifact approvedBranch must match the current branch.");
+  }
+
+  if (!artifact.generatedAt) {
+    reasons.push("approval artifact must include generatedAt.");
   }
 
   return reasons;
 }
 
-function validateFreshDryRun(dryRun: QuestionsBankLocalDryRun): string[] {
+function validateFreshDryRun(dryRun: QuestionsBankLocalDryRun, options: { requireSourceIdCheck: boolean }): string[] {
   const reasons: string[] = [];
   const { summary, validation, reportMarkdown } = dryRun;
 
@@ -235,6 +238,10 @@ function validateFreshDryRun(dryRun: QuestionsBankLocalDryRun): string[] {
 
   if (summary.sourceIdCheckRan && summary.conflictingSourceIds.length > 0) {
     reasons.push("source/import-ID conflicts must be resolved before import.");
+  }
+
+  if (options.requireSourceIdCheck && !summary.sourceIdCheckRan) {
+    reasons.push("source/import-ID conflict check must run before write mode.");
   }
 
   if (!reportMarkdown.includes("Import readiness: REVIEWABLE, NOT IMPORTABLE")) {
@@ -270,7 +277,10 @@ Timestamp: ${input.timestamp}
 export async function runQuestionsBankLocalImporter(
   input: QuestionsBankLocalImportRunInput,
 ): Promise<QuestionsBankLocalImportRunResult> {
-  const defaultDryRun = buildQuestionsBankLocalDryRun(input.questions, { routeIds: input.routeIds });
+  const defaultDryRun = buildQuestionsBankLocalDryRun(input.questions, {
+    routeIds: input.routeIds,
+    sourceIds: input.sourceIds,
+  });
   const plannedIds = defaultDryRun.payloads.map((payload) => payload.id);
 
   if (!input.write && !input.approvalArtifactMarkdown) {
@@ -298,6 +308,10 @@ export async function runQuestionsBankLocalImporter(
     setupReasons.push("Supabase import client is required for approval preflight/write mode.");
   }
 
+  if (input.write && !input.preflightReceipt) {
+    setupReasons.push("receipt path preflight is required in write mode.");
+  }
+
   if (setupReasons.length > 0) {
     return {
       ok: false,
@@ -313,11 +327,12 @@ export async function runQuestionsBankLocalImporter(
   const checkedDryRun = buildQuestionsBankLocalDryRun(input.questions, {
     routeIds: input.routeIds,
     existingIds,
+    sourceIds: input.sourceIds,
   });
   const artifact = parseQuestionBankApprovalArtifact(input.approvalArtifactMarkdown!);
   const reasons = [
-    ...validateApprovalArtifact(artifact, checkedDryRun, input.approvedBy),
-    ...validateFreshDryRun(checkedDryRun),
+    ...validateApprovalArtifact(artifact, checkedDryRun, input),
+    ...validateFreshDryRun(checkedDryRun, { requireSourceIdCheck: input.write }),
   ];
 
   if (reasons.length > 0) {
@@ -344,6 +359,7 @@ export async function runQuestionsBankLocalImporter(
     };
   }
 
+  await input.preflightReceipt!();
   const insertedIds = await input.client!.insertQuestions(checkedDryRun.payloads);
   const expectedIds = checkedDryRun.payloads.map((payload) => payload.id);
 

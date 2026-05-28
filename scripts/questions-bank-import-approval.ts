@@ -70,6 +70,7 @@ const summary = buildDryRunSummary(QUESTIONS.length, payloads, validation);
 const reportMarkdown = buildQuestionsBankDryRunReport({ payloads, validation, summary });
 
 const result = createQuestionsBankImportApprovalArtifact({
+  payloads,
   summary,
   validation,
   reportMarkdown,

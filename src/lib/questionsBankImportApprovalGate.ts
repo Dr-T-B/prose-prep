@@ -1,4 +1,4 @@
-import type { DryRunSummary, ValidationReport } from "./questionsBankDryRun";
+import { checksumQuestionImportPayloads, type DryRunSummary, type QuestionImportPayload, type ValidationReport } from "./questionsBankDryRun";
 
 export const APPROVAL_STATUS = "APPROVED_FOR_IMPORT_IMPLEMENTATION_ONLY";
 export const IMPORT_STATUS = "NOT IMPORTED";
@@ -14,6 +14,7 @@ export type QuestionsBankImportApprovalMetadata = {
 };
 
 export type QuestionsBankImportApprovalInput = {
+  payloads: QuestionImportPayload[];
   summary: DryRunSummary;
   validation: ValidationReport;
   reportMarkdown: string;
@@ -36,11 +37,15 @@ function checkLine(ran: boolean, conflicts: string[], skippedLabel: string): str
 }
 
 function validateApprovalInput(input: QuestionsBankImportApprovalInput): string[] {
-  const { summary, validation, reportMarkdown, approval } = input;
+  const { payloads, summary, validation, reportMarkdown, approval } = input;
   const reasons: string[] = [];
 
   if (!approval.approvedBy.trim()) {
     reasons.push("approvedBy is required.");
+  }
+
+  if (payloads.length !== summary.totalPayloadsGenerated) {
+    reasons.push("payload count must match the dry-run summary.");
   }
 
   if (summary.validationErrorCount !== 0 || validation.errors.length !== 0) {
@@ -75,7 +80,8 @@ function validateApprovalInput(input: QuestionsBankImportApprovalInput): string[
 }
 
 function buildApprovalArtifact(input: QuestionsBankImportApprovalInput): string {
-  const { summary, approval } = input;
+  const { payloads, summary, approval } = input;
+  const payloadChecksum = checksumQuestionImportPayloads(payloads);
 
   return `Question Bank Import Approval Artifact
 
@@ -87,6 +93,8 @@ Migrations performed: NO
 Dry-run summary:
 - inspected: ${summary.totalQuestionsInspected}
 - generated: ${summary.totalPayloadsGenerated}
+- generatedPayloadCount: ${summary.totalPayloadsGenerated}
+- payloadChecksum: ${payloadChecksum}
 - errors: ${summary.validationErrorCount}
 - warnings: ${summary.warningCount}
 - warnings allowed: ${approval.allowWarnings ? "YES" : "NO"}
@@ -108,6 +116,9 @@ Approval:
 - approvedAt: ${approval.approvedAt}
 - sourceBranch: ${approval.sourceBranch}
 - commitSha: ${approval.commitSha}
+- approvedBranch: ${approval.sourceBranch}
+- approvedCommitSha: ${approval.commitSha}
+- generatedAt: ${approval.approvedAt}
 - dryRunCommand: ${approval.dryRunCommand}
 - reportCommand: ${approval.reportCommand}
 

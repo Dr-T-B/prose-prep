@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildDryRunSummary,
+  checksumQuestionImportPayloads,
   toQuestionImportPayload,
   validateQuestionImportPayloads,
   type LocalQuestionForDryRun,
@@ -46,6 +47,7 @@ function approvalFor(
   const reportMarkdown = overrides.reportMarkdown ?? buildQuestionsBankDryRunReport({ payloads, validation, summary });
 
   return createQuestionsBankImportApprovalArtifact({
+    payloads,
     summary,
     validation,
     reportMarkdown,
@@ -72,6 +74,11 @@ describe("questions bank import approval gate", () => {
     expect(result.artifact).toContain("Supabase writes performed: NO");
     expect(result.artifact).toContain("Migrations performed: NO");
     expect(result.artifact).toContain("- approvedBy: Dr T");
+    expect(result.artifact).toContain("- generatedPayloadCount: 1");
+    expect(result.artifact).toContain(`- payloadChecksum: ${checksumQuestionImportPayloads([toQuestionImportPayload(validQuestion)])}`);
+    expect(result.artifact).toContain("- approvedBranch: feat/questions-bank-import-approval-gate");
+    expect(result.artifact).toContain("- approvedCommitSha: abc123");
+    expect(result.artifact).toContain("- generatedAt: 2026-05-28T15:45:00.000Z");
   });
 
   it("does not use unsafe import authorization language", () => {
