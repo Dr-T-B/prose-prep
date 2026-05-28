@@ -148,7 +148,7 @@ function hasVerifiedOfficialSource(payload: QuestionImportPayload): boolean {
 
 function aoMatchesAllowedSet(value: string | null | undefined): boolean {
   if (!value) return false;
-  const tokens = value.split(/[\/,;|&\s]+/).filter(Boolean);
+  const tokens = value.split(/[/,;|&\s]+/).filter(Boolean);
   return tokens.length > 0 && tokens.every((token) => COMPONENT_2_ALLOWED_AOS.has(token as AllowedAssessmentObjective));
 }
 
