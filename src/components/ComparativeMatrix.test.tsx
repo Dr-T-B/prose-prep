@@ -125,6 +125,19 @@ describe("ComparativeMatrix", () => {
     expect(allAosFilter).not.toHaveClass("bg-ink");
   });
 
+  it("keeps the filter toolbar above the sticky app shell on mobile", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("region", { name: "Comparative matrix filters" })).toHaveClass(
+      "relative",
+      "z-40",
+      "bg-paper",
+    );
+  });
+
   it("marks AO3 and AO4 active when selected and clears back to All AOs", async () => {
     render(<ComparativeMatrix />);
     await waitFor(() => {
@@ -160,6 +173,49 @@ describe("ComparativeMatrix", () => {
     expect(allAosFilter).toHaveAttribute("aria-pressed", "true");
     expect(ao4Filter).toHaveAttribute("aria-pressed", "false");
     expect(allAosFilter).toHaveClass("bg-ink", "text-paper");
+  });
+
+  it("accepts search text and keeps all AO controls clickable", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const search = screen.getByPlaceholderText(/Search rows/i);
+    fireEvent.change(search, { target: { value: "poverty" } });
+
+    await waitFor(() => {
+      expect(search).toHaveValue("poverty");
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    for (const ao of ["AO2", "AO3", "AO4"] as const) {
+      fireEvent.click(screen.getByRole("button", { name: ao }));
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: ao })).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", { name: "All AOs" })).toHaveAttribute("aria-pressed", "false");
+      });
+    }
+  });
+
+  it("keeps every secondary lens control clickable", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    for (const lens of [
+      "Character / function",
+      "Narrative method",
+      "Structural method",
+      "Exam question suitability",
+      "All details",
+    ] as const) {
+      fireEvent.click(screen.getByRole("button", { name: lens }));
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: lens })).toHaveAttribute("aria-pressed", "true");
+      });
+    }
   });
 
   it("limits visible AO columns while combining an AO filter with a secondary lens", async () => {
