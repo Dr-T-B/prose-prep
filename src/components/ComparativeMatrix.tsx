@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { integrateBuilderHandoffsIntoCurrentPlan, type BuilderHandoffItem } from "@/lib/builderHandoff";
 
 interface Row {
   id: string;
@@ -37,6 +39,7 @@ const LENS_OPTIONS = [
 type LensKey = (typeof LENS_OPTIONS)[number]["key"];
 
 export default function Component2ComparativeMatrix() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +149,17 @@ export default function Component2ComparativeMatrix() {
         alert("Copy not supported on this browser. Please copy manually.");
       }
       document.body.removeChild(textarea);
+    }
+  };
+
+  const handleSendToEssayBuilder = (row: Row) => {
+    try {
+      const handoff = createMatrixRouteBuilderHandoff(row);
+      integrateBuilderHandoffsIntoCurrentPlan([handoff]);
+      navigate("/builder");
+    } catch (err) {
+      console.error("Failed to send comparative route to essay builder:", err);
+      navigate("/builder");
     }
   };
 
@@ -385,13 +399,22 @@ export default function Component2ComparativeMatrix() {
                         <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted font-normal leading-tight mb-2">
                           {getSubtitle(row.hardTimes, row.atonement)}
                         </div>
-                        <button
-                          onClick={() => handleCopy(row)}
-                          aria-label={`Copy comparative route for ${row.theme}`}
-                          className="inline-flex items-center gap-1 rounded border border-rule bg-paper px-2 py-0.5 font-mono text-[10px] font-medium text-ink-muted hover:bg-rule/40 hover:text-ink transition print:hidden"
-                        >
-                          {copiedId === row.id ? "Copied!" : "Copy route"}
-                        </button>
+                        <div className="flex flex-col gap-1.5 items-start print:hidden">
+                          <button
+                            onClick={() => handleCopy(row)}
+                            aria-label={`Copy comparative route for ${row.theme}`}
+                            className="inline-flex items-center gap-1 rounded border border-rule bg-paper px-2 py-0.5 font-mono text-[10px] font-medium text-ink-muted hover:bg-rule/40 hover:text-ink transition"
+                          >
+                            {copiedId === row.id ? "Copied!" : "Copy route"}
+                          </button>
+                          <button
+                            onClick={() => handleSendToEssayBuilder(row)}
+                            aria-label={`Send comparative route for ${row.theme} to Essay Builder`}
+                            className="inline-flex items-center gap-1 rounded border border-rule bg-paper px-2 py-0.5 font-mono text-[10px] font-medium text-ink-muted hover:bg-rule/40 hover:text-ink transition"
+                          >
+                            Send to Essay Builder
+                          </button>
+                        </div>
                       </th>
                       {visibleCols(lens).map((c) => (
                         <td
@@ -474,13 +497,22 @@ export default function Component2ComparativeMatrix() {
                           <Meta label="Structure" body={row.structure} />
                           <Meta label="Exam fit" body={row.examFit} />
                         </div>
-                        <button
-                          onClick={() => handleCopy(row)}
-                          aria-label={`Copy comparative route for ${row.theme}`}
-                          className="w-full mt-3 inline-flex items-center justify-center gap-1 rounded border border-rule bg-paper py-1.5 font-mono text-xs font-medium text-ink-muted hover:bg-rule/40 hover:text-ink transition print:hidden"
-                        >
-                          {copiedId === row.id ? "Copied!" : "Copy route"}
-                        </button>
+                        <div className="grid grid-cols-2 gap-2 mt-3 print:hidden">
+                          <button
+                            onClick={() => handleCopy(row)}
+                            aria-label={`Copy comparative route for ${row.theme}`}
+                            className="inline-flex items-center justify-center gap-1 rounded border border-rule bg-paper py-1.5 font-mono text-xs font-medium text-ink-muted hover:bg-rule/40 hover:text-ink transition"
+                          >
+                            {copiedId === row.id ? "Copied!" : "Copy route"}
+                          </button>
+                          <button
+                            onClick={() => handleSendToEssayBuilder(row)}
+                            aria-label={`Send comparative route for ${row.theme} to Essay Builder`}
+                            className="inline-flex items-center justify-center gap-1 rounded border border-rule bg-paper py-1.5 font-mono text-xs font-medium text-ink-muted hover:bg-rule/40 hover:text-ink transition"
+                          >
+                            Send to Essay Builder
+                          </button>
+                        </div>
                       </div>
                     )}
                   </article>
@@ -617,4 +649,37 @@ function formatComparativeRouteExport(row: Row): string {
   parts.push(`Revision use:\nUse this route as a paragraph plan or mini essay scaffold. Adapt quotations and contextual evidence to the exact question.`);
   
   return parts.join("\n\n");
+}
+
+function createMatrixRouteBuilderHandoff(row: Row): BuilderHandoffItem {
+  const metadata: Record<string, string | string[]> = {
+    source: "comparative_matrix",
+    axis: row.theme,
+    hardTimes: row.hardTimes,
+    atonement: row.atonement,
+    thesis: row.thesis,
+    ao2: row.ao2,
+    ao3: row.ao3,
+    ao4: row.ao4,
+    character: row.character,
+    narrative: row.narrative,
+    structure: row.structure,
+    examFit: row.examFit,
+  };
+
+  if (row.themes && row.themes.length > 0) {
+    metadata.themes = row.themes;
+  }
+
+  return {
+    id: `comparison:matrix:${row.id}`,
+    kind: "comparison",
+    originModule: "comparison",
+    label: "Comparative Route",
+    title: row.theme,
+    text: row.thesis || `Comparative route for ${row.theme}.`,
+    sourceText: formatComparativeRouteExport(row),
+    family: row.themes && row.themes.length > 0 ? (row.themes[0] as any) : undefined,
+    metadata,
+  };
 }
