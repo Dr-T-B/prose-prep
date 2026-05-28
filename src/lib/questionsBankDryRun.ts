@@ -12,7 +12,17 @@ export const ALLOWED_SOURCE_TYPES = [
   "speculative practice",
 ] as const;
 export const ALLOWED_LEVELS = ["secure", "strong", "top_band"] as const;
-export const ALLOWED_AOS = ["AO1", "AO2", "AO3", "AO4"] as const;
+
+export type AllowedAssessmentObjective = "AO1" | "AO2" | "AO3" | "AO4";
+
+export const COMPONENT_2_ALLOWED_AOS = new Set<AllowedAssessmentObjective>([
+  "AO1",
+  "AO2",
+  "AO3",
+  "AO4",
+]);
+
+export const ALLOWED_AOS = [...COMPONENT_2_ALLOWED_AOS] as AllowedAssessmentObjective[];
 
 type AllowedSourceType = (typeof ALLOWED_SOURCE_TYPES)[number];
 type AllowedLevel = (typeof ALLOWED_LEVELS)[number];
@@ -61,7 +71,11 @@ export type ValidationIssue = {
 export type ValidationReport = {
   errors: ValidationIssue[];
   warnings: ValidationIssue[];
-  duplicateIds: string[];
+  duplicateGeneratedIds: string[];
+  conflictingExistingIds: string[];
+  conflictingSourceIds: string[];
+  existingIdCheckRan: boolean;
+  sourceIdCheckRan: boolean;
   aoCompliant: boolean;
 };
 
@@ -70,11 +84,21 @@ export type DryRunSummary = {
   totalPayloadsGenerated: number;
   validationErrorCount: number;
   warningCount: number;
-  duplicateIds: string[];
+  duplicateGeneratedIds: string[];
+  conflictingExistingIds: string[];
+  conflictingSourceIds: string[];
+  existingIdCheckRan: boolean;
+  sourceIdCheckRan: boolean;
   sourceTypeDistribution: Record<string, number>;
   paperCodeDistribution: Record<string, number>;
   textPairingDistribution: Record<string, number>;
   aoCompliant: boolean;
+};
+
+export type QuestionsBankDryRunOptions = {
+  routeIds?: Set<string>;
+  existingIds?: Iterable<string>;
+  sourceIds?: Iterable<string>;
 };
 
 function firstPresent(...values: Array<string | undefined>): string | undefined {
@@ -124,8 +148,8 @@ function hasVerifiedOfficialSource(payload: QuestionImportPayload): boolean {
 
 function aoMatchesAllowedSet(value: string | null | undefined): boolean {
   if (!value) return false;
-  const aos = value.match(/\bAO\d\b/gi) ?? [];
-  return aos.length > 0 && aos.every((ao) => (ALLOWED_AOS as readonly string[]).includes(ao.toUpperCase()));
+  const tokens = value.split(/[\/,;|&\s]+/).filter(Boolean);
+  return tokens.length > 0 && tokens.every((token) => COMPONENT_2_ALLOWED_AOS.has(token as AllowedAssessmentObjective));
 }
 
 function addIssue(target: ValidationIssue[], id: string, field: string, message: string) {
@@ -172,12 +196,16 @@ export function toQuestionImportPayload(question: LocalQuestionForDryRun): Quest
 
 export function validateQuestionImportPayloads(
   payloads: QuestionImportPayload[],
-  options: { routeIds?: Set<string> } = {},
+  options: QuestionsBankDryRunOptions = {},
 ): ValidationReport {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
   const seenIds = new Set<string>();
-  const duplicateIds = new Set<string>();
+  const duplicateGeneratedIds = new Set<string>();
+  const existingIds = options.existingIds ? new Set(options.existingIds) : undefined;
+  const sourceIds = options.sourceIds ? new Set(options.sourceIds) : undefined;
+  const conflictingExistingIds = new Set<string>();
+  const conflictingSourceIds = new Set<string>();
 
   payloads.forEach((payload) => {
     const id = payload.id || "(missing id)";
@@ -186,10 +214,20 @@ export function validateQuestionImportPayloads(
     }
 
     if (payload.id && seenIds.has(payload.id)) {
-      duplicateIds.add(payload.id);
-      addIssue(errors, id, "id", "Duplicate question ID.");
+      duplicateGeneratedIds.add(payload.id);
+      addIssue(errors, id, "id", "Duplicate generated payload ID.");
     }
     seenIds.add(payload.id);
+
+    if (payload.id && existingIds?.has(payload.id)) {
+      conflictingExistingIds.add(payload.id);
+      addIssue(errors, id, "id", "Generated payload ID conflicts with an existing question-bank ID.");
+    }
+
+    if (payload.id && sourceIds?.has(payload.id)) {
+      conflictingSourceIds.add(payload.id);
+      addIssue(errors, id, "id", "Generated payload ID conflicts with a source/import ID.");
+    }
 
     if (!payload.stem?.trim()) {
       addIssue(errors, id, "stem", "Question stem is required.");
@@ -255,8 +293,12 @@ export function validateQuestionImportPayloads(
   return {
     errors,
     warnings,
-    duplicateIds: [...duplicateIds].sort(),
-    aoCompliant: errors.every((error) => error.message !== "AO5 is forbidden anywhere in the payload or metadata."),
+    duplicateGeneratedIds: [...duplicateGeneratedIds].sort(),
+    conflictingExistingIds: [...conflictingExistingIds].sort(),
+    conflictingSourceIds: [...conflictingSourceIds].sort(),
+    existingIdCheckRan: Boolean(existingIds),
+    sourceIdCheckRan: Boolean(sourceIds),
+    aoCompliant: !errors.some((error) => error.field === "ao_emphasis"),
   };
 }
 
@@ -270,7 +312,11 @@ export function buildDryRunSummary(
     totalPayloadsGenerated: payloads.length,
     validationErrorCount: validation.errors.length,
     warningCount: validation.warnings.length,
-    duplicateIds: validation.duplicateIds,
+    duplicateGeneratedIds: validation.duplicateGeneratedIds,
+    conflictingExistingIds: validation.conflictingExistingIds,
+    conflictingSourceIds: validation.conflictingSourceIds,
+    existingIdCheckRan: validation.existingIdCheckRan,
+    sourceIdCheckRan: validation.sourceIdCheckRan,
     sourceTypeDistribution: countBy(payloads, (payload) => payload.source_type),
     paperCodeDistribution: countBy(payloads, (payload) => payload.paper_code),
     textPairingDistribution: countBy(payloads, (payload) => payload.text_pairing),

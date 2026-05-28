@@ -24,6 +24,15 @@ function renderIssues(label: string, issues: ValidationIssue[]): string {
   ].join("\n");
 }
 
+function renderIdList(ids: string[]): string {
+  return ids.length > 0 ? ids.join(", ") : "none";
+}
+
+function renderOptionalCheck(ran: boolean, ids: string[], notRunLabel: string): string {
+  if (!ran) return notRunLabel;
+  return renderIdList(ids);
+}
+
 const selectedQuestions = selectReviewedPriorityQuestions(QUESTIONS);
 const payloads = selectedQuestions.map(toQuestionImportPayload);
 const routeIds = new Set(ROUTES.map((route) => route.id));
@@ -37,7 +46,17 @@ console.log(`Total questions inspected: ${summary.totalQuestionsInspected}`);
 console.log(`Total payloads generated: ${summary.totalPayloadsGenerated}`);
 console.log(`Validation errors: ${summary.validationErrorCount}`);
 console.log(`Warnings: ${summary.warningCount}`);
-console.log(`Duplicate IDs: ${summary.duplicateIds.length > 0 ? summary.duplicateIds.join(", ") : "none"}`);
+console.log(`Duplicate generated IDs: ${renderIdList(summary.duplicateGeneratedIds)}`);
+console.log(`Existing-ID conflict check: ${renderOptionalCheck(
+  summary.existingIdCheckRan,
+  summary.conflictingExistingIds,
+  "not run / no existing IDs supplied",
+)}`);
+console.log(`Source/import-ID conflict check: ${renderOptionalCheck(
+  summary.sourceIdCheckRan,
+  summary.conflictingSourceIds,
+  "not run / no source IDs supplied",
+)}`);
 console.log(`AO compliance: ${summary.aoCompliant ? "passed" : "failed"}`);
 console.log("");
 console.log("Source type distribution:");

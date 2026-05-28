@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   buildDryRunSummary,
@@ -77,12 +79,53 @@ describe("questions bank dry-run helpers", () => {
     expect(report.errors.some((error) => error.message.includes("AO5 is forbidden"))).toBe(true);
   });
 
-  it("rejects duplicate IDs", () => {
+  it("fails AO compliance for AO6, not only AO5", () => {
+    const payload = toQuestionImportPayload({
+      ...baseQuestion,
+      aoEmphasis: "AO6",
+    });
+    const report = validateQuestionImportPayloads([payload]);
+
+    expect(report.aoCompliant).toBe(false);
+    expect(report.errors.some((error) => error.field === "ao_emphasis")).toBe(true);
+  });
+
+  it("fails AO compliance for arbitrary invalid AO values", () => {
+    const payload = toQuestionImportPayload({
+      ...baseQuestion,
+      aoEmphasis: "AO1 speculative-route",
+    });
+    const report = validateQuestionImportPayloads([payload]);
+
+    expect(report.aoCompliant).toBe(false);
+    expect(report.errors.some((error) => error.message.includes("AO emphasis must reference"))).toBe(true);
+  });
+
+  it("reports duplicate IDs within generated payloads", () => {
     const payload = toQuestionImportPayload(baseQuestion);
     const report = validateQuestionImportPayloads([payload, payload]);
 
-    expect(report.duplicateIds).toEqual(["c2-class-01"]);
-    expect(report.errors.some((error) => error.message === "Duplicate question ID.")).toBe(true);
+    expect(report.duplicateGeneratedIds).toEqual(["c2-class-01"]);
+    expect(report.errors.some((error) => error.message === "Duplicate generated payload ID.")).toBe(true);
+  });
+
+  it("reports conflicts against supplied existing IDs", () => {
+    const payload = toQuestionImportPayload(baseQuestion);
+    const report = validateQuestionImportPayloads([payload], { existingIds: ["c2-class-01"] });
+
+    expect(report.existingIdCheckRan).toBe(true);
+    expect(report.conflictingExistingIds).toEqual(["c2-class-01"]);
+    expect(report.errors.some((error) => error.message.includes("existing question-bank ID"))).toBe(true);
+  });
+
+  it("reports existing-ID check as not run when no existing IDs are supplied", () => {
+    const payload = toQuestionImportPayload(baseQuestion);
+    const report = validateQuestionImportPayloads([payload]);
+    const summary = buildDryRunSummary(1, [payload], report);
+
+    expect(report.existingIdCheckRan).toBe(false);
+    expect(summary.existingIdCheckRan).toBe(false);
+    expect(summary.conflictingExistingIds).toEqual([]);
   });
 
   it("produces summary counts and distributions", () => {
@@ -94,8 +137,16 @@ describe("questions bank dry-run helpers", () => {
     expect(summary.totalPayloadsGenerated).toBe(1);
     expect(summary.validationErrorCount).toBe(0);
     expect(summary.warningCount).toBe(0);
+    expect(summary.duplicateGeneratedIds).toEqual([]);
     expect(summary.sourceTypeDistribution).toEqual({ "exam-style mock": 1 });
     expect(summary.paperCodeDistribution).toEqual({ "9ET0/02": 1 });
     expect(summary.textPairingDistribution).toEqual({ "Hard Times / Atonement": 1 });
+  });
+
+  it("preserves local-only/no-write CLI posture", () => {
+    const cliSource = readFileSync(resolve(process.cwd(), "scripts/questions-bank-dry-run.ts"), "utf8");
+
+    expect(cliSource).toContain("No Supabase writes were performed.");
+    expect(cliSource).not.toMatch(/@\/integrations\/supabase\/client|createClient|supabase\.from|\.(insert|upsert|update|delete)\(/);
   });
 });
