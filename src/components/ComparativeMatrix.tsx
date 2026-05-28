@@ -29,14 +29,31 @@ const COLS: { key: keyof Row; label: string; ao?: string }[] = [
 ];
 
 const LENS_OPTIONS = [
-  { key: "all", label: "All AOs" },
+  { key: "all", label: "All details" },
   { key: "character", label: "Character / function" },
   { key: "narrative", label: "Narrative method" },
   { key: "structure", label: "Structural method" },
   { key: "examFit", label: "Exam question suitability" },
 ] as const;
 
+const AO_FILTER_OPTIONS = [
+  { key: "all", label: "All AOs" },
+  { key: "AO2", label: "AO2" },
+  { key: "AO3", label: "AO3" },
+  { key: "AO4", label: "AO4" },
+] as const;
+
 type LensKey = (typeof LENS_OPTIONS)[number]["key"];
+type AoFilter = (typeof AO_FILTER_OPTIONS)[number]["key"];
+type AoRowKey = Extract<keyof Row, "ao2" | "ao3" | "ao4">;
+
+const AO_ROW_KEYS: Record<Exclude<AoFilter, "all">, AoRowKey> = {
+  AO2: "ao2",
+  AO3: "ao3",
+  AO4: "ao4",
+};
+
+const hasText = (value: unknown) => typeof value === "string" && value.trim().length > 0;
 
 export default function Component2ComparativeMatrix() {
   const navigate = useNavigate();
@@ -45,7 +62,7 @@ export default function Component2ComparativeMatrix() {
   const [error, setError] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [lens, setLens] = useState<LensKey>("all");
-  const [aoFilter, setAoFilter] = useState<"all" | "ao2" | "ao3" | "ao4">("all");
+  const [aoFilter, setAoFilter] = useState<AoFilter>("all");
   const [query, setQuery] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [printMode, setPrintMode] = useState<"compact" | "cards" | "teacher">("compact");
@@ -166,7 +183,8 @@ export default function Component2ComparativeMatrix() {
   const filtered = useMemo(() => {
     let result = rows;
     if (aoFilter !== "all") {
-      result = result.filter(r => !!r[aoFilter as keyof Row]);
+      const aoKey = AO_ROW_KEYS[aoFilter];
+      result = result.filter((r) => hasText(r[aoKey]));
     }
     if (selectedThemes.length > 0) {
       result = result.filter(r => {
@@ -260,17 +278,18 @@ export default function Component2ComparativeMatrix() {
               className="w-72 rounded-md border border-rule bg-paper px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ink"
             />
             <div className="flex flex-wrap gap-1 rounded-md border border-rule p-1">
-              {(["all", "ao2", "ao3", "ao4"] as const).map(ao => (
+              {AO_FILTER_OPTIONS.map((ao) => (
                 <button
-                  key={ao}
-                  onClick={() => setAoFilter(ao)}
+                  key={ao.key}
+                  onClick={() => setAoFilter(ao.key)}
+                  aria-pressed={aoFilter === ao.key}
                   className={`rounded px-3 py-1 text-xs font-medium transition ${
-                    aoFilter === ao
+                    aoFilter === ao.key
                       ? "bg-ink text-paper"
                       : "text-ink-muted hover:bg-rule"
                   }`}
                 >
-                  {ao === "all" ? "All AOs" : ao.toUpperCase()}
+                  {ao.label}
                 </button>
               ))}
             </div>
@@ -279,6 +298,7 @@ export default function Component2ComparativeMatrix() {
                 <button
                   key={opt.key}
                   onClick={() => setLens(opt.key)}
+                  aria-pressed={lens === opt.key}
                   className={`rounded px-3 py-1 text-xs font-medium transition ${
                     lens === opt.key
                       ? "bg-ink text-paper"
@@ -370,7 +390,7 @@ export default function Component2ComparativeMatrix() {
                     <th className="sticky left-0 z-10 w-48 bg-rule/50 p-3 font-mono text-xs uppercase tracking-wider text-ink-muted">
                       Theme
                     </th>
-                    {visibleCols(lens).map((c) => (
+                    {visibleCols(lens, aoFilter).map((c) => (
                       <th
                         key={c.key as string}
                         className="min-w-[14rem] border-l border-rule p-3 font-mono text-xs uppercase tracking-wider text-ink-muted"
@@ -416,7 +436,7 @@ export default function Component2ComparativeMatrix() {
                           </button>
                         </div>
                       </th>
-                      {visibleCols(lens).map((c) => (
+                      {visibleCols(lens, aoFilter).map((c) => (
                         <td
                           key={c.key as string}
                           className="min-w-[14rem] border-l border-t border-rule p-3 align-top text-sm leading-relaxed"
@@ -469,14 +489,16 @@ export default function Component2ComparativeMatrix() {
                           ];
                           
                           if (aoFilter !== "all") {
-                            const selectedIdx = aoItems.findIndex(i => i.key === aoFilter);
-                            if (selectedIdx > -1) {
-                              const selected = aoItems.splice(selectedIdx, 1)[0];
-                              if (aoFilter === "ao2") selected.label = "Method";
-                              if (aoFilter === "ao3") selected.label = "Context";
-                              if (aoFilter === "ao4") selected.label = "Comparative Link";
-                              aoItems.unshift(selected);
-                            }
+                            return aoItems
+                              .filter((item) => item.key === AO_ROW_KEYS[aoFilter])
+                              .map((item) => {
+                                if (aoFilter === "AO2") return { ...item, label: "Method" };
+                                if (aoFilter === "AO3") return { ...item, label: "Context" };
+                                return { ...item, label: "Comparative Link" };
+                              })
+                              .map((item) => (
+                                <AO key={item.key} label={item.label} body={item.body} />
+                              ));
                           }
 
                           return aoItems.map(item => (
@@ -546,17 +568,29 @@ export default function Component2ComparativeMatrix() {
   );
 }
 
-function visibleCols(lens: LensKey) {
-  if (lens === "all") return COLS;
+function visibleCols(lens: LensKey, aoFilter: AoFilter) {
+  const selectedAoKey = aoFilter === "all" ? null : AO_ROW_KEYS[aoFilter];
+  const cols = selectedAoKey
+    ? COLS.filter((col) => !col.ao || col.key === selectedAoKey)
+    : COLS;
+
+  if (lens === "all") return cols;
   const extraKey = lens as keyof Row;
   const extraLabel =
     LENS_OPTIONS.find((l) => l.key === lens)?.label ?? "Detail";
-  return [
+  const lensCols = [
     { key: "hardTimes" as keyof Row, label: "Hard Times argument" },
     { key: "atonement" as keyof Row, label: "Atonement argument" },
-    { key: extraKey, label: extraLabel },
     { key: "thesis" as keyof Row, label: "Thesis sentence starter" },
   ];
+  if (selectedAoKey) {
+    const selectedAoCol = COLS.find((col) => col.key === selectedAoKey);
+    if (selectedAoCol) lensCols.splice(2, 0, selectedAoCol);
+  }
+  if (!lensCols.some((col) => col.key === extraKey)) {
+    lensCols.splice(lensCols.length - 1, 0, { key: extraKey, label: extraLabel });
+  }
+  return lensCols;
 }
 
 function Pair({ label, body }: { label: string; body: string }) {
