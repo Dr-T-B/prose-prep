@@ -140,25 +140,97 @@ describe("library question adapters", () => {
     expect(question.authenticityStatus).toBeUndefined();
   });
 
-  it("maps new metadata fields successfully", () => {
+  it("maps new remote snake_case metadata row to camelCase library question metadata", () => {
     const [question] = toLibraryQuestions([{
       id: "q_meta",
       source_type: "exam-style mock",
-      authenticity_status: "not official; practice mock",
+      authenticity_status: "not official; generated for practice",
       year_source: "mock bank 2026",
       paper_code: "9ET0/02",
       text_pairing: "Hard Times / Atonement",
-      ao_emphasis: "AO3/AO4",
-      builder_handoff_notes: "prefill theme: class"
+      ao_emphasis: "AO1/AO4 comparative thesis",
+      metadata: { builder_handoff_notes: "Prefill theme: class; route: social conditioning vs moral responsibility" }
     }]);
 
     expect(question.sourceType).toBe("exam-style mock");
-    expect(question.authenticityStatus).toBe("not official; practice mock");
+    expect(question.authenticityStatus).toBe("not official; generated for practice");
     expect(question.yearSource).toBe("mock bank 2026");
     expect(question.paperCode).toBe("9ET0/02");
     expect(question.textPairing).toBe("Hard Times / Atonement");
-    expect(question.aoEmphasis).toBe("AO3/AO4");
-    expect(question.builderHandoffNotes).toBe("prefill theme: class");
+    expect(question.aoEmphasis).toBe("AO1/AO4 comparative thesis");
+    expect(question.builderHandoffNotes).toBe("Prefill theme: class; route: social conditioning vs moral responsibility");
+  });
+
+  it("maps older remote row without metadata safely", () => {
+    const [question] = toLibraryQuestions([{
+      id: "q_old",
+      stem: "Compare things",
+      family: "class",
+      primary_route_id: "r1"
+    }]);
+
+    expect(question.stem).toBe("Compare things");
+    expect(question.sourceType).toBeUndefined();
+    expect(question.authenticityStatus).toBeUndefined();
+    expect(question.yearSource).toBeUndefined();
+    expect(question.paperCode).toBeUndefined();
+    expect(question.textPairing).toBeUndefined();
+    expect(question.aoEmphasis).toBeUndefined();
+    expect(question.builderHandoffNotes).toBeUndefined();
+  });
+
+  it("maps local camelCase seed metadata correctly", () => {
+    const [question] = toLibraryQuestions([{
+      id: "q_local",
+      sourceType: "exam-style mock",
+      authenticityStatus: "official",
+      yearSource: "2026",
+      paperCode: "9ET0/02",
+      textPairing: "Hard Times / Atonement",
+      aoEmphasis: "AO1",
+      builderHandoffNotes: "Notes"
+    }]);
+
+    expect(question.sourceType).toBe("exam-style mock");
+    expect(question.authenticityStatus).toBe("official");
+    expect(question.yearSource).toBe("2026");
+    expect(question.paperCode).toBe("9ET0/02");
+    expect(question.textPairing).toBe("Hard Times / Atonement");
+    expect(question.aoEmphasis).toBe("AO1");
+    expect(question.builderHandoffNotes).toBe("Notes");
+  });
+
+  it("tolerates JSONB metadata with missing builder_handoff_notes", () => {
+    const [question] = toLibraryQuestions([{
+      id: "q_jsonb_missing",
+      source_type: "exam",
+      metadata: { review_notes: [], import_batch: "questions-bank-priority-2026-05" }
+    }]);
+
+    expect(question.sourceType).toBe("exam");
+    expect(question.builderHandoffNotes).toBeUndefined();
+  });
+
+  it("tolerates JSONB metadata set to null", () => {
+    const [question] = toLibraryQuestions([{
+      id: "q_jsonb_null",
+      source_type: "exam",
+      metadata: null
+    }]);
+
+    expect(question.sourceType).toBe("exam");
+    expect(question.builderHandoffNotes).toBeUndefined();
+  });
+
+  it("ensures mapped metadata does not introduce AO5", () => {
+    const [question] = toLibraryQuestions([{
+      id: "q_ao",
+      ao_emphasis: "AO1/AO2/AO3/AO4",
+    }]);
+
+    expect(question.aoEmphasis).not.toContain("AO5");
+    expect((question as any).ao5).toBeUndefined();
+    expect((question as any).AO5).toBeUndefined();
   });
 
   it("searches question stems, families, routes, and methods", () => {

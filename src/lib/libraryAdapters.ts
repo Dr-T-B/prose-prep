@@ -192,6 +192,14 @@ export interface LibraryRawQuestionRow {
   text_pairing?: string;
   ao_emphasis?: string;
   builder_handoff_notes?: string;
+  sourceType?: string;
+  authenticityStatus?: string;
+  yearSource?: string;
+  paperCode?: string;
+  textPairing?: string;
+  aoEmphasis?: string;
+  builderHandoffNotes?: string;
+  metadata?: any;
 }
 
 export interface LibraryRawThesisRow {
@@ -350,13 +358,13 @@ export function toLibraryQuestion(row: LibraryRawQuestionRow, routes: LibraryRaw
     primaryRoute: routeRef(row.primary_route_id, routeMap),
     secondaryRoute: routeRef(row.secondary_route_id, routeMap),
     likelyMethods: asArray(row.likely_core_methods),
-    sourceType: row.source_type,
-    authenticityStatus: row.authenticity_status,
-    yearSource: row.year_source,
-    paperCode: row.paper_code,
-    textPairing: row.text_pairing,
-    aoEmphasis: row.ao_emphasis,
-    builderHandoffNotes: row.builder_handoff_notes,
+    sourceType: row.sourceType ?? row.source_type,
+    authenticityStatus: row.authenticityStatus ?? row.authenticity_status,
+    yearSource: row.yearSource ?? row.year_source,
+    paperCode: row.paperCode ?? row.paper_code,
+    textPairing: row.textPairing ?? row.text_pairing,
+    aoEmphasis: row.aoEmphasis ?? row.ao_emphasis,
+    builderHandoffNotes: row.builderHandoffNotes ?? row.builder_handoff_notes ?? row.metadata?.builder_handoff_notes,
   };
 }
 
