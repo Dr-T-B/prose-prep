@@ -1,10 +1,12 @@
 # Questions Bank Coverage Audit
 
 ## Executive summary
-The live Questions page currently shows only 5 entries because the application is fetching active rows from the remote Supabase `questions` table, which presently contains exactly 5 active rows. This small remote dataset shadows the 33 comprehensive questions defined locally in the `src/data/seed.ts` fallback. To expand this into a full Component 2 Prose question bank, we must address missing metadata fields (authenticity, year, paper code) and establish verified past-paper coverage before performing database schema migrations or writing new rows.
+At the original audit time, the live Questions page showed only 5 entries because the application fetched active rows from the remote Supabase `questions` table before falling back to the 33 broader questions defined locally in `src/data/seed.ts`. That exact live count should be reverified before any data import decision, but the architectural issue remains: any non-empty remote `questions` result shadows the local fallback.
+
+Post-amendment status: main now includes `supabase/migrations/20260528131629_add_question_bank_metadata.sql`, which adds question-bank metadata columns for source type, authenticity status, source year/note, paper code, text pairing, AO emphasis, and flexible metadata. The schema gap identified in the original audit is therefore no longer a "missing columns" blocker in the repository. The remaining blockers are verified past-paper coverage, metadata population, import validation, and confirming the runtime database state before any write.
 
 ## Trigger for audit
-Live UI inspection of `/library/questions` revealed only 5 entries (covering Class, Guilt, Imagination, Childhood, and Education), which is insufficient for full Component 2 exam preparation.
+Live UI inspection of `/library/questions` revealed 5 entries at audit time (covering Class, Guilt, Imagination, Childhood, and Education), which was insufficient for full Component 2 exam preparation. This amendment did not rerun a live Supabase read; treat the exact count as historical until reverified.
 
 ## Commands run
 ```bash
@@ -13,6 +15,9 @@ git pull --ff-only origin main
 git fetch --prune origin
 git status --short
 git switch -c audit/questions-bank-coverage
+git rebase origin/main
+npm run validate:component2-ao
+git diff --check
 ```
 
 ## Files inspected
@@ -21,12 +26,14 @@ git switch -c audit/questions-bank-coverage
 - `src/lib/contentRepo.ts` (fetches from Supabase with local fallback)
 - `src/lib/libraryAdapters.ts` (maps raw DB/seed rows to UI-friendly types)
 - `src/data/seed.ts` (contains 33 fallback questions across 12 theme families)
+- `supabase/migrations/20260528131629_add_question_bank_metadata.sql` (adds metadata columns to `questions`)
+- `src/integrations/supabase/types.ts` (generated types now include the metadata fields)
 
 ## Current Questions page behaviour
 The `Questions.tsx` page retrieves the content bundle using `useContent()`. The data is mapped via `toLibraryQuestions()`. The UI displays a `QuestionCard` for each question, showing its theme family, difficulty level band, question stem, primary route, secondary route, and likely methods. It includes a "Use in Builder" button which calls `queueBuilderHandoff` and navigates to the Essay Builder.
 
-## Current 5-question source
-The 5 questions originate from the live Supabase database. The `loadContent()` function in `src/lib/contentRepo.ts` runs the query `supabase.from("questions").select("*").eq("is_active", true)`. If Supabase returns any active rows, the application uses them and ignores the 33 questions defined locally in `src/data/seed.ts` (`LOCAL_BUNDLE.questions`). The 5 questions seen live are manual entries in Supabase.
+## Original 5-question source
+The 5 questions observed at audit time originated from the live Supabase database. The `loadContent()` function in `src/lib/contentRepo.ts` runs the query `supabase.from("questions").select("*").eq("is_active", true)`. If Supabase returns any active rows, the application uses them and ignores the 33 questions defined locally in `src/data/seed.ts` (`LOCAL_BUNDLE.questions`). The exact current live row count should be rechecked with a read-only query before any import or cleanup plan.
 
 ## Current question schema
 
@@ -39,15 +46,17 @@ The 5 questions originate from the live Supabase database. The `loadContent()` f
 | `primary route` | Connects to a primary route | Yes | Connects to `routes` via `primary_route_id` |
 | `secondary route` | Connects to a secondary route | Yes | Connects to `routes` via `secondary_route_id` |
 | `likely methods` | Displays suggested methods | Yes | Stored as `string[]` |
-| `year` | Not present | Yes | Needed for past-paper questions |
-| `paper code` | Not present | Yes | Needed to identify 9ET0/02 |
-| `source type` | Not present | Yes | Official vs adapted vs mock |
-| `exam-board authenticity` | Not present | Yes | To verify Pearson Edexcel authenticity |
-| `builder handoff metadata` | Implicit | Yes | Managed dynamically via `handoffFromQuestion` |
+| `year/source note` | Schema column now exists | Yes | `year_source`; still needs population and verification. |
+| `paper code` | Schema column now exists | Yes | `paper_code`; needed to identify 9ET0/02. |
+| `source type` | Schema column now exists | Yes | `source_type`; official/adapted/mock/speculative classification. |
+| `exam-board authenticity` | Schema column now exists | Yes | `authenticity_status`; still needs source-backed review. |
+| `text pairing` | Schema column now exists | Yes | `text_pairing`; e.g. Hard Times / Atonement. |
+| `AO emphasis` | Schema column now exists | Yes | `ao_emphasis`; must remain AO1/AO2/AO3/AO4 only. |
+| `builder/admin metadata` | Schema column now exists | Yes | `metadata` JSONB can hold review/import/handoff notes; UI handoff remains dynamic. |
 
 ## Current coverage gaps
-1. **Database coverage**: The live database only has 5 active questions, whereas the local seed contains 33 (covering 12 theme families).
-2. **Authenticity metadata**: Neither the local seed nor the database schema supports tracking whether a question is an official past-paper question, what year it was from, or if it is an adapted/mock question.
+1. **Database coverage**: The live database showed only 5 active questions at audit time, whereas the local seed contains 33 (covering 12 theme families). Reverify the current remote count before acting.
+2. **Metadata population**: The repository schema now supports source/authenticity metadata, but the question rows still need verified values before being treated as a full bank.
 3. **Past-paper coverage**: We currently lack verified Pearson Edexcel 9ET0/02 past-paper questions for the Hard Times / Atonement pairing (Theme: Childhood).
 
 ## Required Component 2 coverage
@@ -70,13 +79,13 @@ To preserve academic integrity, questions should be strictly classified as:
 - **speculative practice**: Designed for targeted skill-building or exploring niche themes.
 
 ## Option A: local static question expansion
-Update `src/data/seed.ts` with metadata fields and more questions. Would require temporarily disabling the Supabase fetch or manually syncing the local seed to the remote database.
+Update `src/data/seed.ts` with metadata-aligned fields and more questions. Would require either a local-first product decision or a later sync/import path so the remote dataset no longer shadows fuller local coverage.
 
 ## Option B: Supabase-backed question bank
-Add missing columns to Supabase and insert rows. Requires database migrations and writes.
+Use the existing metadata columns and insert/update verified rows. This no longer requires a new metadata schema migration, but it still requires careful import validation, remote-state verification, and explicit approval before any Supabase write.
 
 ## Option C: hybrid local-first expansion
-Build the full canonical question bank locally first with new schema fields, test it, then migrate to Supabase later.
+Build the full canonical question bank locally first using the existing metadata shape, test it, then import to Supabase later.
 
 ## Option D: docs-only question bank draft first
 Draft the full question set with authenticity metadata in a Markdown document for review before performing any code or schema changes.
@@ -89,14 +98,14 @@ Component 2 Prose strictly assesses AO1, AO2, AO3, and AO4. There are no mention
 
 ## Recommendation
 **Option D: docs-only question bank draft first**
-Because exact official past-paper coverage is uncertain and the current schema lacks the necessary fields to store authenticity and past-paper metadata, the safest path is to draft the full question bank in docs first. This allows us to verify Pearson Edexcel authenticity, define the exact schema changes needed, and review the questions thoroughly before committing to code changes, Supabase schema migrations, or data writes.
+Because exact official past-paper coverage is uncertain, the safest path is still to draft the full question bank in docs first. The draft should use the metadata columns that now exist in main (`source_type`, `authenticity_status`, `year_source`, `paper_code`, `text_pairing`, `ao_emphasis`, and `metadata`) and should verify Pearson Edexcel authenticity before committing to imports or remote data writes.
 
 ## Proposed next implementation PR
 **Branch**: `docs/draft-question-bank-c2`
-**Goal**: Draft a comprehensive Markdown document listing the full proposed Component 2 Prose question bank, including year, source type, and paper code.
+**Goal**: Draft a comprehensive Markdown document listing the full proposed Component 2 Prose question bank, including source type, authenticity status, year/source note, paper code, text pairing, and AO1/AO2/AO3/AO4-only emphasis.
 
 ## Risks and non-goals
-- **Risk**: Deleting the 5 active questions in Supabase to force the local fallback might temporarily disrupt users if the local seed has undiscovered issues.
+- **Risk**: If the runtime database still has only a small active question set, deleting or deactivating those rows to force local fallback might disrupt users if the local seed has undiscovered issues.
 - **Non-goal**: Changing the Supabase schema or writing data in this audit.
 - **Non-goal**: Modifying product behaviour or adding AI generation.
 - **Non-goal**: Introducing AO5.
