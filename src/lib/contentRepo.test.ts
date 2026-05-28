@@ -85,4 +85,61 @@ describe("content repository fallback", () => {
     expect(bundle.routes).toEqual(mockSupabase.responses.routes.data);
     expect(bundle.questions).toEqual(localContentBundle.questions);
   });
+
+  it("remote active questions override local seed when Supabase returns non-empty active question rows", async () => {
+    mockSupabase.responses.questions = {
+      data: [{ id: "remote_q1", stem: "Remote question" }],
+      error: null,
+    };
+
+    const { loadContent, localContentBundle } = await import("./contentRepo");
+    const bundle = await loadContent();
+
+    expect(bundle.questions).toHaveLength(1);
+    expect(bundle.questions[0].id).toBe("remote_q1");
+    expect(bundle.questions.length).not.toBe(localContentBundle.questions.length);
+  });
+
+  it("local seed fallback is used when Supabase returns an error", async () => {
+    mockSupabase.responses.questions = {
+      data: null,
+      error: { message: "Internal Server Error" },
+    };
+
+    const { loadContent, localContentBundle } = await import("./contentRepo");
+    const bundle = await loadContent();
+
+    // Mapping changes likely_core_methods to [] if undefined, so we check length and IDs
+    expect(bundle.questions.length).toBe(localContentBundle.questions.length);
+    expect(bundle.questions[0].id).toBe(localContentBundle.questions[0].id);
+  });
+
+  it("local seed fallback is used when Supabase returns no active question rows", async () => {
+    mockSupabase.responses.questions = {
+      data: [],
+      error: null,
+    };
+
+    const { loadContent, localContentBundle } = await import("./contentRepo");
+    const bundle = await loadContent();
+
+    expect(bundle.questions.length).toBe(localContentBundle.questions.length);
+    expect(bundle.questions[0].id).toBe(localContentBundle.questions[0].id);
+  });
+
+  it("local priority questions exist in fallback seed and do not include AO5", async () => {
+    const { localContentBundle } = await import("./contentRepo");
+    
+    const questions = localContentBundle.questions;
+    expect(questions.length).toBeGreaterThanOrEqual(12);
+    
+    questions.forEach(q => {
+      // Ensure no AO5 terminology is introduced in metadata
+      if ('ao_emphasis' in q) {
+        expect(String((q as any).ao_emphasis).includes("AO5")).toBe(false);
+      }
+      expect(JSON.stringify(q).includes("AO5")).toBe(false);
+      expect(JSON.stringify(q).includes("AO5")).toBe(false);
+    });
+  });
 });
