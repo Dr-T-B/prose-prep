@@ -1107,21 +1107,63 @@ function LiveOutput({ plan }: { plan: EssayPlan }) {
           </section>
         )}
 
-        {jobs.length > 0 && (
-          <section className="flex flex-col gap-5">
-            <p className="label-eyebrow">Paragraph jobs</p>
-            {jobs.map((j, i) => (
-              <div key={j.id} className="flex gap-4">
+        {plan.paragraph_cards && plan.paragraph_cards.length > 0 ? (
+          <section className="flex flex-col gap-6">
+            <p className="label-eyebrow">Paragraph cards</p>
+            {plan.paragraph_cards.map((card, i) => (
+              <div key={card.id || i} className="flex gap-4 border-l border-rule pl-4">
                 <div className="font-serif italic text-ink-muted shrink-0">§{i + 1}</div>
-                <div className="flex flex-col gap-1.5">
-                  <p className="font-medium text-sm">{j.job_title}</p>
-                  <p className="text-sm text-ink-muted leading-relaxed"><b className="text-ink">HT:</b> {j.text1_prompt}</p>
-                  <p className="text-sm text-ink-muted leading-relaxed"><b className="text-ink">AT:</b> {j.text2_prompt}</p>
-                  <p className="text-sm text-ink-muted leading-relaxed italic">{j.judgement_prompt}</p>
+                <div className="flex flex-col gap-2.5">
+                  <p className="font-semibold text-sm">{card.title || "Untitled"}</p>
+                  {card.claim && (
+                    <p className="text-sm text-ink leading-relaxed"><b className="text-xs font-mono uppercase tracking-wider text-ink-muted">Claim:</b> {card.claim}</p>
+                  )}
+                  {card.comparative_direction && (
+                    <p className="text-sm text-ink leading-relaxed"><b className="text-xs font-mono uppercase tracking-wider text-ink-muted">Comparative direction:</b> {card.comparative_direction}</p>
+                  )}
+                  {card.method_focus && (
+                    <p className="text-sm text-ink leading-relaxed"><b className="text-xs font-mono uppercase tracking-wider text-ink-muted">AO2 Method:</b> {card.method_focus}</p>
+                  )}
+                  {card.context_anchor && (
+                    <p className="text-sm text-ink leading-relaxed"><b className="text-xs font-mono uppercase tracking-wider text-ink-muted">AO3 Context:</b> {card.context_anchor}</p>
+                  )}
+                  {card.notes && (
+                    <div className="text-xs text-ink-muted leading-relaxed bg-paper-dim/40 p-2.5 rounded-sm border border-rule/50 whitespace-pre-wrap">
+                      <b className="text-[10px] font-mono uppercase tracking-wider text-ink">Notes:</b>
+                      <p className="mt-1">{card.notes}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
+
+            <div className="mt-4 border-t border-rule pt-4">
+              <p className="label-eyebrow mb-2">Final checklist</p>
+              <ul className="list-disc pl-5 text-xs text-ink-muted space-y-1">
+                <li><b>AO1:</b> argument is sustained</li>
+                <li><b>AO2:</b> methods are analysed</li>
+                <li><b>AO3:</b> contexts are integrated</li>
+                <li><b>AO4:</b> comparison remains active</li>
+              </ul>
+            </div>
           </section>
+        ) : (
+          jobs.length > 0 && (
+            <section className="flex flex-col gap-5">
+              <p className="label-eyebrow">Paragraph jobs</p>
+              {jobs.map((j, i) => (
+                <div key={j.id} className="flex gap-4">
+                  <div className="font-serif italic text-ink-muted shrink-0">§{i + 1}</div>
+                  <div className="flex flex-col gap-1.5">
+                    <p className="font-medium text-sm">{j.job_title}</p>
+                    <p className="text-sm text-ink-muted leading-relaxed"><b className="text-ink">HT:</b> {j.text1_prompt}</p>
+                    <p className="text-sm text-ink-muted leading-relaxed"><b className="text-ink">AT:</b> {j.text2_prompt}</p>
+                    <p className="text-sm text-ink-muted leading-relaxed italic">{j.judgement_prompt}</p>
+                  </div>
+                </div>
+              ))}
+            </section>
+          )
         )}
 
         {quotes.length > 0 && (

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GradeBModeProvider } from "@/contexts/GradeBModeContext";
 import { setCurrentPlan } from "@/lib/planStore";
 import type { ContentBundle } from "@/lib/contentRepo";
+import { renderPlanText } from "@/lib/planLogic";
 import EssayBuilder from "./EssayBuilder";
 
 const content: ContentBundle = {
@@ -227,5 +228,109 @@ describe("EssayBuilder", () => {
 
     expect(JSON.stringify(card)).not.toContain("AO5");
     expect(JSON.stringify(card)).not.toContain("ao5");
+  });
+
+  it("renderPlanText formats paragraph_cards correctly when present, and falls back to paragraph_jobs when empty", () => {
+    const planWithCards = {
+      id: "plan-childhood",
+      updated_at: 1,
+      family: "childhood" as any,
+      question_id: "q-childhood",
+      route_id: "r-childhood",
+      thesis_level: "strong" as any,
+      selected_quote_ids: [],
+      interpretive_extension_enabled: false,
+      selected_interpretive_extension_ids: [],
+      paragraph_cards: [
+        {
+          id: "paragraph:matrix:comparison:matrix:cm-childhood-route",
+          title: "Roles of children",
+          claim: "Both novels make childhood formation the origin of later damage.",
+          comparative_direction: "AO4 comparison detail linking external pressure to internalised misreading.",
+          evidence_ht_ids: [],
+          evidence_at_ids: [],
+          evidence_cmp_ids: [],
+          method_focus: "AO2 method detail for classroom dialogue and child focalisation.",
+          context_anchor: "AO3 context detail for utilitarian schooling and inter-war class assumptions.",
+          analytical_position_prompt: "",
+          notes: "Hard Times: Dickens tests childhood through a restrictive schoolroom.\nAtonement: McEwan tests childhood through a misreading child narrator.",
+          draft: true,
+        },
+      ],
+      builder_handoffs: [],
+    };
+
+    const outputWithCards = renderPlanText(planWithCards, content);
+    expect(outputWithCards).toContain("PARAGRAPH CARDS");
+    expect(outputWithCards).toContain("Paragraph 1 — Roles of children");
+    expect(outputWithCards).toContain("Claim:\nBoth novels make childhood formation the origin of later damage.");
+    expect(outputWithCards).toContain("Comparative direction:\nAO4 comparison detail linking external pressure to internalised misreading.");
+    expect(outputWithCards).toContain("AO2 — Method:\nAO2 method detail for classroom dialogue and child focalisation.");
+    expect(outputWithCards).toContain("AO3 — Context:\nAO3 context detail for utilitarian schooling and inter-war class assumptions.");
+    expect(outputWithCards).toContain("Notes:\nHard Times: Dickens tests childhood through a restrictive schoolroom.\nAtonement: McEwan tests childhood through a misreading child narrator.");
+    expect(outputWithCards).toContain("FINAL CHECKLIST");
+    expect(outputWithCards).toContain("- AO1: argument is sustained");
+    expect(outputWithCards).toContain("- AO4: comparison remains active");
+    expect(outputWithCards).not.toContain("AO5");
+
+    const planEmptyCards = {
+      ...planWithCards,
+      paragraph_cards: [],
+    };
+    const outputEmptyCards = renderPlanText(planEmptyCards, content);
+    expect(outputEmptyCards).not.toContain("PARAGRAPH CARDS");
+    expect(outputEmptyCards).not.toContain("FINAL CHECKLIST");
+  });
+
+  it("LiveOutput component in EssayBuilder renders paragraph_cards correctly when present", async () => {
+    setCurrentPlan({
+      id: "plan-childhood",
+      updated_at: 1,
+      family: "childhood",
+      question_id: "q-childhood",
+      route_id: "r-childhood",
+      thesis_level: "strong",
+      selected_quote_ids: [],
+      interpretive_extension_enabled: false,
+      selected_interpretive_extension_ids: [],
+      paragraph_cards: [
+        {
+          id: "paragraph:matrix:comparison:matrix:cm-childhood-route",
+          title: "Roles of children",
+          claim: "Both novels make childhood formation the origin of later damage.",
+          comparative_direction: "AO4 comparison detail linking external pressure to internalised misreading.",
+          evidence_ht_ids: [],
+          evidence_at_ids: [],
+          evidence_cmp_ids: [],
+          method_focus: "AO2 method detail for classroom dialogue and child focalisation.",
+          context_anchor: "AO3 context detail for utilitarian schooling and inter-war class assumptions.",
+          analytical_position_prompt: "",
+          notes: "Hard Times: Dickens tests childhood through a restrictive schoolroom.\nAtonement: McEwan tests childhood through a misreading child narrator.",
+          draft: true,
+        },
+      ],
+      builder_handoffs: [],
+    });
+
+    render(
+      <GradeBModeProvider>
+        <MemoryRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          <EssayBuilder />
+        </MemoryRouter>
+      </GradeBModeProvider>,
+    );
+
+    expect(screen.getByText("Paragraph cards")).toBeInTheDocument();
+    expect(screen.getAllByText("Roles of children").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("AO2 Method:").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("AO2 method detail for classroom dialogue and child focalisation.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("AO3 Context:").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("AO3 context detail for utilitarian schooling and inter-war class assumptions.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Comparative direction:").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("AO4 comparison detail linking external pressure to internalised misreading.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Hard Times: Dickens tests childhood/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Final checklist").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/comparison remains active/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
   });
 });

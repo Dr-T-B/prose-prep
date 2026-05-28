@@ -279,7 +279,39 @@ export function renderPlanText(plan: EssayPlan, c?: ContentSlice): string {
     lines.push(t.thesis_text);
     lines.push("");
   }
-  if (jobs.length) {
+  if (plan.paragraph_cards && plan.paragraph_cards.length > 0) {
+    lines.push("PARAGRAPH CARDS");
+    plan.paragraph_cards.forEach((card, i) => {
+      lines.push(`Paragraph ${i + 1} — ${card.title || "Untitled"}`);
+      lines.push("");
+      lines.push("Claim:");
+      lines.push(card.claim || "(Empty claim)");
+      lines.push("");
+      lines.push("Comparative direction:");
+      lines.push(card.comparative_direction || "(Empty comparative direction)");
+      lines.push("");
+      lines.push("AO2 — Method:");
+      lines.push(card.method_focus || "(Empty method focus)");
+      lines.push("");
+      lines.push("AO3 — Context:");
+      lines.push(card.context_anchor || "(Empty context anchor)");
+      lines.push("");
+      if (card.notes && card.notes.trim()) {
+        lines.push("Notes:");
+        lines.push(card.notes.trim());
+        lines.push("");
+      }
+      lines.push("Next step:");
+      lines.push("Add quotations and refine into timed paragraph prose.");
+      lines.push("");
+    });
+    lines.push("FINAL CHECKLIST");
+    lines.push("- AO1: argument is sustained");
+    lines.push("- AO2: methods are analysed");
+    lines.push("- AO3: contexts are integrated");
+    lines.push("- AO4: comparison remains active");
+    lines.push("");
+  } else if (jobs.length) {
     lines.push("PARAGRAPH JOBS");
     jobs.forEach((j, i) => {
       lines.push(`§${i + 1} ${j.job_title}`);
