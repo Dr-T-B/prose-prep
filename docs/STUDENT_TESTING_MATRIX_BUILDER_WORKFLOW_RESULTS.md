@@ -93,14 +93,18 @@ Student quote:
 - 
 
 ## AO compliance notes
-Confirm whether the student saw or mentioned:
+Confirm whether the student understood the Component 2 Prose AO set used by the workflow:
 - AO1:
 - AO2:
 - AO3:
 - AO4:
-- AO5:
 
-AO5 should not appear in Component 2 Prose.
+AO5 absence check:
+- Did any screen, export, teacher prompt, tester wording, or student-facing output show AO5?
+- Expected result: No.
+- Evidence if AO5 appeared:
+
+AO5 must not appear in Component 2 Prose student-facing UI, scoring, filters, exports, or validation requirements.
 
 ## Decision
 Ready for regular use?
