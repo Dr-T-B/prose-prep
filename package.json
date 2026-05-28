@@ -21,6 +21,7 @@
     "scan:component2-staged-content": "node scripts/scan-component2-staged-content.mjs",
     "validate:component2-staged-content": "node scripts/validate-component2-staged-content-shape.mjs",
     "dry-run:component2-import": "node scripts/dry-run-component2-canonical-import.mjs",
+    "questions:dry-run": "tsx scripts/questions-bank-dry-run.ts",
     "import-quotes": "npx tsx scripts/importQuotes.ts",
     "import-quotes:write": "npx tsx scripts/importQuotes.ts --write",
     "check:no-client-llm": "node scripts/check-no-client-llm-secrets.mjs"
