@@ -78,6 +78,12 @@ export interface Resource {
   published: boolean;
 }
 
+export interface QuestionSourceStatus {
+  remoteCount: number;
+  localCount: number;
+  isOverridingLocal: boolean;
+}
+
 export interface ContentBundle {
   routes: Route[];
   questions: Question[];
@@ -95,6 +101,7 @@ export interface ContentBundle {
   lessons: Lesson[];
   resources: Resource[];
   source: "remote" | "local";
+  question_source_status: QuestionSourceStatus;
 }
 
 const LOCAL_BUNDLE: ContentBundle = {
@@ -114,6 +121,11 @@ const LOCAL_BUNDLE: ContentBundle = {
   lessons: [],
   resources: [],
   source: "local",
+  question_source_status: {
+    remoteCount: 0,
+    localCount: SEED_QUESTIONS.length,
+    isOverridingLocal: false,
+  },
 };
 
 type ContentQueryResult<T> = {
@@ -180,6 +192,9 @@ export async function loadContent(): Promise<ContentBundle> {
 
     let usedRemote = false;
 
+    const localQuestionsCount = LOCAL_BUNDLE.questions.length;
+    const remoteQuestionsCount = (!questions.error && questions.data) ? dedupe(questions.data).length : 0;
+
     const pick = <T extends { id: string }>(
       dataset: string,
       result: ContentQueryResult<T>,
@@ -241,6 +256,11 @@ export async function loadContent(): Promise<ContentBundle> {
       lessons: pick<Lesson>("lessons", lessons, LOCAL_BUNDLE.lessons),
       resources: pick<Resource>("resources", resources, LOCAL_BUNDLE.resources),
       source: usedRemote ? "remote" : "local",
+      question_source_status: {
+        remoteCount: remoteQuestionsCount,
+        localCount: localQuestionsCount,
+        isOverridingLocal: remoteQuestionsCount > 0 && remoteQuestionsCount < localQuestionsCount,
+      },
     };
   } catch (error) {
     warnFallback("content bundle", error instanceof Error ? error.message : "remote fetch failed");

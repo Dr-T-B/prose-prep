@@ -98,6 +98,9 @@ describe("content repository fallback", () => {
     expect(bundle.questions).toHaveLength(1);
     expect(bundle.questions[0].id).toBe("remote_q1");
     expect(bundle.questions.length).not.toBe(localContentBundle.questions.length);
+    expect(bundle.question_source_status.isOverridingLocal).toBe(true);
+    expect(bundle.question_source_status.remoteCount).toBe(1);
+    expect(bundle.question_source_status.localCount).toBe(localContentBundle.questions.length);
   });
 
   it("local seed fallback is used when Supabase returns an error", async () => {
@@ -112,6 +115,8 @@ describe("content repository fallback", () => {
     // Mapping changes likely_core_methods to [] if undefined, so we check length and IDs
     expect(bundle.questions.length).toBe(localContentBundle.questions.length);
     expect(bundle.questions[0].id).toBe(localContentBundle.questions[0].id);
+    expect(bundle.question_source_status.isOverridingLocal).toBe(false);
+    expect(bundle.question_source_status.remoteCount).toBe(0);
   });
 
   it("local seed fallback is used when Supabase returns no active question rows", async () => {
@@ -125,6 +130,8 @@ describe("content repository fallback", () => {
 
     expect(bundle.questions.length).toBe(localContentBundle.questions.length);
     expect(bundle.questions[0].id).toBe(localContentBundle.questions[0].id);
+    expect(bundle.question_source_status.isOverridingLocal).toBe(false);
+    expect(bundle.question_source_status.remoteCount).toBe(0);
   });
 
   it("local priority questions exist in fallback seed and do not include AO5", async () => {

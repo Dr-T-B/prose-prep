@@ -27,6 +27,14 @@ Local static seed expansion is now implemented, but live Supabase rows may still
 - **Adapter preserves metadata for local seed questions:** Verified that mapping carries metadata through.
 - **Questions UI metadata display remains optional:** Verified that rendering a question without metadata does not display broken badges.
 
+## Source status warning
+
+The UI now surfaces when remote rows are fewer than local fallback rows.
+- This does not change loading priority (remote still overrides).
+- This does not sync data to Supabase.
+- This does not mutate Supabase.
+- It prepares for a later explicit sync/import decision by making the discrepancy visible in the UI.
+
 ## Risk
 
 The main risk is that users may not see the expanded local question bank until remote data is synced, migrated, or a deliberate content-source mode is introduced.
