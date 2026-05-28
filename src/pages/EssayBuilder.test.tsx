@@ -202,14 +202,14 @@ describe("EssayBuilder", () => {
     expect(screen.getAllByText("Roles of children").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Both novels make childhood formation the origin of later damage.").length).toBeGreaterThan(0);
 
-    const createBtn = screen.getByRole("button", { name: "Create paragraph card from Roles of children" });
+    const createBtn = screen.getByRole("button", { name: "Add planning note from Roles of children" });
     expect(createBtn).toBeInTheDocument();
     expect(createBtn).not.toBeDisabled();
 
     fireEvent.click(createBtn);
 
-    expect(await screen.findByRole("button", { name: "Paragraph card from Roles of children created" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Paragraph card from Roles of children created" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Planning note from Roles of children added" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Planning note from Roles of children added" })).toBeDisabled();
 
     const plan = JSON.parse(localStorage.getItem("c2p.currentPlan.v1") || "{}");
     expect(plan.paragraph_cards.length).toBe(1);

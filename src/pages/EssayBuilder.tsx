@@ -848,19 +848,24 @@ function ExploreIntake({
                             </ul>
                           )}
                           {isMatrixHandoff && onCreateCard && (
-                            <div className="mt-2.5 pt-2 border-t border-rule/50 flex justify-start">
-                              <button
-                                onClick={() => onCreateCard(item)}
-                                disabled={alreadyCreated}
-                                aria-label={alreadyCreated ? `Paragraph card from ${item.title} created` : `Create paragraph card from ${item.title}`}
-                                className={`px-2.5 py-1 text-[10px] font-mono rounded-sm border transition-colors ${
-                                  alreadyCreated
-                                    ? "border-rule bg-paper-dim/40 text-ink-muted cursor-not-allowed"
-                                    : "border-rule-strong bg-paper text-ink hover:bg-paper-dim"
-                                }`}
-                              >
-                                {alreadyCreated ? "Created" : "Create paragraph card"}
-                              </button>
+                            <div className="mt-2.5 pt-2 border-t border-rule/50 flex flex-col gap-2">
+                              <p className="text-[10px] text-ink-muted leading-relaxed">
+                                Adds this route to your plan. To develop it with quotations and evidence, use Step 04: Paragraph Engine.
+                              </p>
+                              <div className="flex justify-start">
+                                <button
+                                  onClick={() => onCreateCard(item)}
+                                  disabled={alreadyCreated}
+                                  aria-label={alreadyCreated ? `Planning note from ${item.title} added` : `Add planning note from ${item.title}`}
+                                  className={`px-2.5 py-1 text-[10px] font-mono rounded-sm border transition-colors ${
+                                    alreadyCreated
+                                      ? "border-rule bg-paper-dim/40 text-ink-muted cursor-not-allowed"
+                                      : "border-rule-strong bg-paper text-ink hover:bg-paper-dim"
+                                  }`}
+                                >
+                                  {alreadyCreated ? "Added" : "Add planning note"}
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
