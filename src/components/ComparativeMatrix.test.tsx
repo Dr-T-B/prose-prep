@@ -107,7 +107,11 @@ describe("ComparativeMatrix", () => {
     });
 
     // Click AO2 filter
+    const allAosFilter = screen.getByRole("button", { name: "All AOs" });
     const ao2Filter = screen.getByRole("button", { name: "AO2" });
+    expect(allAosFilter).toHaveAttribute("aria-pressed", "true");
+    expect(ao2Filter).toHaveAttribute("aria-pressed", "false");
+
     fireEvent.click(ao2Filter);
 
     await waitFor(() => {
@@ -115,6 +119,67 @@ describe("ComparativeMatrix", () => {
       expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
       expect(screen.getByText(/\(AO2 filter active\)/i)).toBeInTheDocument();
     });
+    expect(allAosFilter).toHaveAttribute("aria-pressed", "false");
+    expect(ao2Filter).toHaveAttribute("aria-pressed", "true");
+    expect(ao2Filter).toHaveClass("bg-ink", "text-paper");
+    expect(allAosFilter).not.toHaveClass("bg-ink");
+  });
+
+  it("marks AO3 and AO4 active when selected and clears back to All AOs", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const allAosFilter = screen.getByRole("button", { name: "All AOs" });
+    const ao3Filter = screen.getByRole("button", { name: "AO3" });
+    const ao4Filter = screen.getByRole("button", { name: "AO4" });
+
+    fireEvent.click(ao3Filter);
+    await waitFor(() => {
+      expect(screen.getByText(/\(AO3 filter active\)/i)).toBeInTheDocument();
+    });
+    expect(ao3Filter).toHaveAttribute("aria-pressed", "true");
+    expect(allAosFilter).toHaveAttribute("aria-pressed", "false");
+    expect(ao3Filter).toHaveClass("bg-ink", "text-paper");
+
+    fireEvent.click(ao4Filter);
+    await waitFor(() => {
+      expect(screen.getByText(/\(AO4 filter active\)/i)).toBeInTheDocument();
+    });
+    expect(ao4Filter).toHaveAttribute("aria-pressed", "true");
+    expect(ao3Filter).toHaveAttribute("aria-pressed", "false");
+    expect(allAosFilter).toHaveAttribute("aria-pressed", "false");
+    expect(ao4Filter).toHaveClass("bg-ink", "text-paper");
+
+    fireEvent.click(allAosFilter);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/filter active/i)).not.toBeInTheDocument();
+    expect(allAosFilter).toHaveAttribute("aria-pressed", "true");
+    expect(ao4Filter).toHaveAttribute("aria-pressed", "false");
+    expect(allAosFilter).toHaveClass("bg-ink", "text-paper");
+  });
+
+  it("limits visible AO columns while combining an AO filter with a secondary lens", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "AO2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Narrative method" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const table = screen.getByRole("table");
+    expect(within(table).getByText(/AO2 method trigger/i)).toBeInTheDocument();
+    expect(within(table).getByText(/Narrative method/i)).toBeInTheDocument();
+    expect(within(table).queryByText(/AO3 context/i)).not.toBeInTheDocument();
+    expect(within(table).queryByText(/AO4 comparative link/i)).not.toBeInTheDocument();
   });
 
   it("combines AO filtering with search so only matching filtered rows remain", async () => {
