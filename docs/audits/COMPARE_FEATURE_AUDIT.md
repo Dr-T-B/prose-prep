@@ -4,9 +4,11 @@
 
 This audit covered the current Compare and Comparative Matrix surfaces from the repository state on branch `audit/compare-feature`. The interactive `/matrix` feature correctly exposes only `All AOs`, `AO2`, `AO3`, and `AO4`; it does not expose AO1 as a filter and does not contain active AO5 UI or logic. Its AO filter predicate is based on trimmed non-empty AO content, theme chips compose with search, and the targeted ComparativeMatrix suite passes.
 
+Post-#95/#96 status: PR #95 fixed the Compare AO filter state logic, so AO2/AO3/AO4 buttons are no longer treated as broken. PR #96 fixed the known mobile Compare filter tap interception issue by adjusting the toolbar/header stacking contract. This audit now treats mobile interaction as a residual verification and tap-target coverage risk, not as an active "toolbar taps are blocked" defect.
+
 The main risks are not AO-rule violations, but product consistency and output correctness. `/matrix` and `/compare` are separate routed surfaces with different data paths and filtering semantics. Teacher print mode ignores the active row filters and prints all loaded rows. Sparse matrix rows can render blank AO/detail sections, especially in mobile card view. Accessibility gaps remain around the unlabeled search input and print-mode select, small mobile tap targets, and limited mobile-specific testing. Test coverage is broad for happy-path interactions but still missing real viewport checks, AO+theme composition, and several accessibility assertions.
 
-Top 3-5 findings: CF-001 route/source split, CF-002 teacher print ignores filters, CF-004 empty mobile sections, CF-006/CF-007 unlabeled controls, and CF-010 missing real mobile viewport coverage.
+Top findings: CF-001 route/source split, CF-002 teacher print ignores filters, CF-004 empty mobile sections, CF-006/CF-007 unlabeled controls, CF-010 missing real mobile viewport coverage, and CF-022 row-action resilience.
 
 No Supabase write or migration commands were run.
 
@@ -105,9 +107,13 @@ Filter state lives in `ComparativeMatrix` component state only. It is not in URL
 - AO and secondary lens compose at the visible-column level.
 - AO and search compose in the `filtered` memo.
 - Theme chips use OR semantics and compose with search. AO+theme composition is implemented by the filter pipeline, but not directly tested.
+- PR #95's AO filter fix is present in this state: AO2/AO3/AO4 update active state correctly, deactivate `All AOs`, and map to the intended AO fields.
+- PR #96's mobile filter tap fix is present in this state: the filter toolbar has an explicit labelled region and stacking context so controls remain tappable after the sticky-header issue.
 - `Clear filters` resets `query`, `aoFilter`, `lens`, and `selectedThemes`; it does not reset `expandedIds`, `printMode`, `copiedId`, loaded rows, loading state, or errors.
 - `Expand all` expands only the currently filtered row IDs. `Collapse all` clears all expanded IDs.
 - Compact print mode maps the filtered row set through the desktop table. Revision-card print mode maps the filtered row set through the mobile/card layout. Teacher print mode maps all `rows`, ignoring current filters.
+- `Copy route` is rendered in both desktop and mobile row-action paths. It uses `navigator.clipboard.writeText` with an `execCommand("copy")` fallback and falls back to native `alert()` on failure.
+- `Send to Essay Builder` is also rendered in both desktop and mobile row-action paths. If the handoff write throws, the catch block logs the error and still navigates to `/builder`.
 - Mobile/tablet layout is an accordion card list under `lg`; desktop layout is a horizontally scrollable table from `lg` upward.
 - `/compare` is a separate, read-only page. It hides empty AO/detail sections using `hasText`, but does not provide the matrix filters.
 
@@ -123,7 +129,7 @@ Filter state lives in `ComparativeMatrix` component state only. It is not in URL
 | CF-006 | medium | Accessibility | The search input has no label or `aria-label`; placeholder text is doing the naming work. | `src/components/ComparativeMatrix.tsx:278`, `src/components/ComparativeMatrix.tsx:281`, `src/components/ComparativeMatrix.tsx:282` | Add a visible or visually hidden label, then test by role/name instead of placeholder. |
 | CF-007 | medium | Accessibility | The print-mode `<select>` has no accessible label. | `src/components/ComparativeMatrix.tsx:322`, `src/components/ComparativeMatrix.tsx:325` | Add a label or `aria-label` such as "Print layout". |
 | CF-008 | medium | Mobile usability | Many mobile controls appear below the 44x44 tap-target guideline, including AO/lens pills, theme chips, expand/collapse buttons, and row action buttons. | `src/components/ComparativeMatrix.tsx:290`, `src/components/ComparativeMatrix.tsx:306`, `src/components/ComparativeMatrix.tsx:317`, `src/components/ComparativeMatrix.tsx:350`, `src/components/ComparativeMatrix.tsx:430`, `src/components/ComparativeMatrix.tsx:530` | Add mobile min-height/min-width or responsive padding for all interactive controls. |
-| CF-009 | medium | Mobile interaction | The filter toolbar has `z-40`, while the sticky app header uses `z-30`. When content scrolls under the sticky header, page controls can stack above global navigation. The test currently blesses this class. | `src/components/AppShell.tsx:35`, `src/components/ComparativeMatrix.tsx:268`, `src/components/ComparativeMatrix.tsx:271`, `src/components/ComparativeMatrix.test.tsx:128` | Revisit the stacking contract with real scrolling verification; do not assert a higher z-index than the app shell unless intentionally sticky. |
+| CF-009 | medium | Mobile verification | PR #96 fixed the known sticky-header/filter tap interception by making the filter toolbar a labelled `relative z-40` region. The remaining risk is that coverage is still jsdom/class-based, so it proves the CSS contract exists but not real browser hit-testing while scrolling. | `src/components/AppShell.tsx:35`, `src/components/ComparativeMatrix.tsx:268`, `src/components/ComparativeMatrix.tsx:271`, `src/components/ComparativeMatrix.test.tsx:128` | Keep the #96 fix, but add real mobile viewport coverage for scroll/tap behaviour and avoid making class-name assertions the only proof of interactivity. |
 | CF-010 | medium | Test coverage / mobile | No Playwright or real mobile viewport setup exists. The mobile coverage is jsdom/class-based only. | `package.json:87`, `package.json:110`, `vitest.config.ts:8`, `vitest.config.ts:11` | Add later e2e/mobile viewport coverage for `/matrix` layout, tap targets, sticky header, and print controls. |
 | CF-011 | medium | Test coverage / filtering | Tests cover AO+search and theme+search, but not AO+theme composition directly. | `src/components/ComparativeMatrix.test.tsx:241`, `src/components/ComparativeMatrix.test.tsx:472`, `src/components/ComparativeMatrix.test.tsx:512` | Add a test that selects an AO and one or more theme chips and asserts the exact remaining rows. |
 | CF-012 | medium | Test coverage / accessibility | Tests do not assert accessible names for the search input or print-mode select. The search test queries by placeholder. | `src/components/ComparativeMatrix.test.tsx:184`, `src/components/ComparativeMatrix.test.tsx:306` | Add role/name assertions for textbox and combobox, then avoid placeholder-only tests. |
@@ -136,13 +142,14 @@ Filter state lives in `ComparativeMatrix` component state only. It is not in URL
 | CF-019 | observation | AO5 safety | Active Compare code does not add AO5 controls, but latent AO5 references exist in guard/test/report contexts. The validator classifies them as allowed and reports zero blocked AO5 references. | `supabase/migrations/20260528004217_backfill_comparative_matrix_mock_row_themes.sql:41`, `supabase/migrations/20260528004217_backfill_comparative_matrix_mock_row_themes.sql:181`, `src/components/ComparativeMatrix.test.tsx:341`, `src/components/ComparativeMatrix.test.tsx:591` | Keep validator coverage; do not remove guardrail references unless the AO policy changes. |
 | CF-020 | observation | Data validation | Seed migrations verify AO-content columns are non-null, but not trimmed non-empty. Whitespace-only AO content would pass migration checks while failing UI AO filters. | `supabase/migrations/20260526160000_seed_comparative_matrix_ao_content_themes_7_to_9.sql:130`, `supabase/migrations/20260526160000_seed_comparative_matrix_ao_content_themes_7_to_9.sql:139`, `supabase/migrations/20260526170000_seed_comparative_matrix_ao_content_themes_10_to_15.sql:220` | Add non-empty validation to dry-run/import validation, not as an ad hoc UI patch. |
 | CF-021 | low | Test quality | Several tests assert implementation styling classes such as `bg-ink`, `text-paper`, and `z-40`; these can preserve risky CSS rather than user-visible behaviour. | `src/components/ComparativeMatrix.test.tsx:124`, `src/components/ComparativeMatrix.test.tsx:134`, `src/components/ComparativeMatrix.test.tsx:157` | Prefer behaviour, computed accessibility state, or visual/e2e assertions over class-name lock-in. |
+| CF-022 | medium | Row actions / Builder handoff | `Copy route` and `Send to Essay Builder` are duplicated across desktop and mobile render paths, rely on browser APIs that can fail, and do not provide robust inline failure states. The Builder handoff catch block still navigates to `/builder` after a failed write, which can leave the student in Builder without the expected imported route. | `src/components/ComparativeMatrix.tsx:137`, `src/components/ComparativeMatrix.tsx:149`, `src/components/ComparativeMatrix.tsx:166`, `src/components/ComparativeMatrix.tsx:172`, `src/components/ComparativeMatrix.tsx:179`, `src/components/ComparativeMatrix.tsx:428`, `src/components/ComparativeMatrix.tsx:435`, `src/components/ComparativeMatrix.tsx:528`, `src/components/ComparativeMatrix.tsx:535` | Extract shared route-action logic/component, show inline copy/handoff errors, and do not navigate to Builder if `integrateBuilderHandoffsIntoCurrentPlan` fails. |
 
 ## 6. Mobile interaction findings
 
 - Viewport metadata is present with `viewport-fit=cover`: `index.html:5`.
 - The app shell uses `min-h-dvh`, which is generally safer than fixed `100vh` for mobile address-bar resizing: `src/components/AppShell.tsx:34`.
 - The primary nav is horizontally scrollable: `src/components/AppShell.tsx:81`. This avoids clipping but can hide the Compare entry off-screen on narrow devices.
-- The matrix toolbar is not sticky, but it has `relative z-40` inside a page below a `sticky top-0 z-30` app header. That is a stacking risk when scrolled.
+- The matrix toolbar is not sticky, but it has `relative z-40` inside a page below a `sticky top-0 z-30` app header. PR #96 fixed the known mobile tap interception with this explicit stacking contract; the remaining gap is real viewport verification that the contract behaves correctly while scrolling.
 - No invisible overlay or `pointer-events:none` wrapper was found in the matrix toolbar.
 - The desktop matrix uses `overflow-x-auto` only for the `lg:block` table. Mobile/tablet gets cards instead, which avoids the main horizontal table-scroll risk.
 - Mobile card article wrappers use `overflow-hidden`. This is acceptable for rounded borders, but the inside controls need tap-target review.
@@ -156,6 +163,7 @@ Filter state lives in `ComparativeMatrix` component state only. It is not in URL
 - The search input lacks an explicit label or accessible name beyond placeholder copy.
 - The print mode combobox lacks an accessible label.
 - Buttons have visible text or `aria-label`, but duplicate row axes can create duplicate row action names.
+- Row action controls are duplicated in desktop and mobile render paths. This is not a direct AO/accessibility violation, but it increases the chance that tests or assistive tooling interact with a hidden or unintended copy of an action.
 - No global `outline: none` reset was found in `src/index.css`; input/select controls add focus rings. Most buttons rely on browser default focus styling rather than an explicit focus-visible treatment.
 - No key traps or manual `tabIndex` risks were found in the audited matrix component.
 - Within the toolbar, AO and lens button visible names are unique. Theme buttons are unique when theme labels are unique.
@@ -191,6 +199,8 @@ Filter state lives in `ComparativeMatrix` component state only. It is not in URL
 | Compact / revision-card / teacher print mode switching | partial | Labels and class toggles covered at `src/components/ComparativeMatrix.test.tsx:297` and `src/components/ComparativeMatrix.test.tsx:315`; no test that teacher mode respects filters. |
 | Print output row set | partial | Print classes covered, but teacher print row-set bug is untested. |
 | Mobile card layout | partial | Accordion expand/collapse and mobile handoff are covered in jsdom at `src/components/ComparativeMatrix.test.tsx:349` and `src/components/ComparativeMatrix.test.tsx:642`; no mobile viewport/browser render. |
+| Copy route browser failure handling | partial | Success path and fallback are covered, but clipboard permission denial uses native `alert()` rather than inline UI feedback. |
+| Builder handoff failure handling | no | The success path is covered. There is no test that a failed local handoff write blocks navigation or shows an error. |
 | Accessible button names | partial | Copy/send/theme reset labels covered; search/select labels not covered. |
 | `aria-pressed` on toggles | yes | `src/components/ComparativeMatrix.test.tsx:110`, `src/components/ComparativeMatrix.test.tsx:147`, `src/components/ComparativeMatrix.test.tsx:466` |
 | Filter toolbar landmark/label | yes | `src/components/ComparativeMatrix.test.tsx:134` |
@@ -205,6 +215,8 @@ Recommended tests to add later:
 - AO+theme chip composition with an exact expected row set.
 - Teacher print mode after AO/search/theme filters.
 - Sparse-row rendering should not show empty AO/detail cards.
+- Builder handoff failure should not navigate away without the route data.
+- Copy route failure should show inline feedback rather than relying on `alert()`.
 - Search textbox and print select must be discoverable by role and accessible name.
 - Mobile viewport smoke for `/matrix` at common widths, with sticky header and tap-target checks.
 
@@ -219,6 +231,7 @@ Urgent:
 Important:
 
 - Suppress or intentionally annotate empty AO/detail sections in mobile and desktop layouts.
+- Refactor duplicate desktop/mobile route actions into shared logic and add inline failure states for clipboard and Builder handoff errors.
 - Add mobile viewport/e2e coverage for `/matrix`, including sticky header overlap and tap target sizing.
 - Add AO+theme and teacher-print tests.
 - Normalize `comparative_matrix` loading through one repository path with `is_active` and `sort_order`.
