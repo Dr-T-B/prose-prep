@@ -66,6 +66,16 @@ vi.mock("@/integrations/supabase/client", () => {
   };
 });
 
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", () => ({
+  useNavigate: () => mockNavigate,
+}));
+
+const mockIntegrate = vi.fn();
+vi.mock("@/lib/builderHandoff", () => ({
+  integrateBuilderHandoffsIntoCurrentPlan: (items: any) => mockIntegrate(items),
+}));
+
 import ComparativeMatrix from "./ComparativeMatrix";
 
 describe("ComparativeMatrix", () => {
@@ -464,5 +474,68 @@ describe("ComparativeMatrix", () => {
     });
     expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/ao5/i)).not.toBeInTheDocument();
+  });
+
+  it("renders 'Send to Essay Builder' buttons with correct accessible labels and triggers handoff and navigation on click", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const sendBtns = screen.getAllByRole("button", { name: /Send comparative route for .* to Essay Builder/i });
+    expect(sendBtns.length).toBeGreaterThan(0);
+
+    // First button (Difficult circumstances)
+    expect(sendBtns[0]).toHaveAttribute("aria-label", "Send comparative route for Difficult circumstances to Essay Builder");
+
+    fireEvent.click(sendBtns[0]);
+
+    await waitFor(() => {
+      expect(mockIntegrate).toHaveBeenCalledTimes(1);
+    });
+
+    const handoffPayload = mockIntegrate.mock.calls[0][0][0];
+    expect(handoffPayload.id).toBe("comparison:matrix:1");
+    expect(handoffPayload.kind).toBe("comparison");
+    expect(handoffPayload.originModule).toBe("comparison");
+    expect(handoffPayload.label).toBe("Comparative Route");
+    expect(handoffPayload.title).toBe("Difficult circumstances");
+    expect(handoffPayload.text).toBe("Both texts...");
+    expect(handoffPayload.family).toBe("childhood");
+    expect(handoffPayload.metadata.source).toBe("comparative_matrix");
+    expect(handoffPayload.metadata.hardTimes).toBe("Dickens uses circumstance as setting.");
+    expect(handoffPayload.metadata.atonement).toBe("McEwan uses circumstance as plot device.");
+    expect(handoffPayload.metadata.thesis).toBe("Both texts...");
+    expect(handoffPayload.metadata.ao2).toBe("AO2 specific method.");
+    expect(handoffPayload.metadata.ao3).toBe("AO3 historical context.");
+    expect(handoffPayload.metadata.ao4).toBe("AO4 comparison link.");
+    expect(handoffPayload.metadata.examFit).toBe("Good");
+
+    // Payloads shouldn't have any AO5 content
+    expect(JSON.stringify(handoffPayload)).not.toContain("AO5");
+    expect(JSON.stringify(handoffPayload)).not.toContain("ao5");
+
+    expect(mockNavigate).toHaveBeenCalledWith("/builder");
+  });
+
+  it("handles mobile accordion Send to Essay Builder clicks correctly", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const articles = screen.getAllByRole("article");
+    const toggleBtn = within(articles[0]).getAllByRole("button")[0];
+    fireEvent.click(toggleBtn);
+
+    const mobileSendBtn = within(articles[0]).getByRole("button", {
+      name: "Send comparative route for Difficult circumstances to Essay Builder",
+    });
+    expect(mobileSendBtn).toBeInTheDocument();
+
+    fireEvent.click(mobileSendBtn);
+
+    expect(mockIntegrate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith("/builder");
   });
 });
