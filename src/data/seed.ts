@@ -5,7 +5,7 @@ export type Level = "secure" | "strong" | "top_band";
 export type SourceText = "Hard Times" | "Atonement" | "Comparative";
 
 export type QuestionFamily =
-  | "childhood" | "class" | "guilt" | "imagination" | "truth"
+  | "childhood" | "class" | "guilt" | "imagination" | "truth" | "family"
   | "love" | "gender" | "suffering" | "power" | "endings"
   | "narrative_authority" | "war_industrialism"
   | "education" | "fact_vs_imagination" | "memory" | "war";
@@ -13,6 +13,7 @@ export type QuestionFamily =
 export const QUESTION_FAMILY_LABELS: Record<QuestionFamily, string> = {
   childhood: "Childhood",
   class: "Class",
+  family: "Family",
   guilt: "Guilt",
   imagination: "Imagination",
   truth: "Truth & Storytelling",
@@ -48,6 +49,13 @@ export interface Question {
   secondary_route_id: string;
   likely_core_methods: string[];
   level_tag: Level;
+  source_type?: string;
+  authenticity_status?: string;
+  year_source?: string;
+  paper_code?: string;
+  text_pairing?: string;
+  ao_emphasis?: string;
+  builder_handoff_notes?: string;
 }
 
 export interface Thesis {
@@ -252,6 +260,20 @@ export const QUESTIONS: Question[] = [
   // WAR / INDUSTRIALISM
   { id: "q_war_1", family: "war_industrialism", stem: "Compare how the writers present the violence of industry and of war in Hard Times and Atonement.", primary_route_id: "r_systems", secondary_route_id: "r_class_mechanism", likely_core_methods: ["symbol", "industrial imagery", "war imagery"], level_tag: "strong" },
   { id: "q_war_2", family: "war_industrialism", stem: "‘Both novels expose the human cost of impersonal forces.’ Discuss.", primary_route_id: "r_systems", secondary_route_id: "r_class_mechanism", likely_core_methods: ["symbol", "imagery", "perspective"], level_tag: "top_band" },
+  
+  // --- Priority 12 questions from Component 2 Childhood Question Bank Draft ---
+  { id: "c2-class-01", family: "class", stem: "Compare the ways in which the writers of your two chosen texts present social class. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_class_mechanism", secondary_route_id: "r_systems", likely_core_methods: ["setting", "dialogue"], level_tag: "secure", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO3/AO4", builder_handoff_notes: "prefill theme: class; route: social conditioning" },
+  { id: "c2-edu-01", family: "education", stem: "Compare the ways in which the writers of your two chosen texts explore formal education. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_systems", secondary_route_id: "r_faulty_formation", likely_core_methods: ["setting", "semantic field"], level_tag: "secure", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO3/AO4", builder_handoff_notes: "prefill theme: education; route: formal schooling" },
+  { id: "c2-child-02", family: "childhood", stem: "Compare the ways in which the writers of your two chosen texts explore the vulnerability of children. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_faulty_formation", secondary_route_id: "r_systems", likely_core_methods: ["imagery", "dialogue", "motif"], level_tag: "strong", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO1/AO2", builder_handoff_notes: "prefill theme: childhood; route: vulnerability" },
+  { id: "c2-fam-02", family: "family", stem: "Compare the ways in which the writers of your two chosen texts explore the failure of parents. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_faulty_formation", secondary_route_id: "r_guilt_repair", likely_core_methods: ["characterisation", "irony"], level_tag: "strong", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO1/AO2", builder_handoff_notes: "prefill theme: family; route: parental failure" },
+  { id: "c2-gen-02", family: "gender", stem: "Compare the ways in which the writers of your two chosen texts explore female agency. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_gender_agency", secondary_route_id: "r_systems", likely_core_methods: ["focalisation", "motif"], level_tag: "strong", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO1/AO2", builder_handoff_notes: "prefill theme: gender; route: agency" },
+  { id: "c2-imag-02", family: "imagination", stem: "Compare the ways in which the writers of your two chosen texts explore the dangers of an active imagination. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_imagination_rationality", secondary_route_id: "r_storytelling_truth", likely_core_methods: ["focalisation", "irony"], level_tag: "strong", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO1/AO2", builder_handoff_notes: "prefill theme: imagination; route: dangerous fancy" },
+  { id: "c2-war-02", family: "war_industrialism", stem: "Compare the ways in which the writers of your two chosen texts explore structural violence. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_systems", secondary_route_id: "r_class_mechanism", likely_core_methods: ["motif", "contrast"], level_tag: "strong", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO1/AO4", builder_handoff_notes: "prefill theme: violence/war; route: structural violence" },
+  { id: "c2-narr-02", family: "narrative_authority", stem: "Compare the ways in which the writers of your two chosen texts explore the unreliability of narration. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_storytelling_truth", secondary_route_id: "r_imagination_rationality", likely_core_methods: ["retrospective narration", "narrator unreliability"], level_tag: "strong", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO1/AO2", builder_handoff_notes: "prefill theme: narrative truth; route: unreliability" },
+  { id: "c2-class-03", family: "class", stem: "Compare the ways in which the writers of your two chosen texts present working-class characters. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_class_mechanism", secondary_route_id: "r_systems", likely_core_methods: ["dialect", "focalisation"], level_tag: "top_band", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO1/AO2", builder_handoff_notes: "prefill theme: class; route: the working class voice" },
+  { id: "c2-guilt-03", family: "guilt", stem: "Compare the ways in which the writers of your two chosen texts present the consequences of a guilty conscience. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_guilt_repair", secondary_route_id: "r_storytelling_truth", likely_core_methods: ["motif", "retrospective narration", "endings"], level_tag: "top_band", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO3/AO4", builder_handoff_notes: "prefill theme: guilt; route: psychological cost" },
+  { id: "c2-mem-03", family: "memory", stem: "Compare the ways in which the writers of your two chosen texts explore how characters reconstruct their memories. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_storytelling_truth", secondary_route_id: "r_guilt_repair", likely_core_methods: ["metafiction", "framing"], level_tag: "top_band", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO1/AO4", builder_handoff_notes: "prefill theme: memory; route: reconstruction" },
+  { id: "c2-end-03", family: "endings", stem: "Compare the ways in which the writers of your two chosen texts explore tragic conclusions. You must relate your discussion to relevant contextual factors.", primary_route_id: "r_guilt_repair", secondary_route_id: "r_storytelling_truth", likely_core_methods: ["framing", "irony", "structural framing"], level_tag: "top_band", source_type: "exam-style mock", authenticity_status: "not official; practice mock", year_source: "mock bank 2026", paper_code: "9ET0/02", text_pairing: "Hard Times / Atonement", ao_emphasis: "AO3/AO4", builder_handoff_notes: "prefill theme: endings; route: tragic conclusion" },
 ];
 
 /* ---------------- THESES ---------------- */

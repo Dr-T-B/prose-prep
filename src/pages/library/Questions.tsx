@@ -37,6 +37,14 @@ function QuestionCard({ question, onUse }: { question: LibraryQuestion; onUse: (
         <span className="meta-mono shrink-0">{question.level.replace("_", " ")}</span>
       </div>
       <p className="font-serif text-base leading-relaxed mb-4">{question.stem}</p>
+      {(question.sourceType || question.paperCode || question.textPairing) && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {question.sourceType && <span className="inline-flex items-center rounded-sm bg-paper-sunken px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-ink-muted border border-rule">{question.sourceType}</span>}
+          {question.paperCode && <span className="inline-flex items-center rounded-sm bg-paper-sunken px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-ink-muted border border-rule">{question.paperCode}</span>}
+          {question.textPairing && <span className="inline-flex items-center rounded-sm bg-paper-sunken px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-ink-muted border border-rule">{question.textPairing}</span>}
+          {question.authenticityStatus && question.authenticityStatus.length < 30 && <span className="inline-flex items-center rounded-sm bg-paper-sunken px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-ink-muted border border-rule" title={question.authenticityStatus}>*</span>}
+        </div>
+      )}
       <dl className="text-xs leading-relaxed space-y-1.5">
         <RouteLine label="Primary route" route={question.primaryRoute} />
         <RouteLine label="Secondary route" route={question.secondaryRoute} />
