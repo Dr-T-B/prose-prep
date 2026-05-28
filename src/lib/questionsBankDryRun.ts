@@ -148,7 +148,7 @@ function hasVerifiedOfficialSource(payload: QuestionImportPayload): boolean {
 
 function aoMatchesAllowedSet(value: string | null | undefined): boolean {
   if (!value) return false;
-  const tokens = value.split(/[\/,;|&\s]+/).filter(Boolean);
+  const tokens = value.split(/[/,;|&\s]+/).filter(Boolean);
   return tokens.length > 0 && tokens.every((token) => COMPONENT_2_ALLOWED_AOS.has(token as AllowedAssessmentObjective));
 }
 
@@ -322,6 +322,33 @@ export function buildDryRunSummary(
     textPairingDistribution: countBy(payloads, (payload) => payload.text_pairing),
     aoCompliant: validation.aoCompliant,
   };
+}
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableJson).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => `${JSON.stringify(key)}:${stableJson(nested)}`)
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
+export function checksumQuestionImportPayloads(payloads: QuestionImportPayload[]): string {
+  const canonical = stableJson([...payloads].sort((left, right) => left.id.localeCompare(right.id)));
+  let hash = 0x811c9dc5;
+
+  for (let i = 0; i < canonical.length; i += 1) {
+    hash ^= canonical.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+
+  return hash.toString(16).padStart(8, "0");
 }
 
 export function toJson(value: QuestionImportMetadata): Json {
