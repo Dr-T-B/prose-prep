@@ -265,7 +265,11 @@ export default function Component2ComparativeMatrix() {
             sentence starter for the comparative essay.
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3 print:hidden">
+          <div
+            role="region"
+            aria-label="Comparative matrix filters"
+            className="relative z-40 mt-6 flex flex-wrap items-center gap-3 bg-paper print:hidden"
+          >
             <span className="text-sm text-ink-muted font-medium w-full mb-2">
               Showing {filtered.length} of {rows.length} comparative routes
               {aoFilter !== "all" ? ` (${aoFilter.toUpperCase()} filter active)` : ""}
