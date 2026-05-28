@@ -8,7 +8,7 @@ import type {
   LibraryThemeId,
   LibraryThesis,
 } from "@/lib/libraryAdapters";
-import { getCurrentPlan, setCurrentPlan } from "@/lib/planStore";
+import { getCurrentPlan, setCurrentPlan, type ParagraphCard } from "@/lib/planStore";
 
 // Stable id used by the "Use this route for paragraph drafting" action so a
 // new selection replaces the prior route handoff rather than stacking.
@@ -251,5 +251,41 @@ export function handoffFromComparison(pairing: LibraryComparativePairing): Build
       atonementIdea: pairing.atonementIdea,
       themes: pairing.themes,
     },
+  };
+}
+
+export function createParagraphCardFromMatrixHandoff(handoff: BuilderHandoffItem): ParagraphCard {
+  const meta = handoff.metadata ?? {};
+
+  const thesis = typeof meta.thesis === "string" ? meta.thesis : handoff.text;
+  const hardTimes = typeof meta.hardTimes === "string" ? meta.hardTimes : typeof meta.hard_times === "string" ? meta.hard_times : "";
+  const atonement = typeof meta.atonement === "string" ? meta.atonement : "";
+  const ao2 = typeof meta.ao2 === "string" ? meta.ao2 : "";
+  const ao3 = typeof meta.ao3 === "string" ? meta.ao3 : "";
+  const ao4 = typeof meta.ao4 === "string" ? meta.ao4 : "";
+  const examFit = typeof meta.examFit === "string" ? meta.examFit : typeof meta.exam_fit === "string" ? meta.exam_fit : "";
+
+  const notesParts: string[] = [];
+  if (hardTimes.trim()) notesParts.push(`Hard Times: ${hardTimes.trim()}`);
+  if (atonement.trim()) notesParts.push(`Atonement: ${atonement.trim()}`);
+  if (examFit.trim()) notesParts.push(`Exam suitability: ${examFit.trim()}`);
+  notesParts.push("Next step: Add quotations and refine into an exam paragraph.");
+  const compiledNotes = notesParts.join("\n");
+
+  const cardId = `paragraph:matrix:${handoff.id}`;
+
+  return {
+    id: cardId,
+    title: handoff.title,
+    claim: thesis,
+    comparative_direction: ao4,
+    evidence_ht_ids: [],
+    evidence_at_ids: [],
+    evidence_cmp_ids: [],
+    method_focus: ao2,
+    context_anchor: ao3,
+    analytical_position_prompt: "",
+    notes: compiledNotes,
+    draft: true,
   };
 }

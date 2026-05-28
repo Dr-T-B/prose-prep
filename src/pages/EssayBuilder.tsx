@@ -11,6 +11,7 @@ import {
   consumeQueuedBuilderHandoffs,
   mergeBuilderHandoffsIntoPlan,
   removeBuilderHandoff,
+  createParagraphCardFromMatrixHandoff,
   type BuilderHandoffItem,
 } from "@/lib/builderHandoff";
 import { saveCurrentPlanHybrid, listCloudPlans, setLocalCurrentPlan } from "@/lib/planRepository";
@@ -310,6 +311,17 @@ export default function EssayBuilder() {
               gradeBMode={gradeBMode}
               onRemove={(id) => update({ builder_handoffs: removeBuilderHandoff(plan.builder_handoffs, id) })}
               onClear={() => update({ builder_handoffs: [] })}
+              existingCardIds={plan.paragraph_cards?.map((c) => c.id) ?? []}
+              onCreateCard={(item) => {
+                const card = createParagraphCardFromMatrixHandoff(item);
+                const existing = plan.paragraph_cards ?? [];
+                const alreadyExists = existing.some((c) => c.id === card.id);
+                const nextCards = alreadyExists
+                  ? existing.map((c) => (c.id === card.id ? card : c))
+                  : [...existing, card];
+                update({ paragraph_cards: nextCards });
+                toast.success(`Created paragraph card for "${item.title}"`);
+              }}
             />
           )}
 
@@ -768,11 +780,15 @@ function ExploreIntake({
   gradeBMode,
   onRemove,
   onClear,
+  onCreateCard,
+  existingCardIds = [],
 }: {
   items: BuilderHandoffItem[];
   gradeBMode: boolean;
   onRemove: (id: string) => void;
   onClear: () => void;
+  onCreateCard?: (item: BuilderHandoffItem) => void;
+  existingCardIds?: string[];
 }) {
   const groups = useMemo(() => {
     const map = new Map<string, BuilderHandoffItem[]>();
@@ -805,38 +821,60 @@ function ExploreIntake({
             <div key={label}>
               <p className="label-eyebrow mb-1">{label}</p>
               <div className="space-y-1.5">
-                {group.map((item) => (
-                  <div key={item.id} className="border border-rule bg-paper-dim/35 rounded-sm px-3 py-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium leading-snug">{item.title}</p>
-                        <p className="text-xs text-ink-muted leading-relaxed mt-0.5 line-clamp-2">{item.text}</p>
-                        {(item.sourceText || item.routeLabel) && (
-                          <p className="meta-mono mt-1 text-ink-muted">
-                            {[item.sourceText, item.routeLabel].filter(Boolean).join(" · ")}
-                          </p>
-                        )}
-                        {gradeBMode && getHandoffGradeBHints(item).length > 0 && (
-                          <ul className="mt-2 space-y-1 border-t border-rule pt-2">
-                            {getHandoffGradeBHints(item).map((hint, index) => (
-                              <li key={`${item.id}-hint-${index}`} className="text-xs text-ink-muted leading-relaxed">
-                                <span className="font-mono text-[10px] uppercase tracking-wider text-ink">Guide · </span>
-                                {hint}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
+                {group.map((item) => {
+                  const isMatrixHandoff = item.id.startsWith("comparison:matrix:") || (item.kind === "comparison" && item.metadata?.source === "comparative_matrix");
+                  const expectedCardId = `paragraph:matrix:${item.id}`;
+                  const alreadyCreated = existingCardIds.includes(expectedCardId);
+
+                  return (
+                    <div key={item.id} className="border border-rule bg-paper-dim/35 rounded-sm px-3 py-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium leading-snug">{item.title}</p>
+                          <p className="text-xs text-ink-muted leading-relaxed mt-0.5 line-clamp-2">{item.text}</p>
+                          {(item.sourceText || item.routeLabel) && (
+                            <p className="meta-mono mt-1 text-ink-muted">
+                              {[item.sourceText, item.routeLabel].filter(Boolean).join(" · ")}
+                            </p>
+                          )}
+                          {gradeBMode && getHandoffGradeBHints(item).length > 0 && (
+                            <ul className="mt-2 space-y-1 border-t border-rule pt-2">
+                              {getHandoffGradeBHints(item).map((hint, index) => (
+                                <li key={`${item.id}-hint-${index}`} className="text-xs text-ink-muted leading-relaxed">
+                                  <span className="font-mono text-[10px] uppercase tracking-wider text-ink">Guide · </span>
+                                  {hint}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {isMatrixHandoff && onCreateCard && (
+                            <div className="mt-2.5 pt-2 border-t border-rule/50 flex justify-start">
+                              <button
+                                onClick={() => onCreateCard(item)}
+                                disabled={alreadyCreated}
+                                aria-label={alreadyCreated ? `Paragraph card from ${item.title} created` : `Create paragraph card from ${item.title}`}
+                                className={`px-2.5 py-1 text-[10px] font-mono rounded-sm border transition-colors ${
+                                  alreadyCreated
+                                    ? "border-rule bg-paper-dim/40 text-ink-muted cursor-not-allowed"
+                                    : "border-rule-strong bg-paper text-ink hover:bg-paper-dim"
+                                }`}
+                              >
+                                {alreadyCreated ? "Created" : "Create paragraph card"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => onRemove(item.id)}
+                          className="shrink-0 text-[10px] font-mono uppercase tracking-wider text-ink-muted hover:text-ink"
+                          aria-label={`Remove ${item.label} from Builder intake`}
+                        >
+                          Remove
+                        </button>
                       </div>
-                      <button
-                        onClick={() => onRemove(item.id)}
-                        className="shrink-0 text-[10px] font-mono uppercase tracking-wider text-ink-muted hover:text-ink"
-                        aria-label={`Remove ${item.label} from Builder intake`}
-                      >
-                        Remove
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
