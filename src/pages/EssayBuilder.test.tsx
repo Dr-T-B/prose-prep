@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GradeBModeProvider } from "@/contexts/GradeBModeContext";
@@ -150,5 +150,82 @@ describe("EssayBuilder", () => {
     expect(screen.getByText("AO4 comparative hinge routes")).toBeInTheDocument();
     expect(screen.getByText("AO3 Context Routes")).toBeInTheDocument();
     expect(screen.getByText("Core AO3 Context Claim")).toBeInTheDocument();
+  });
+
+  it("renders a matrix route handoff in ExploreIntake, allows creating a paragraph card, and prevents duplicate cards on subsequent clicks", async () => {
+    setCurrentPlan({
+      id: "plan-childhood",
+      updated_at: 1,
+      family: "childhood",
+      question_id: "q-childhood",
+      route_id: "r-childhood",
+      thesis_level: "strong",
+      selected_quote_ids: [],
+      interpretive_extension_enabled: false,
+      selected_interpretive_extension_ids: [],
+      paragraph_cards: [],
+      builder_handoffs: [
+        {
+          id: "comparison:matrix:cm-childhood-route",
+          kind: "comparison",
+          originModule: "comparison",
+          label: "Comparative Route",
+          title: "Roles of children",
+          text: "Both novels make childhood formation the origin of later damage.",
+          sourceText: "# Comparative Route: Roles of children...",
+          family: "childhood",
+          metadata: {
+            source: "comparative_matrix",
+            axis: "Roles of children",
+            hardTimes: "Dickens tests childhood through a restrictive schoolroom.",
+            atonement: "McEwan tests childhood through a misreading child narrator.",
+            thesis: "Both novels make childhood formation the origin of later damage.",
+            ao2: "AO2 method detail for classroom dialogue and child focalisation.",
+            ao3: "AO3 context detail for utilitarian schooling and inter-war class assumptions.",
+            ao4: "AO4 comparison detail linking external pressure to internalised misreading.",
+            examFit: "2023 Q2 direct fit.",
+          },
+        },
+      ],
+    });
+
+    render(
+      <GradeBModeProvider>
+        <MemoryRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          <EssayBuilder />
+        </MemoryRouter>
+      </GradeBModeProvider>,
+    );
+
+    expect(screen.getByText("Planning notes attached to this essay")).toBeInTheDocument();
+    expect(screen.getAllByText("Roles of children").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Both novels make childhood formation the origin of later damage.").length).toBeGreaterThan(0);
+
+    const createBtn = screen.getByRole("button", { name: "Create paragraph card from Roles of children" });
+    expect(createBtn).toBeInTheDocument();
+    expect(createBtn).not.toBeDisabled();
+
+    fireEvent.click(createBtn);
+
+    expect(await screen.findByRole("button", { name: "Paragraph card from Roles of children created" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Paragraph card from Roles of children created" })).toBeDisabled();
+
+    const plan = JSON.parse(localStorage.getItem("c2p.currentPlan.v1") || "{}");
+    expect(plan.paragraph_cards.length).toBe(1);
+    const card = plan.paragraph_cards[0];
+    expect(card.id).toBe("paragraph:matrix:comparison:matrix:cm-childhood-route");
+    expect(card.title).toBe("Roles of children");
+    expect(card.claim).toBe("Both novels make childhood formation the origin of later damage.");
+    expect(card.method_focus).toBe("AO2 method detail for classroom dialogue and child focalisation.");
+    expect(card.context_anchor).toBe("AO3 context detail for utilitarian schooling and inter-war class assumptions.");
+    expect(card.comparative_direction).toBe("AO4 comparison detail linking external pressure to internalised misreading.");
+    expect(card.notes).toContain("Hard Times: Dickens tests childhood through a restrictive schoolroom.");
+    expect(card.notes).toContain("Atonement: McEwan tests childhood through a misreading child narrator.");
+    expect(card.notes).toContain("Exam suitability: 2023 Q2 direct fit.");
+    expect(card.notes).toContain("Next step: Add quotations and refine into an exam paragraph.");
+    expect(card.draft).toBe(true);
+
+    expect(JSON.stringify(card)).not.toContain("AO5");
+    expect(JSON.stringify(card)).not.toContain("ao5");
   });
 });
