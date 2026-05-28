@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GradeBModeProvider } from "@/contexts/GradeBModeContext";
@@ -320,7 +320,9 @@ describe("EssayBuilder", () => {
       </GradeBModeProvider>,
     );
 
-    expect(screen.getAllByText("Paragraph cards").length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByText("Paragraph cards").length).toBeGreaterThan(0);
+    });
     expect(screen.getAllByText("Roles of children").length).toBeGreaterThan(0);
     expect(screen.getAllByText("AO2 Method:").length).toBeGreaterThan(0);
     expect(screen.getAllByText("AO2 method detail for classroom dialogue and child focalisation.").length).toBeGreaterThan(0);
