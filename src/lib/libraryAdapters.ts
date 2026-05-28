@@ -13,7 +13,7 @@ export const LIBRARY_TABLES = {
 export type LibraryLevel = "secure" | "strong" | "top_band";
 export type LibrarySourceText = "Hard Times" | "Atonement" | "Comparative";
 export type LibraryThemeId =
-  | "childhood" | "class" | "guilt" | "imagination" | "truth"
+  | "childhood" | "class" | "guilt" | "imagination" | "truth" | "family"
   | "love" | "gender" | "suffering" | "power" | "endings"
   | "narrative_authority" | "war_industrialism"
   | "education" | "fact_vs_imagination" | "memory" | "war";
@@ -21,6 +21,7 @@ export type LibraryThemeId =
 export const LIBRARY_THEME_LABELS: Record<LibraryThemeId, string> = {
   childhood: "Childhood",
   class: "Class",
+  family: "Family",
   guilt: "Guilt",
   imagination: "Imagination",
   truth: "Truth & Storytelling",
@@ -87,6 +88,13 @@ export interface LibraryQuestion {
   primaryRoute?: LibraryRouteRef;
   secondaryRoute?: LibraryRouteRef;
   likelyMethods: string[];
+  sourceType?: string;
+  authenticityStatus?: string;
+  yearSource?: string;
+  paperCode?: string;
+  textPairing?: string;
+  aoEmphasis?: string;
+  builderHandoffNotes?: string;
 }
 
 export interface LibraryParagraphFrame {
@@ -177,6 +185,13 @@ export interface LibraryRawQuestionRow {
   secondary_route_id?: string;
   likely_core_methods?: string[] | null;
   level_tag?: LibraryLevel;
+  source_type?: string;
+  authenticity_status?: string;
+  year_source?: string;
+  paper_code?: string;
+  text_pairing?: string;
+  ao_emphasis?: string;
+  builder_handoff_notes?: string;
 }
 
 export interface LibraryRawThesisRow {
@@ -335,6 +350,13 @@ export function toLibraryQuestion(row: LibraryRawQuestionRow, routes: LibraryRaw
     primaryRoute: routeRef(row.primary_route_id, routeMap),
     secondaryRoute: routeRef(row.secondary_route_id, routeMap),
     likelyMethods: asArray(row.likely_core_methods),
+    sourceType: row.source_type,
+    authenticityStatus: row.authenticity_status,
+    yearSource: row.year_source,
+    paperCode: row.paper_code,
+    textPairing: row.text_pairing,
+    aoEmphasis: row.ao_emphasis,
+    builderHandoffNotes: row.builder_handoff_notes,
   };
 }
 
@@ -354,6 +376,11 @@ export function questionMatchesText(question: LibraryQuestion, query: string): b
     question.primaryRoute?.coreQuestion,
     question.secondaryRoute?.name,
     question.secondaryRoute?.coreQuestion,
+    question.sourceType,
+    question.paperCode,
+    question.textPairing,
+    question.yearSource,
+    question.aoEmphasis,
     ...question.likelyMethods,
   ]
     .filter(Boolean)

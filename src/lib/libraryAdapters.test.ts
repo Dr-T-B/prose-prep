@@ -136,6 +136,29 @@ describe("library question adapters", () => {
     expect(question.stem).toBe("Question stem unavailable");
     expect(question.level).toBe("unlevelled");
     expect(question.likelyMethods).toEqual([]);
+    expect(question.sourceType).toBeUndefined();
+    expect(question.authenticityStatus).toBeUndefined();
+  });
+
+  it("maps new metadata fields successfully", () => {
+    const [question] = toLibraryQuestions([{
+      id: "q_meta",
+      source_type: "exam-style mock",
+      authenticity_status: "not official; practice mock",
+      year_source: "mock bank 2026",
+      paper_code: "9ET0/02",
+      text_pairing: "Hard Times / Atonement",
+      ao_emphasis: "AO3/AO4",
+      builder_handoff_notes: "prefill theme: class"
+    }]);
+
+    expect(question.sourceType).toBe("exam-style mock");
+    expect(question.authenticityStatus).toBe("not official; practice mock");
+    expect(question.yearSource).toBe("mock bank 2026");
+    expect(question.paperCode).toBe("9ET0/02");
+    expect(question.textPairing).toBe("Hard Times / Atonement");
+    expect(question.aoEmphasis).toBe("AO3/AO4");
+    expect(question.builderHandoffNotes).toBe("prefill theme: class");
   });
 
   it("searches question stems, families, routes, and methods", () => {
