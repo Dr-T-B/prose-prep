@@ -324,9 +324,18 @@ describe("ComparativeMatrix", () => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
     });
 
-    expect(screen.getByRole("button", { name: "Childhood" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Class" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Education" })).toBeInTheDocument();
+    const childhoodBtn = screen.getByRole("button", { name: "Toggle Childhood theme filter" });
+    const classBtn = screen.getByRole("button", { name: "Toggle Class theme filter" });
+    const educationBtn = screen.getByRole("button", { name: "Toggle Education theme filter" });
+
+    expect(childhoodBtn).toBeInTheDocument();
+    expect(classBtn).toBeInTheDocument();
+    expect(educationBtn).toBeInTheDocument();
+
+    // Verify initial aria-pressed states are false
+    expect(childhoodBtn).toHaveAttribute("aria-pressed", "false");
+    expect(classBtn).toHaveAttribute("aria-pressed", "false");
+    expect(educationBtn).toHaveAttribute("aria-pressed", "false");
   });
 
   it("filters rows when a theme filter is clicked (toggled) using OR semantics", async () => {
@@ -335,16 +344,24 @@ describe("ComparativeMatrix", () => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
     });
 
+    const childhoodBtn = screen.getByRole("button", { name: "Toggle Childhood theme filter" });
+
     // Toggle 'Childhood' on
-    fireEvent.click(screen.getByRole("button", { name: "Childhood" }));
+    fireEvent.click(childhoodBtn);
 
     await waitFor(() => {
       expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
       expect(screen.getByText(/1 theme selected/i)).toBeInTheDocument();
+      expect(childhoodBtn).toHaveAttribute("aria-pressed", "true");
     });
 
+    // Reset button should appear and be accessible
+    const resetBtn = screen.getByRole("button", { name: /Reset theme filters/i });
+    expect(resetBtn).toBeInTheDocument();
+    expect(resetBtn).toHaveAttribute("aria-label", "Reset theme filters");
+
     // Toggle 'Class' on as well (OR semantics: matches Row 1 or Row 2)
-    fireEvent.click(screen.getByRole("button", { name: "Class" }));
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Class theme filter" }));
 
     await waitFor(() => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
@@ -352,11 +369,12 @@ describe("ComparativeMatrix", () => {
     });
 
     // Reset themes by clicking 'Reset themes'
-    fireEvent.click(screen.getByRole("button", { name: /Reset themes/i }));
+    fireEvent.click(resetBtn);
 
     await waitFor(() => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
       expect(screen.queryByText(/themes selected/i)).not.toBeInTheDocument();
+      expect(childhoodBtn).toHaveAttribute("aria-pressed", "false");
     });
   });
 
@@ -367,7 +385,7 @@ describe("ComparativeMatrix", () => {
     });
 
     // Select theme Childhood
-    fireEvent.click(screen.getByRole("button", { name: "Childhood" }));
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Childhood theme filter" }));
 
     await waitFor(() => {
       expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
@@ -383,8 +401,13 @@ describe("ComparativeMatrix", () => {
       expect(screen.getByText(/No comparative routes match the current filters. Try clearing a theme or search term./i)).toBeInTheDocument();
     });
 
-    // Clicking "Clear all filters" in empty state should restore everything
-    fireEvent.click(screen.getByRole("button", { name: /Clear all filters/i }));
+    // Verify clear all filters button has unambiguous aria-label
+    const clearAllBtn = screen.getByRole("button", { name: /Clear all active filters/i });
+    expect(clearAllBtn).toBeInTheDocument();
+    expect(clearAllBtn).toHaveAttribute("aria-label", "Clear all active filters");
+
+    // Clicking "Clear all active filters" in empty state should restore everything
+    fireEvent.click(clearAllBtn);
 
     await waitFor(() => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();

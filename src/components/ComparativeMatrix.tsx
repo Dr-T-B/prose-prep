@@ -266,23 +266,27 @@ export default function Component2ComparativeMatrix() {
                 <span className="text-xs font-mono uppercase tracking-wider text-ink-muted mr-2">Filter by Themes:</span>
                 {themeOptions.map((theme) => {
                   const isSelected = selectedThemes.includes(theme);
+                  const label = formatThemeLabel(theme);
                   return (
                     <button
                       key={theme}
                       onClick={() => toggleTheme(theme)}
+                      aria-pressed={isSelected}
+                      aria-label={`Toggle ${label} theme filter`}
                       className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition ${
                         isSelected
                           ? "bg-ink text-paper"
                           : "border border-rule bg-paper text-ink-muted hover:bg-rule/40 hover:text-ink"
                       }`}
                     >
-                      {formatThemeLabel(theme)}
+                      {label}
                     </button>
                   );
                 })}
                 {selectedThemes.length > 0 && (
                   <button
                     onClick={() => setSelectedThemes([])}
+                    aria-label="Reset theme filters"
                     className="ml-auto text-xs font-medium text-ink-muted hover:text-ink underline underline-offset-2 decoration-dotted"
                   >
                     Reset themes
@@ -300,6 +304,7 @@ export default function Component2ComparativeMatrix() {
             </p>
             <button
               onClick={clearFilters}
+              aria-label="Clear all active filters"
               className="mt-3 rounded-md border border-rule px-3 py-1.5 text-xs font-medium hover:bg-rule"
             >
               Clear all filters
