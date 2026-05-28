@@ -1515,40 +1515,61 @@ export type Database = {
       }
       questions: {
         Row: {
+          ao_emphasis: string | null
+          authenticity_status: string | null
           created_at: string
           family: string
           id: string
           is_active: boolean
           level_tag: string
           likely_core_methods: string[]
+          metadata: Json | null
+          paper_code: string | null
           primary_route_id: string
           secondary_route_id: string
+          source_type: string | null
           stem: string
+          text_pairing: string | null
           updated_at: string
+          year_source: string | null
         }
         Insert: {
+          ao_emphasis?: string | null
+          authenticity_status?: string | null
           created_at?: string
           family: string
           id: string
           is_active?: boolean
           level_tag: string
           likely_core_methods?: string[]
+          metadata?: Json | null
+          paper_code?: string | null
           primary_route_id: string
           secondary_route_id: string
+          source_type?: string | null
           stem: string
+          text_pairing?: string | null
           updated_at?: string
+          year_source?: string | null
         }
         Update: {
+          ao_emphasis?: string | null
+          authenticity_status?: string | null
           created_at?: string
           family?: string
           id?: string
           is_active?: boolean
           level_tag?: string
           likely_core_methods?: string[]
+          metadata?: Json | null
+          paper_code?: string | null
           primary_route_id?: string
           secondary_route_id?: string
+          source_type?: string | null
           stem?: string
+          text_pairing?: string | null
           updated_at?: string
+          year_source?: string | null
         }
         Relationships: [
           {
