@@ -8,6 +8,7 @@ import {
   validateQuestionImportPayloads,
   type ValidationIssue,
 } from "../src/lib/questionsBankDryRun";
+import { buildQuestionsBankDryRunReport } from "../src/lib/questionsBankDryRunReport";
 
 function renderDistribution(distribution: Record<string, number>): string {
   return Object.entries(distribution)
@@ -39,6 +40,12 @@ const routeIds = new Set(ROUTES.map((route) => route.id));
 const validation = validateQuestionImportPayloads(payloads, { routeIds });
 const summary = buildDryRunSummary(QUESTIONS.length, payloads, validation);
 const samplePayload = payloads[0] ?? null;
+const shouldPrintReport = process.argv.includes("--report");
+
+if (shouldPrintReport) {
+  console.log(buildQuestionsBankDryRunReport({ payloads, validation, summary }));
+  process.exit(validation.errors.length === 0 ? 0 : 1);
+}
 
 console.log("Questions Bank Supabase Import Dry Run");
 console.log("");
