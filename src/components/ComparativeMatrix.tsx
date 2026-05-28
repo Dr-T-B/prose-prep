@@ -47,6 +47,7 @@ export default function Component2ComparativeMatrix() {
   const [reloadKey, setReloadKey] = useState(0);
   const [printMode, setPrintMode] = useState<"compact" | "cards" | "teacher">("compact");
   const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,6 +112,41 @@ export default function Component2ComparativeMatrix() {
     if (!themeId) return "";
     const spaced = themeId.replace(/-/g, " ");
     return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  };
+
+  const handleCopy = (row: Row) => {
+    const text = formatComparativeRouteExport(row);
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          setCopiedId(row.id);
+          setTimeout(() => {
+            setCopiedId(null);
+          }, 2000);
+        })
+        .catch((err) => {
+          console.error("Clipboard copy failed:", err);
+          alert("Failed to copy route to clipboard. Please copy manually.");
+        });
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand("copy");
+        setCopiedId(row.id);
+        setTimeout(() => {
+          setCopiedId(null);
+        }, 2000);
+      } catch (err) {
+        console.error("Fallback copy failed:", err);
+        alert("Copy not supported on this browser. Please copy manually.");
+      }
+      document.body.removeChild(textarea);
+    }
   };
 
   const filtered = useMemo(() => {
@@ -346,9 +382,16 @@ export default function Component2ComparativeMatrix() {
                         className="sticky left-0 z-10 w-48 border-t border-rule bg-inherit p-3 align-top font-serif text-base font-semibold"
                       >
                         {row.theme}
-                        <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted font-normal leading-tight">
+                        <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted font-normal leading-tight mb-2">
                           {getSubtitle(row.hardTimes, row.atonement)}
                         </div>
+                        <button
+                          onClick={() => handleCopy(row)}
+                          aria-label={`Copy comparative route for ${row.theme}`}
+                          className="inline-flex items-center gap-1 rounded border border-rule bg-paper px-2 py-0.5 font-mono text-[10px] font-medium text-ink-muted hover:bg-rule/40 hover:text-ink transition print:hidden"
+                        >
+                          {copiedId === row.id ? "Copied!" : "Copy route"}
+                        </button>
                       </th>
                       {visibleCols(lens).map((c) => (
                         <td
@@ -431,6 +474,13 @@ export default function Component2ComparativeMatrix() {
                           <Meta label="Structure" body={row.structure} />
                           <Meta label="Exam fit" body={row.examFit} />
                         </div>
+                        <button
+                          onClick={() => handleCopy(row)}
+                          aria-label={`Copy comparative route for ${row.theme}`}
+                          className="w-full mt-3 inline-flex items-center justify-center gap-1 rounded border border-rule bg-paper py-1.5 font-mono text-xs font-medium text-ink-muted hover:bg-rule/40 hover:text-ink transition print:hidden"
+                        >
+                          {copiedId === row.id ? "Copied!" : "Copy route"}
+                        </button>
                       </div>
                     )}
                   </article>
@@ -519,4 +569,52 @@ function Print({ term, def }: { term: string; def: string }) {
       <dd className="leading-snug">{def}</dd>
     </>
   );
+}
+
+function formatComparativeRouteExport(row: Row): string {
+  const parts: string[] = [];
+  
+  parts.push(`# Comparative Route: ${row.theme}`);
+  
+  if (row.themes && row.themes.length > 0) {
+    const readableThemes = row.themes
+      .map((t) => {
+        const spaced = t.replace(/-/g, " ");
+        return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+      })
+      .join(", ");
+    parts.push(`Themes: ${readableThemes}`);
+  }
+  
+  if (row.thesis) {
+    parts.push(`Thesis:\n${row.thesis}`);
+  }
+  
+  if (row.hardTimes) {
+    parts.push(`Hard Times:\n${row.hardTimes}`);
+  }
+  
+  if (row.atonement) {
+    parts.push(`Atonement:\n${row.atonement}`);
+  }
+  
+  if (row.ao2) {
+    parts.push(`AO2 — Method:\n${row.ao2}`);
+  }
+  
+  if (row.ao3) {
+    parts.push(`AO3 — Context:\n${row.ao3}`);
+  }
+  
+  if (row.ao4) {
+    parts.push(`AO4 — Comparison:\n${row.ao4}`);
+  }
+  
+  if (row.examFit) {
+    parts.push(`Exam fit:\n${row.examFit}`);
+  }
+  
+  parts.push(`Revision use:\nUse this route as a paragraph plan or mini essay scaffold. Adapt quotations and contextual evidence to the exact question.`);
+  
+  return parts.join("\n\n");
 }

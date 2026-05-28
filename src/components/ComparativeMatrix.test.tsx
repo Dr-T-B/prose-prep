@@ -222,7 +222,7 @@ describe("ComparativeMatrix", () => {
     });
 
     const articles = screen.getAllByRole("article");
-    const toggleBtn = within(articles[0]).getByRole("button");
+    const toggleBtn = within(articles[0]).getAllByRole("button")[0];
 
     expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(toggleBtn);
@@ -238,8 +238,8 @@ describe("ComparativeMatrix", () => {
     });
 
     const articles = screen.getAllByRole("article");
-    const toggle1 = within(articles[0]).getByRole("button");
-    const toggle2 = within(articles[1]).getByRole("button");
+    const toggle1 = within(articles[0]).getAllByRole("button")[0];
+    const toggle2 = within(articles[1]).getAllByRole("button")[0];
 
     fireEvent.click(toggle1);
     fireEvent.click(toggle2);
@@ -257,13 +257,13 @@ describe("ComparativeMatrix", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
 
     for (const article of screen.getAllByRole("article")) {
-      expect(within(article).getByRole("button")).toHaveAttribute("aria-expanded", "true");
+      expect(within(article).getAllByRole("button")[0]).toHaveAttribute("aria-expanded", "true");
     }
 
     fireEvent.click(screen.getByRole("button", { name: "Collapse all" }));
 
     for (const article of screen.getAllByRole("article")) {
-      expect(within(article).getByRole("button")).toHaveAttribute("aria-expanded", "false");
+      expect(within(article).getAllByRole("button")[0]).toHaveAttribute("aria-expanded", "false");
     }
   });
 
@@ -413,6 +413,48 @@ describe("ComparativeMatrix", () => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText(/Search rows/i)).toHaveValue("");
     });
+  });
+
+  it("copies formatted comparative route scaffold to clipboard on click", async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const copyBtns = screen.getAllByRole("button", { name: /Copy comparative route for/i });
+    expect(copyBtns.length).toBeGreaterThan(0);
+
+    expect(copyBtns[0]).toHaveAttribute("aria-label", "Copy comparative route for Difficult circumstances");
+
+    fireEvent.click(copyBtns[0]);
+
+    await waitFor(() => {
+      expect(copyBtns[0]).toHaveTextContent("Copied!");
+    });
+
+    expect(writeTextMock).toHaveBeenCalledTimes(1);
+    const exportedText = writeTextMock.mock.calls[0][0];
+
+    expect(exportedText).toContain("# Comparative Route: Difficult circumstances");
+    expect(exportedText).toContain("Themes: Childhood, Education");
+    expect(exportedText).toContain("Thesis:\nBoth texts...");
+    expect(exportedText).toContain("Hard Times:\nDickens uses circumstance as setting.");
+    expect(exportedText).toContain("Atonement:\nMcEwan uses circumstance as plot device.");
+    expect(exportedText).toContain("AO2 — Method:\nAO2 specific method.");
+    expect(exportedText).toContain("AO3 — Context:\nAO3 historical context.");
+    expect(exportedText).toContain("AO4 — Comparison:\nAO4 comparison link.");
+    expect(exportedText).toContain("Exam fit:\nGood");
+    expect(exportedText).toContain("Revision use:\nUse this route as a paragraph plan or mini essay scaffold. Adapt quotations and contextual evidence to the exact question.");
+    expect(exportedText).not.toContain("AO5");
+
+    vi.unstubAllGlobals();
   });
 
   it("does not render any AO5 options or labels in theme vocabulary or controls", async () => {
