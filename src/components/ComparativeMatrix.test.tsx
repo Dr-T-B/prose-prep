@@ -16,6 +16,7 @@ const mockComparativeRows = vi.hoisted(() => {
       narrative: "Various",
       structure: "Various",
       exam_fit: "Good",
+      themes: ["childhood", "education"],
     },
     {
       id: "2",
@@ -30,6 +31,7 @@ const mockComparativeRows = vi.hoisted(() => {
       narrative: "Various",
       structure: "Various",
       exam_fit: "Good",
+      themes: ["class"],
     },
   ];
   let rows = defaultRows;
@@ -121,6 +123,7 @@ describe("ComparativeMatrix", () => {
         narrative: "Spatial perspective",
         structure: "Threshold scenes",
         exam_fit: "Strong",
+        themes: ["imagination", "authorship"],
       },
       {
         id: "4",
@@ -135,6 +138,7 @@ describe("ComparativeMatrix", () => {
         narrative: "Witnessing",
         structure: "Delayed revelation",
         exam_fit: "Good",
+        themes: ["justice"],
       },
     ]);
 
@@ -301,6 +305,7 @@ describe("ComparativeMatrix", () => {
         narrative: "",
         structure: "",
         exam_fit: "",
+        themes: null,
       },
     ]);
 
@@ -311,5 +316,88 @@ describe("ComparativeMatrix", () => {
     });
     expect(screen.getAllByText(/Sparse route/i).length).toBeGreaterThan(0);
     expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
+  });
+
+  it("renders theme filter buttons derived from row data in title case", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: "Childhood" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Class" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Education" })).toBeInTheDocument();
+  });
+
+  it("filters rows when a theme filter is clicked (toggled) using OR semantics", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    // Toggle 'Childhood' on
+    fireEvent.click(screen.getByRole("button", { name: "Childhood" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+      expect(screen.getByText(/1 theme selected/i)).toBeInTheDocument();
+    });
+
+    // Toggle 'Class' on as well (OR semantics: matches Row 1 or Row 2)
+    fireEvent.click(screen.getByRole("button", { name: "Class" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+      expect(screen.getByText(/2 themes selected/i)).toBeInTheDocument();
+    });
+
+    // Reset themes by clicking 'Reset themes'
+    fireEvent.click(screen.getByRole("button", { name: /Reset themes/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+      expect(screen.queryByText(/themes selected/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it("composes theme filter with search query and clears it on clear filters", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    // Select theme Childhood
+    fireEvent.click(screen.getByRole("button", { name: "Childhood" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    // Search query that matches nothing in Row 1 (e.g. "poverty", which is in Row 2)
+    fireEvent.change(screen.getByPlaceholderText(/Search rows/i), {
+      target: { value: "poverty" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 0 of 2 comparative routes/i)).toBeInTheDocument();
+      expect(screen.getByText(/No comparative routes match the current filters. Try clearing a theme or search term./i)).toBeInTheDocument();
+    });
+
+    // Clicking "Clear all filters" in empty state should restore everything
+    fireEvent.click(screen.getByRole("button", { name: /Clear all filters/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/Search rows/i)).toHaveValue("");
+    });
+  });
+
+  it("does not render any AO5 options or labels in theme vocabulary or controls", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ao5/i)).not.toBeInTheDocument();
   });
 });

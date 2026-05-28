@@ -14,6 +14,7 @@ interface Row {
   narrative: string;
   structure: string;
   examFit: string;
+  themes: string[] | null;
 }
 
 const COLS: { key: keyof Row; label: string; ao?: string }[] = [
@@ -45,6 +46,7 @@ export default function Component2ComparativeMatrix() {
   const [query, setQuery] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [printMode, setPrintMode] = useState<"compact" | "cards" | "teacher">("compact");
+  const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,7 +55,7 @@ export default function Component2ComparativeMatrix() {
     supabase
       .from("comparative_matrix")
       .select(
-        "id, axis, hard_times, atonement, ao2, ao3, ao4, thesis, character, narrative, structure, exam_fit",
+        "id, axis, hard_times, atonement, ao2, ao3, ao4, thesis, character, narrative, structure, exam_fit, themes",
       )
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
@@ -77,6 +79,7 @@ export default function Component2ComparativeMatrix() {
           narrative: ((r as { narrative?: string }).narrative) ?? "",
           structure: ((r as { structure?: string }).structure) ?? "",
           examFit: ((r as { exam_fit?: string }).exam_fit) ?? "",
+          themes: ((r as { themes?: string[] | null }).themes) ?? null,
         }));
         setRows(mapped);
         setLoading(false);
@@ -86,17 +89,51 @@ export default function Component2ComparativeMatrix() {
     };
   }, [reloadKey]);
 
+  const themeOptions = useMemo(() => {
+    const allThemes = new Set<string>();
+    rows.forEach((row) => {
+      if (row.themes && Array.isArray(row.themes)) {
+        row.themes.forEach((t) => {
+          if (t) allThemes.add(t);
+        });
+      }
+    });
+    return Array.from(allThemes).sort();
+  }, [rows]);
+
+  const toggleTheme = (theme: string) => {
+    setSelectedThemes((prev) =>
+      prev.includes(theme) ? prev.filter((t) => t !== theme) : [...prev, theme]
+    );
+  };
+
+  const formatThemeLabel = (themeId: string) => {
+    if (!themeId) return "";
+    const spaced = themeId.replace(/-/g, " ");
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  };
+
   const filtered = useMemo(() => {
     let result = rows;
     if (aoFilter !== "all") {
       result = result.filter(r => !!r[aoFilter as keyof Row]);
     }
+    if (selectedThemes.length > 0) {
+      result = result.filter(r => {
+        const rowThemes = r.themes ?? [];
+        return selectedThemes.some(theme => rowThemes.includes(theme));
+      });
+    }
     const q = query.trim().toLowerCase();
     if (!q) return result;
     return result.filter((r) =>
-      Object.values(r).join(" ").toLowerCase().includes(q),
+      Object.values(r)
+        .map(v => Array.isArray(v) ? v.join(" ") : v)
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
     );
-  }, [rows, query, aoFilter]);
+  }, [rows, query, aoFilter, selectedThemes]);
 
   const getSubtitle = (ht: string, at: string) => {
     const getFocus = (str: string) => str.split(/[.,;]/)[0];
@@ -118,6 +155,7 @@ export default function Component2ComparativeMatrix() {
     setQuery("");
     setAoFilter("all");
     setLens("all");
+    setSelectedThemes([]);
   };
 
   if (loading) {
@@ -163,6 +201,7 @@ export default function Component2ComparativeMatrix() {
             <span className="text-sm text-ink-muted font-medium w-full mb-2">
               Showing {filtered.length} of {rows.length} comparative routes
               {aoFilter !== "all" ? ` (${aoFilter.toUpperCase()} filter active)` : ""}
+              {selectedThemes.length > 0 ? ` (${selectedThemes.length} theme${selectedThemes.length > 1 ? "s" : ""} selected)` : ""}
             </span>
             <input
               value={query}
@@ -222,134 +261,179 @@ export default function Component2ComparativeMatrix() {
                 Print {printMode === "compact" ? "compact matrix" : printMode === "cards" ? "revision cards" : "teacher pack"}
               </button>
             </div>
+            {themeOptions.length > 0 && (
+              <div className="w-full flex flex-wrap items-center gap-1.5 mt-2 bg-rule/5 p-2 rounded-md border border-rule/50">
+                <span className="text-xs font-mono uppercase tracking-wider text-ink-muted mr-2">Filter by Themes:</span>
+                {themeOptions.map((theme) => {
+                  const isSelected = selectedThemes.includes(theme);
+                  return (
+                    <button
+                      key={theme}
+                      onClick={() => toggleTheme(theme)}
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition ${
+                        isSelected
+                          ? "bg-ink text-paper"
+                          : "border border-rule bg-paper text-ink-muted hover:bg-rule/40 hover:text-ink"
+                      }`}
+                    >
+                      {formatThemeLabel(theme)}
+                    </button>
+                  );
+                })}
+                {selectedThemes.length > 0 && (
+                  <button
+                    onClick={() => setSelectedThemes([])}
+                    className="ml-auto text-xs font-medium text-ink-muted hover:text-ink underline underline-offset-2 decoration-dotted"
+                  >
+                    Reset themes
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </header>
 
-        {/* Wide-screen matrix */}
-        <div className={`hidden overflow-x-auto rounded-lg border border-rule lg:block ${printMode === 'compact' ? 'print:block' : 'print:hidden'}`}>
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="bg-rule/50">
-              <tr>
-                <th className="sticky left-0 z-10 w-48 bg-rule/50 p-3 font-mono text-xs uppercase tracking-wider text-ink-muted">
-                  Theme
-                </th>
-                {visibleCols(lens).map((c) => (
-                  <th
-                    key={c.key as string}
-                    className="min-w-[14rem] border-l border-rule p-3 font-mono text-xs uppercase tracking-wider text-ink-muted"
-                  >
-                    {c.ao && (
-                      <span className="mr-1 rounded bg-ink/10 px-1.5 py-0.5 font-mono text-[10px] text-ink">
-                        {c.ao}
-                      </span>
-                    )}
-                    {c.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((row, idx) => (
-                <tr
-                  key={row.id}
-                  className={idx % 2 ? "bg-rule/20" : "bg-paper"}
-                >
-                  <th
-                    scope="row"
-                    className="sticky left-0 z-10 w-48 border-t border-rule bg-inherit p-3 align-top font-serif text-base font-semibold"
-                  >
-                    {row.theme}
-                    <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted font-normal leading-tight">
-                      {getSubtitle(row.hardTimes, row.atonement)}
-                    </div>
-                  </th>
-                  {visibleCols(lens).map((c) => (
-                    <td
-                      key={c.key as string}
-                      className="min-w-[14rem] border-l border-t border-rule p-3 align-top text-sm leading-relaxed"
+        {filtered.length === 0 ? (
+          <div className="rounded-lg border border-rule p-8 text-center bg-paper mt-4">
+            <p className="text-sm text-ink font-medium">
+              No comparative routes match the current filters. Try clearing a theme or search term.
+            </p>
+            <button
+              onClick={clearFilters}
+              className="mt-3 rounded-md border border-rule px-3 py-1.5 text-xs font-medium hover:bg-rule"
+            >
+              Clear all filters
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Wide-screen matrix */}
+            <div className={`hidden overflow-x-auto rounded-lg border border-rule lg:block ${printMode === 'compact' ? 'print:block' : 'print:hidden'}`}>
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="bg-rule/50">
+                  <tr>
+                    <th className="sticky left-0 z-10 w-48 bg-rule/50 p-3 font-mono text-xs uppercase tracking-wider text-ink-muted">
+                      Theme
+                    </th>
+                    {visibleCols(lens).map((c) => (
+                      <th
+                        key={c.key as string}
+                        className="min-w-[14rem] border-l border-rule p-3 font-mono text-xs uppercase tracking-wider text-ink-muted"
+                      >
+                        {c.ao && (
+                          <span className="mr-1 rounded bg-ink/10 px-1.5 py-0.5 font-mono text-[10px] text-ink">
+                            {c.ao}
+                          </span>
+                        )}
+                        {c.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((row, idx) => (
+                    <tr
+                      key={row.id}
+                      className={idx % 2 ? "bg-rule/20" : "bg-paper"}
                     >
-                      {row[c.key]}
-                    </td>
+                      <th
+                        scope="row"
+                        className="sticky left-0 z-10 w-48 border-t border-rule bg-inherit p-3 align-top font-serif text-base font-semibold"
+                      >
+                        {row.theme}
+                        <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-muted font-normal leading-tight">
+                          {getSubtitle(row.hardTimes, row.atonement)}
+                        </div>
+                      </th>
+                      {visibleCols(lens).map((c) => (
+                        <td
+                          key={c.key as string}
+                          className="min-w-[14rem] border-l border-t border-rule p-3 align-top text-sm leading-relaxed"
+                        >
+                          {row[c.key]}
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                </tbody>
+              </table>
+            </div>
 
-        {/* Mobile / tablet accordion */}
-        <div className={`space-y-3 lg:hidden ${printMode === 'cards' ? 'print:block' : 'print:hidden'}`}>
-          {filtered.map((row) => {
-            const open = expandedIds.has(row.id);
-            return (
-              <article
-                key={row.id}
-                className="overflow-hidden rounded-lg border border-rule"
-              >
-                <button
-                  onClick={() => toggleExpanded(row.id)}
-                  aria-expanded={open}
-                  aria-controls={`comparative-matrix-route-${row.id}`}
-                  className="flex w-full items-center justify-between bg-rule/30 px-4 py-3 text-left"
-                >
-                  <div className="flex-1 pr-4">
-                    <span className="block font-serif text-lg font-semibold">
-                      {row.theme}
-                    </span>
-                    <span className="block mt-1 font-mono text-[10px] uppercase text-ink-muted leading-tight">
-                      {getSubtitle(row.hardTimes, row.atonement)}
-                    </span>
-                  </div>
-                  <span className="font-mono text-xs text-ink-muted">
-                    {open ? "Hide" : "Open"}
-                  </span>
-                </button>
-                {open && (
-                  <div id={`comparative-matrix-route-${row.id}`} className="space-y-4 p-4">
-                    <Pair label="Hard Times" body={row.hardTimes} />
-                    <Pair label="Atonement" body={row.atonement} />
-                    {(() => {
-                      const aoItems = [
-                        { key: "ao2", label: "AO2 Method", body: row.ao2 },
-                        { key: "ao3", label: "AO3 Context", body: row.ao3 },
-                        { key: "ao4", label: "AO4 Compare", body: row.ao4 },
-                      ];
-                      
-                      if (aoFilter !== "all") {
-                        const selectedIdx = aoItems.findIndex(i => i.key === aoFilter);
-                        if (selectedIdx > -1) {
-                          const selected = aoItems.splice(selectedIdx, 1)[0];
-                          if (aoFilter === "ao2") selected.label = "Method";
-                          if (aoFilter === "ao3") selected.label = "Context";
-                          if (aoFilter === "ao4") selected.label = "Comparative Link";
-                          aoItems.unshift(selected);
-                        }
-                      }
+            {/* Mobile / tablet accordion */}
+            <div className={`space-y-3 lg:hidden ${printMode === 'cards' ? 'print:block' : 'print:hidden'}`}>
+              {filtered.map((row) => {
+                const open = expandedIds.has(row.id);
+                return (
+                  <article
+                    key={row.id}
+                    className="overflow-hidden rounded-lg border border-rule"
+                  >
+                    <button
+                      onClick={() => toggleExpanded(row.id)}
+                      aria-expanded={open}
+                      aria-controls={`comparative-matrix-route-${row.id}`}
+                      className="flex w-full items-center justify-between bg-rule/30 px-4 py-3 text-left"
+                    >
+                      <div className="flex-1 pr-4">
+                        <span className="block font-serif text-lg font-semibold">
+                          {row.theme}
+                        </span>
+                        <span className="block mt-1 font-mono text-[10px] uppercase text-ink-muted leading-tight">
+                          {getSubtitle(row.hardTimes, row.atonement)}
+                        </span>
+                      </div>
+                      <span className="font-mono text-xs text-ink-muted">
+                        {open ? "Hide" : "Open"}
+                      </span>
+                    </button>
+                    {open && (
+                      <div id={`comparative-matrix-route-${row.id}`} className="space-y-4 p-4">
+                        <Pair label="Hard Times" body={row.hardTimes} />
+                        <Pair label="Atonement" body={row.atonement} />
+                        {(() => {
+                          const aoItems = [
+                            { key: "ao2", label: "AO2 Method", body: row.ao2 },
+                            { key: "ao3", label: "AO3 Context", body: row.ao3 },
+                            { key: "ao4", label: "AO4 Compare", body: row.ao4 },
+                          ];
+                          
+                          if (aoFilter !== "all") {
+                            const selectedIdx = aoItems.findIndex(i => i.key === aoFilter);
+                            if (selectedIdx > -1) {
+                              const selected = aoItems.splice(selectedIdx, 1)[0];
+                              if (aoFilter === "ao2") selected.label = "Method";
+                              if (aoFilter === "ao3") selected.label = "Context";
+                              if (aoFilter === "ao4") selected.label = "Comparative Link";
+                              aoItems.unshift(selected);
+                            }
+                          }
 
-                      return aoItems.map(item => (
-                        <AO key={item.key} label={item.label} body={item.body} />
-                      ));
-                    })()}
-                    <div className="rounded-md border-l-4 border-ink bg-ink/5 p-3">
-                      <p className="font-mono text-[10px] uppercase tracking-wider text-ink">
-                        Thesis starter
-                      </p>
-                      <p className="mt-1 font-serif text-sm italic">
-                        {row.thesis}
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <Meta label="Character" body={row.character} />
-                      <Meta label="Narrative" body={row.narrative} />
-                      <Meta label="Structure" body={row.structure} />
-                      <Meta label="Exam fit" body={row.examFit} />
-                    </div>
-                  </div>
-                )}
-              </article>
-            );
-          })}
-        </div>
+                          return aoItems.map(item => (
+                            <AO key={item.key} label={item.label} body={item.body} />
+                          ));
+                        })()}
+                        <div className="rounded-md border-l-4 border-ink bg-ink/5 p-3">
+                          <p className="font-mono text-[10px] uppercase tracking-wider text-ink">
+                            Thesis starter
+                          </p>
+                          <p className="mt-1 font-serif text-sm italic">
+                            {row.thesis}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <Meta label="Character" body={row.character} />
+                          <Meta label="Narrative" body={row.narrative} />
+                          <Meta label="Structure" body={row.structure} />
+                          <Meta label="Exam fit" body={row.examFit} />
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         {/* Printable full dump */}
         <section className={`hidden ${printMode === 'teacher' ? 'print:block' : 'print:hidden'}`}>
