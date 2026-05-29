@@ -195,6 +195,114 @@ describe("ParagraphFeedback", () => {
     expect(screen.getByLabelText("Student paragraph")).toHaveValue("");
   });
 
+  it("verifies the route handoff feedback workflow end to end without unsafe output", async () => {
+    const writeText = mockClipboard();
+    const unsafeAo = ["ao", "5"].join("");
+    const unsafeValues = [
+      "Unsafe paragraph from URL should be ignored.",
+      "Unsafe rewritten paragraph should be ignored.",
+      "Unsafe sample answer should be ignored.",
+      "Unsafe full essay should be ignored.",
+      "Unsafe score should be ignored.",
+      "Unsafe mark should be ignored.",
+      "Unsafe grade should be ignored.",
+      "Unsafe assessment objective should be ignored.",
+    ];
+    const params = new URLSearchParams({
+      questionFocus: "relationships damaged by misunderstanding",
+      theme: "relationships",
+      routeContext,
+      paragraph: unsafeValues[0],
+      rewrittenParagraph: unsafeValues[1],
+      modelAnswer: unsafeValues[2],
+      fullEssay: unsafeValues[3],
+      score: unsafeValues[4],
+      mark: unsafeValues[5],
+      grade: unsafeValues[6],
+      [unsafeAo]: unsafeValues[7],
+    });
+    mockFetch(routeLinkedFeedbackWithSafety);
+
+    const { container } = renderPage(`/paragraph-feedback?${params.toString()}`);
+
+    expect(screen.getByLabelText("Question focus (optional but recommended)")).toHaveValue("relationships damaged by misunderstanding");
+    expect(screen.getByLabelText("Theme or concern (optional)")).toHaveValue("relationships");
+    expect(screen.getByLabelText("Route context (optional)")).toHaveValue(routeContext);
+    expect(screen.getByLabelText("Student paragraph")).toHaveValue("");
+    for (const unsafeValue of unsafeValues) {
+      expect(container).not.toHaveTextContent(unsafeValue);
+    }
+
+    fireEvent.change(screen.getByLabelText("Student paragraph"), {
+      target: { value: validParagraph },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Get AO feedback" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/paragraph-feedback",
+      expect.objectContaining({ method: "POST" }),
+    ));
+    const [, requestInit] = fetchMock.mock.calls[0];
+    const payload = JSON.parse(String(requestInit.body)) as Record<string, string>;
+    expect(Object.keys(payload).sort()).toEqual(["paragraph", "questionFocus", "routeContext", "theme"].sort());
+    expect(payload).toEqual({
+      paragraph: validParagraph,
+      questionFocus: "relationships damaged by misunderstanding",
+      theme: "relationships",
+      routeContext,
+    });
+    for (const unsafeKey of ["rewrittenParagraph", "modelAnswer", "fullEssay", "score", "mark", "grade", unsafeAo]) {
+      expect(payload[unsafeKey]).toBeUndefined();
+    }
+
+    expect(await screen.findByRole("heading", { name: "AO1: argument focus" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "AO2: method / word / effect" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "AO3: context relevance" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "AO4: comparison quality" })).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: "Route match" }).length).toBeGreaterThan(0);
+
+    const exportRecord = screen.getByLabelText("Feedback export record");
+    expect(exportRecord).toHaveTextContent("Paragraph Feedback Record");
+    expect(exportRecord).toHaveTextContent("relationships damaged by misunderstanding");
+    expect(exportRecord).toHaveTextContent("relationships");
+    expect(exportRecord).toHaveTextContent("Practice Session Summary Selected route: Dickens external systems; McEwan private perception.");
+    expect(exportRecord).toHaveTextContent("AO1 - Argument focus");
+    expect(exportRecord).toHaveTextContent("AO2 - Method / word / effect");
+    expect(exportRecord).toHaveTextContent("AO3 - Context relevance");
+    expect(exportRecord).toHaveTextContent("AO4 - Comparison quality");
+    expect(exportRecord).toHaveTextContent("Route match");
+    expect(exportRecord).toHaveTextContent("The paragraph follows the selected Dickens-to-McEwan route.");
+    expect(exportRecord).toHaveTextContent("Revise the topic sentence as one concise comparative claim.");
+    expect(exportRecord).not.toHaveTextContent(validParagraph);
+
+    const revisionAction = within(exportRecord).getByLabelText("Revision action");
+    expect(revisionAction).toHaveTextContent("What I will improve next:");
+    expect(revisionAction).toHaveTextContent("One sentence I will redraft:");
+
+    fireEvent.click(within(exportRecord).getByRole("button", { name: "Copy feedback record" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Paragraph Feedback Record")));
+    const copiedRecord = String(writeText.mock.calls[0][0]);
+    expect(copiedRecord).toContain("Question focus: relationships damaged by misunderstanding");
+    expect(copiedRecord).toContain("Theme: relationships");
+    expect(copiedRecord).toContain("Route context:");
+    expect(copiedRecord).toContain("AO4 - Comparison quality");
+    expect(copiedRecord).toContain("Route match");
+    expect(copiedRecord).not.toContain(validParagraph);
+    expect(screen.getByRole("status")).toHaveTextContent("Feedback record copied");
+
+    fireEvent.click(within(exportRecord).getByRole("button", { name: "Print feedback record" }));
+
+    expect(printMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(container).not.toHaveTextContent(unsafeAo.toUpperCase());
+
+    const results = screen.getByLabelText("Paragraph feedback results");
+    for (const pattern of [/\bgrade\b/i, /\bscore\b/i, /\bmark\b/i, /model answer/i, /model-answer/i, /\brewrite\b/i, /rewritten paragraph/i, /full essay/i]) {
+      expect(within(results).queryByRole("heading", { name: pattern })).not.toBeInTheDocument();
+    }
+  });
+
   it("keeps the submit button disabled for a too-short paragraph", () => {
     renderPage();
 
