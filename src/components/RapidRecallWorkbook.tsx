@@ -9,6 +9,7 @@ import {
   RAPID_RECALL_THEMES,
   rapidRecallWorkbookItems,
 } from "@/data/rapidRecallWorkbook";
+import { matchesRapidRecallWorkbookFilters } from "@/data/rapidRecallWorkbookFilters";
 import {
   formatTimedParagraphDrillText,
   getRapidRecallTimedParagraphDrillForItemId,
@@ -711,12 +712,13 @@ export default function RapidRecallWorkbook() {
   const [timedDrillCopyStatus, setTimedDrillCopyStatus] = useState<string | null>(null);
   const [timedDrillSessionSummaryCopyStatus, setTimedDrillSessionSummaryCopyStatus] = useState<string | null>(null);
 
-  const filteredItems = useMemo(() => rapidRecallWorkbookItems.filter((item) => (
-    item.type === activeType
-    && (themeFilter === "All" || item.theme === themeFilter)
-    && (aoFilter === "All" || item.aoFocus.includes(aoFilter))
-    && (textFilter === "All" || item.textFocus === textFilter)
-  )), [activeType, themeFilter, aoFilter, textFilter]);
+  const filteredItems = useMemo(() => rapidRecallWorkbookItems.filter((item) => matchesRapidRecallWorkbookFilters({
+    item,
+    activeType,
+    themeFilter,
+    aoFilter,
+    textFilter,
+  })), [activeType, themeFilter, aoFilter, textFilter]);
 
   const attempted = Object.values(results).filter((result) => result.response).length;
   const correct = Object.values(results).filter((result) => result.response && result.correct).length;
