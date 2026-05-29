@@ -20,38 +20,37 @@ vi.mock("@/contexts/GradeBModeContext", () => ({
 
 import AppShell from "./AppShell";
 
+function renderShell() {
+  return render(
+    <MemoryRouter
+      initialEntries={["/"]}
+      future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+    >
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route path="/" element={<div>Dashboard</div>} />
+        </Route>
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 describe("AppShell", () => {
   it("keeps the primary Compare navigation pointed at the canonical matrix route", () => {
-    render(
-      <MemoryRouter
-        initialEntries={["/"]}
-        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
-      >
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route path="/" element={<div>Dashboard</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderShell();
 
     expect(screen.getByRole("link", { name: "Compare" })).toHaveAttribute("href", "/matrix");
   });
 
   it("includes Rapid Recall in the primary student navigation", () => {
-    render(
-      <MemoryRouter
-        initialEntries={["/"]}
-        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
-      >
-        <Routes>
-          <Route element={<AppShell />}>
-            <Route path="/" element={<div>Dashboard</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderShell();
 
     expect(screen.getByRole("link", { name: "Rapid Recall" })).toHaveAttribute("href", "/rapid-recall");
+  });
+
+  it("includes Paragraph Feedback in the primary student navigation", () => {
+    renderShell();
+
+    expect(screen.getByRole("link", { name: "Feedback" })).toHaveAttribute("href", "/paragraph-feedback");
   });
 });
