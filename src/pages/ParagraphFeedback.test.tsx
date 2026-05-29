@@ -10,6 +10,8 @@ const validParagraph = [
   "By contrast, McEwan uses Briony's focalised certainty to show how private imagination can distort responsibility, so both writers connect individual judgement to wider social pressure.",
 ].join(" ");
 
+const routeContext = "Practice Session Summary\nSelected route: Dickens external systems; McEwan private perception.";
+
 const successfulFeedback: ParagraphFeedbackResponse = {
   ao1: {
     strength: "The paragraph has a clear comparative argument about responsibility.",
@@ -30,6 +32,14 @@ const successfulFeedback: ParagraphFeedbackResponse = {
   nextTarget: "Revise the topic sentence as one concise comparative claim.",
 };
 
+const routeLinkedFeedback: ParagraphFeedbackResponse = {
+  ...successfulFeedback,
+  routeMatch: {
+    strength: "The paragraph follows the selected Dickens-to-McEwan route.",
+    target: "Make the final comparative link back to the selected route explicit.",
+  },
+};
+
 const fetchMock = vi.fn();
 
 function mockFetch(payload: unknown, ok = true) {
@@ -43,7 +53,7 @@ function renderPage() {
   return render(<ParagraphFeedback />);
 }
 
-function submitValidParagraph() {
+function submitValidParagraph(options: { includeRouteContext?: boolean } = { includeRouteContext: true }) {
   fireEvent.change(screen.getByLabelText("Essay question or question focus (optional but recommended)"), {
     target: { value: "How do Dickens and McEwan present responsibility?" },
   });
@@ -53,9 +63,11 @@ function submitValidParagraph() {
   fireEvent.change(screen.getByLabelText("Paragraph"), {
     target: { value: validParagraph },
   });
-  fireEvent.change(screen.getByLabelText("Route-plan/context (optional, keep it short)"), {
-    target: { value: "Comparative route: Dickens external systems; McEwan private perception." },
-  });
+  if (options.includeRouteContext) {
+    fireEvent.change(screen.getByLabelText("Route context"), {
+      target: { value: routeContext },
+    });
+  }
   fireEvent.click(screen.getByRole("button", { name: "Get AO feedback" }));
 }
 
@@ -85,7 +97,8 @@ describe("ParagraphFeedback", () => {
     expect(screen.getByLabelText("Essay question or question focus (optional but recommended)")).toBeInTheDocument();
     expect(screen.getByLabelText("Theme (optional)")).toBeInTheDocument();
     expect(screen.getByLabelText("Paragraph")).toBeInTheDocument();
-    expect(screen.getByLabelText("Route-plan/context (optional, keep it short)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Route context")).toBeInTheDocument();
+    expect(screen.getByText("Optional: paste your Rapid Recall practice session summary so the coach can check whether your paragraph follows your selected route.")).toBeInTheDocument();
   });
 
   it("keeps the submit button disabled for a too-short paragraph", () => {
@@ -97,7 +110,7 @@ describe("ParagraphFeedback", () => {
     expect(screen.getByText(/at least 80 characters/i)).toBeInTheDocument();
   });
 
-  it("submits valid input to the internal endpoint", async () => {
+  it("submits valid input and route context to the internal endpoint", async () => {
     mockFetch(successfulFeedback);
     renderPage();
 
@@ -107,6 +120,26 @@ describe("ParagraphFeedback", () => {
       "/api/paragraph-feedback",
       expect.objectContaining({ method: "POST" }),
     ));
+    const [, requestInit] = fetchMock.mock.calls[0];
+    const payload = JSON.parse(String(requestInit.body)) as Record<string, string>;
+    expect(payload).toMatchObject({
+      paragraph: validParagraph,
+      questionFocus: "How do Dickens and McEwan present responsibility?",
+      theme: "responsibility",
+      routeContext,
+    });
+  });
+
+  it("omits empty route context from the internal endpoint payload", async () => {
+    mockFetch(successfulFeedback);
+    renderPage();
+
+    submitValidParagraph({ includeRouteContext: false });
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const [, requestInit] = fetchMock.mock.calls[0];
+    const payload = JSON.parse(String(requestInit.body)) as Record<string, string>;
+    expect(payload.routeContext).toBeUndefined();
   });
 
   it("renders structured AO1-AO4 feedback and one next target", async () => {
@@ -123,8 +156,30 @@ describe("ParagraphFeedback", () => {
     expect(screen.getByText("Use one explicit comparative hinge before moving to McEwan.")).toBeInTheDocument();
   });
 
-  it("does not render excluded assessment-objective wording", async () => {
+  it("renders route-match feedback when it is returned", async () => {
+    mockFetch(routeLinkedFeedback);
+    renderPage();
+
+    submitValidParagraph();
+
+    expect(await screen.findByRole("heading", { name: "Route match" })).toBeInTheDocument();
+    expect(screen.getByText("The paragraph follows the selected Dickens-to-McEwan route.")).toBeInTheDocument();
+    expect(screen.getByText("Make the final comparative link back to the selected route explicit.")).toBeInTheDocument();
+  });
+
+  it("still renders AO1-AO4 feedback safely when route-match feedback is absent", async () => {
     mockFetch(successfulFeedback);
+    renderPage();
+
+    submitValidParagraph();
+
+    expect(await screen.findByRole("heading", { name: "AO1: argument focus" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Route match" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Next target" })).toBeInTheDocument();
+  });
+
+  it("does not render excluded assessment-objective wording", async () => {
+    mockFetch(routeLinkedFeedback);
     const { container } = renderPage();
     const excluded = ["AO", "5"].join("");
 
@@ -135,7 +190,7 @@ describe("ParagraphFeedback", () => {
   });
 
   it("does not add forbidden output section headings", async () => {
-    mockFetch(successfulFeedback);
+    mockFetch(routeLinkedFeedback);
     renderPage();
 
     submitValidParagraph();
@@ -148,13 +203,14 @@ describe("ParagraphFeedback", () => {
   });
 
   it("renders unavailable feedback safely", async () => {
-    mockFetch(createMissingProviderFeedback());
+    mockFetch(createMissingProviderFeedback(undefined, { includeRouteMatch: true }));
     renderPage();
 
     submitValidParagraph();
 
     expect(await screen.findByText("Safety notice")).toBeInTheDocument();
     expect(screen.getAllByText(/AI feedback is unavailable/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Route match" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Next target" })).toBeInTheDocument();
   });
 
