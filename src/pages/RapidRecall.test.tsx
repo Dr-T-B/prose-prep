@@ -293,6 +293,7 @@ describe("RapidRecall", () => {
 
     expect(screen.getByText("Route complete: thesis, Hard Times, Atonement, judgement.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy selected stems" })).toBeInTheDocument();
+    expect(within(summary).getByRole("button", { name: "Use this summary in feedback coach" })).toBeInTheDocument();
     expect(within(summary).getByRole("heading", { name: "Practice session summary" })).toBeInTheDocument();
     for (const selectedStem of selectedStems) {
       expect(within(summary).getByText(selectedStem)).toBeInTheDocument();
@@ -319,6 +320,30 @@ describe("RapidRecall", () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("Practice Session Summary"));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("Next revision target:"));
     expect(await screen.findByText("Session summary copied")).toBeInTheDocument();
+  });
+
+  it("copies a compact practice session summary for the feedback coach", async () => {
+    renderPage();
+
+    const selectedStems = completeRelationshipsTimedDrillWithBestStems();
+    fireEvent.click(within(screen.getByLabelText("Practice session summary")).getByRole("button", {
+      name: "Use this summary in feedback coach",
+    }));
+
+    const writeTextMock = vi.mocked(navigator.clipboard.writeText);
+    const lastCall = writeTextMock.mock.calls[writeTextMock.mock.calls.length - 1];
+    const copiedSummary = String(lastCall?.[0]);
+    const excluded = ["AO", "5"].join("");
+
+    expect(copiedSummary).toContain("Practice Session Summary");
+    expect(copiedSummary).toContain("Selected route: thesis -> Hard Times -> Atonement -> comparative judgement");
+    expect(copiedSummary).toContain("Route bridge:");
+    for (const selectedStem of selectedStems) {
+      expect(copiedSummary).toContain(selectedStem);
+    }
+    expect(copiedSummary).not.toContain(excluded);
+    expect(copiedSummary).not.toMatch(/full essay|model answer|rewrite/i);
+    expect(await screen.findByText("Session summary copied. Paste it into Route context on the feedback coach.")).toBeInTheDocument();
   });
 
   it("clears the practice session summary when retrying the timed drill", () => {
