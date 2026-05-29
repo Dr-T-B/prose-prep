@@ -14,6 +14,10 @@ import {
   getRapidRecallTimedParagraphDrillCount,
   rapidRecallTimedParagraphDrills,
 } from "@/data/rapidRecallTimedParagraphDrills";
+import {
+  buildTimedDrillSessionSummary,
+  formatTimedDrillSessionSummaryForCopy,
+} from "@/data/rapidRecallTimedDrillSessionSummary";
 import RapidRecall from "./RapidRecall";
 
 function renderPage(initialPath = "/rapid-recall") {
@@ -56,6 +60,32 @@ function selectBestStem(stageIndex: number) {
   return { drillPanel, stage, bestStem };
 }
 
+function completeRelationshipsTimedDrillWithBestStems() {
+  startRelationshipsTimedDrill();
+
+  const selectedStems = [];
+  for (let stageIndex = 0; stageIndex < 4; stageIndex += 1) {
+    const selected = selectBestStem(stageIndex);
+    selectedStems.push(selected.bestStem.text);
+    fireEvent.click(within(selected.drillPanel).getByRole("button", {
+      name: stageIndex === 3 ? "Complete drill" : "Next stage",
+    }));
+  }
+
+  return selectedStems;
+}
+
+function bestSelectionIdsForRelationships() {
+  const drill = getRapidRecallTimedParagraphDrillForItemId("route-relationships-misunderstanding");
+  if (!drill) throw new Error("Missing timed paragraph drill fixture");
+
+  return Object.fromEntries(drill.stages.map((stage) => {
+    const bestStem = stage.stemOptions.find((option) => option.isBest);
+    if (!bestStem) throw new Error(`Missing best stem for ${stage.label}`);
+    return [stage.id, bestStem.id];
+  }));
+}
+
 describe("RapidRecall", () => {
   beforeEach(() => {
     Object.assign(navigator, {
@@ -69,7 +99,7 @@ describe("RapidRecall", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "Rapid Recall Workbook" })).toBeInTheDocument();
-    expect(screen.getByText("Fast AO1–AO4 decision drills for Component 2 Prose.")).toBeInTheDocument();
+    expect(screen.getByText("Fast AO1-AO4 decision drills for Component 2 Prose.")).toBeInTheDocument();
 
     for (const label of Object.values(RAPID_RECALL_DRILL_LABELS)) {
       expect(screen.getByRole("tab", { name: label })).toBeInTheDocument();
@@ -208,6 +238,7 @@ describe("RapidRecall", () => {
     expect(within(drillPanel).getByRole("heading", { name: "Thesis opening" })).toBeInTheDocument();
     expect(within(drillPanel).getByText("Suggested time: 90 seconds")).toBeInTheDocument();
     expect(within(drillPanel).getAllByRole("button", { name: /^Select stem:/ })).toHaveLength(3);
+    expect(screen.queryByLabelText("Practice session summary")).not.toBeInTheDocument();
   });
 
   it("reveals the best timed stem explanation after selection", () => {
@@ -253,20 +284,122 @@ describe("RapidRecall", () => {
     expect(screen.getAllByRole("button", { name: /^Select stem:/ })).toHaveLength(3);
   });
 
-  it("shows completion after the final timed paragraph drill stage", () => {
+  it("shows completion and a practice session summary after the final timed paragraph drill stage", () => {
     renderPage();
 
-    startRelationshipsTimedDrill();
-
-    for (let stageIndex = 0; stageIndex < 4; stageIndex += 1) {
-      const selected = selectBestStem(stageIndex);
-      fireEvent.click(within(selected.drillPanel).getByRole("button", {
-        name: stageIndex === 3 ? "Complete drill" : "Next stage",
-      }));
-    }
+    const selectedStems = completeRelationshipsTimedDrillWithBestStems();
+    const summary = screen.getByLabelText("Practice session summary");
+    const excluded = ["AO", "5"].join("");
 
     expect(screen.getByText("Route complete: thesis, Hard Times, Atonement, judgement.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy selected stems" })).toBeInTheDocument();
+    expect(within(summary).getByRole("heading", { name: "Practice session summary" })).toBeInTheDocument();
+    for (const selectedStem of selectedStems) {
+      expect(within(summary).getByText(selectedStem)).toBeInTheDocument();
+    }
+    expect(within(summary).getByText("AO focus covered")).toBeInTheDocument();
+    expect(within(summary).getByText("AO1, AO2, AO3, AO4")).toBeInTheDocument();
+    expect(within(summary).getByText("AO4 bridge")).toBeInTheDocument();
+    expect(within(summary).getByText(/social miseducation in Dickens; narrative misperception in McEwan/i)).toBeInTheDocument();
+    expect(within(summary).getByText("Exam warning")).toBeInTheDocument();
+    expect(within(summary).getByText(/avoid two separate relationship summaries/i)).toBeInTheDocument();
+    expect(within(summary).getByText("Next revision target")).toBeInTheDocument();
+    expect(within(summary).getByText("Move to a timed handwritten paragraph using this route.")).toBeInTheDocument();
+    expect(summary).not.toHaveTextContent(excluded);
+  });
+
+  it("copies the practice session summary after completion", async () => {
+    renderPage();
+
+    completeRelationshipsTimedDrillWithBestStems();
+    fireEvent.click(within(screen.getByLabelText("Practice session summary")).getByRole("button", {
+      name: "Copy session summary",
+    }));
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("Practice Session Summary"));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("Next revision target:"));
+    expect(await screen.findByText("Session summary copied")).toBeInTheDocument();
+  });
+
+  it("clears the practice session summary when retrying the timed drill", () => {
+    renderPage();
+
+    completeRelationshipsTimedDrillWithBestStems();
+    expect(screen.getByLabelText("Practice session summary")).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByLabelText("Practice session summary")).getByRole("button", {
+      name: "Retry timed drill",
+    }));
+
+    expect(screen.queryByLabelText("Practice session summary")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Thesis opening" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Select stem:/ })).toHaveLength(3);
+  });
+
+  it("builds deterministic next revision targets from selected stem quality", () => {
+    const item = rapidRecallWorkbookItems.find((candidate) => candidate.id === "route-relationships-misunderstanding");
+    const drill = getRapidRecallTimedParagraphDrillForItemId("route-relationships-misunderstanding");
+    if (!item?.routePlan || !drill) throw new Error("Missing timed paragraph drill fixture");
+
+    const bestSelections = bestSelectionIdsForRelationships();
+    const bestSummary = buildTimedDrillSessionSummary({
+      drill,
+      routePlan: item.routePlan,
+      selectedOptionIds: bestSelections,
+    });
+    const weakerThesisSummary = buildTimedDrillSessionSummary({
+      drill,
+      routePlan: item.routePlan,
+      selectedOptionIds: { ...bestSelections, [drill.stages[0].id]: "broad-comparison" },
+    });
+    const weakerJudgementSummary = buildTimedDrillSessionSummary({
+      drill,
+      routePlan: item.routePlan,
+      selectedOptionIds: { ...bestSelections, [drill.stages[3].id]: "similar-different" },
+    });
+    const weakerHardTimesSummary = buildTimedDrillSessionSummary({
+      drill,
+      routePlan: item.routePlan,
+      selectedOptionIds: { ...bestSelections, [drill.stages[1].id]: "hard-times-topic" },
+    });
+    const weakerAtonementSummary = buildTimedDrillSessionSummary({
+      drill,
+      routePlan: item.routePlan,
+      selectedOptionIds: { ...bestSelections, [drill.stages[2].id]: "atonement-topic" },
+    });
+
+    expect(bestSummary.nextRevisionTarget).toBe("Move to a timed handwritten paragraph using this route.");
+    expect(weakerThesisSummary.nextRevisionTarget).toBe("Strengthen the comparative argument before writing.");
+    expect(weakerJudgementSummary.nextRevisionTarget).toBe("Strengthen the comparative argument before writing.");
+    expect(weakerHardTimesSummary.nextRevisionTarget).toBe("Tighten the text-specific method/context link before writing.");
+    expect(weakerAtonementSummary.nextRevisionTarget).toBe("Tighten the text-specific method/context link before writing.");
+  });
+
+  it("formats the practice session summary for copying", () => {
+    const item = rapidRecallWorkbookItems.find((candidate) => candidate.id === "route-relationships-misunderstanding");
+    const drill = getRapidRecallTimedParagraphDrillForItemId("route-relationships-misunderstanding");
+    if (!item?.routePlan || !drill) throw new Error("Missing timed paragraph drill fixture");
+
+    const summary = buildTimedDrillSessionSummary({
+      drill,
+      routePlan: item.routePlan,
+      selectedOptionIds: bestSelectionIdsForRelationships(),
+    });
+    const formatted = formatTimedDrillSessionSummaryForCopy(summary);
+    const excluded = ["AO", "5"].join("");
+
+    expect(formatted).toContain("Practice Session Summary");
+    expect(formatted).toContain("Theme: relationships");
+    expect(formatted).toContain("Question focus: relationships damaged by misunderstanding");
+    expect(formatted).toContain("Thesis opening:");
+    expect(formatted).toContain("Hard Times opening:");
+    expect(formatted).toContain("Atonement opening:");
+    expect(formatted).toContain("Comparative judgement opening:");
+    expect(formatted).toContain("AO focus covered: AO1, AO2, AO3, AO4");
+    expect(formatted).toContain("AO4 bridge:");
+    expect(formatted).toContain("Exam warning:");
+    expect(formatted).toContain("Next revision target: Move to a timed handwritten paragraph using this route.");
+    expect(formatted).not.toContain(excluded);
   });
 
   it("formats selected timed paragraph stems for copying", () => {
@@ -274,11 +407,7 @@ describe("RapidRecall", () => {
     const drill = getRapidRecallTimedParagraphDrillForItemId("route-relationships-misunderstanding");
     if (!item || !drill) throw new Error("Missing timed paragraph drill fixture");
 
-    const selectedOptionIds = Object.fromEntries(drill.stages.map((stage) => {
-      const bestStem = stage.stemOptions.find((option) => option.isBest);
-      if (!bestStem) throw new Error(`Missing best stem for ${stage.label}`);
-      return [stage.id, bestStem.id];
-    }));
+    const selectedOptionIds = bestSelectionIdsForRelationships();
     const formatted = formatTimedParagraphDrillText({ item, drill, selectedOptionIds });
     const excluded = ["AO", "5"].join("");
 

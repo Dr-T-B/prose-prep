@@ -13,6 +13,10 @@ import {
   getRapidRecallTimedParagraphDrillForItemId,
   hasRapidRecallTimedParagraphDrill,
 } from "@/data/rapidRecallTimedParagraphDrills";
+import {
+  buildTimedDrillSessionSummary,
+  formatTimedDrillSessionSummaryForCopy,
+} from "@/data/rapidRecallTimedDrillSessionSummary";
 import type {
   Component2AO,
   RapidRecallDrillType,
@@ -21,6 +25,8 @@ import type {
   RapidRecallTimedParagraphDrill,
   RapidRecallTheme,
   RapidRecallWorkbookItem,
+  TimedDrillSessionSummary,
+  TimedParagraphDrillStageLabel,
 } from "@/types/rapidRecall";
 
 type FilterValue<T extends string> = "All" | T;
@@ -37,6 +43,13 @@ const aoChipClass: Record<Component2AO, string> = {
   AO3: "chip-ao3",
   AO4: "chip-ao4",
 };
+
+const summaryStageLabels: TimedParagraphDrillStageLabel[] = [
+  "Thesis opening",
+  "Hard Times paragraph opening",
+  "Atonement paragraph opening",
+  "Comparative judgement opening",
+];
 
 function normalise(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").trim().replace(/\s+/g, " ");
@@ -94,6 +107,10 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       <dd className="mt-1 break-words text-sm leading-snug text-ink">{value}</dd>
     </div>
   );
+}
+
+function getSummaryStem(summary: TimedDrillSessionSummary, label: TimedParagraphDrillStageLabel) {
+  return summary.selectedStems.find((stem) => stem.stageLabel === label);
 }
 
 function RoutePlanParagraphBlock({
@@ -213,26 +230,119 @@ function RoutePlanPanel({
   );
 }
 
+function PracticeSessionSummaryPanel({
+  summary,
+  copyStatus,
+  onCopy,
+  onRetry,
+}: {
+  summary: TimedDrillSessionSummary;
+  copyStatus: string | null;
+  onCopy: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <section
+      aria-label="Practice session summary"
+      className="mt-4 rounded-sm border border-rule bg-white p-4 print:break-inside-avoid"
+    >
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="label-eyebrow">Saved practice route</p>
+          <h3 className="font-serif text-xl">Practice session summary</h3>
+        </div>
+        <div className="no-print flex w-full flex-wrap gap-2 sm:w-auto">
+          <button
+            type="button"
+            onClick={onCopy}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
+          >
+            <Clipboard className="h-3.5 w-3.5" />
+            Copy session summary
+          </button>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim sm:w-auto"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Retry timed drill
+          </button>
+        </div>
+      </div>
+
+      {copyStatus && (
+        <p role="status" aria-live="polite" className="mb-3 text-xs font-mono text-ink-muted no-print">
+          {copyStatus}
+        </p>
+      )}
+
+      <dl className="mb-3 grid gap-2 rounded-sm border border-rule bg-paper p-3 sm:grid-cols-3">
+        <DetailRow label="Theme" value={summary.theme} />
+        <DetailRow label="Question focus" value={summary.questionFocus} />
+        <DetailRow label="AO focus covered" value={summary.aoFocusCovered.join(", ")} />
+      </dl>
+
+      <div className="grid gap-2">
+        {summaryStageLabels.map((label) => {
+          const stem = getSummaryStem(summary, label);
+          return (
+            <article key={label} className="rounded-sm border border-rule bg-paper-dim/40 p-3">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-sm font-semibold">{label}</h4>
+                <div className="flex flex-wrap gap-1">
+                  {(stem?.aoFocus ?? []).map((ao) => (
+                    <span key={ao} className={`rounded-sm px-2 py-1 text-[10px] font-mono font-medium ${aoChipClass[ao]}`}>
+                      {ao}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm leading-snug">{stem?.stemText ?? "Not selected"}</p>
+            </article>
+          );
+        })}
+      </div>
+
+      <dl className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+        {summary.ao4Bridge && <DetailRow label="AO4 bridge" value={summary.ao4Bridge} />}
+        {summary.examWarning && <DetailRow label="Exam warning" value={summary.examWarning} />}
+        <div className="md:col-span-2">
+          <DetailRow label="Next revision target" value={summary.nextRevisionTarget} />
+        </div>
+      </dl>
+    </section>
+  );
+}
+
 function TimedParagraphDrillPanel({
   item,
   drill,
   stageIndex,
   selectedOptionIds,
   copyStatus,
+  sessionSummary,
+  sessionSummaryCopyStatus,
   onSelectStem,
   onNextStage,
   onReset,
   onCopySelectedStems,
+  onCopySessionSummary,
+  onRetryTimedDrill,
 }: {
   item: RapidRecallWorkbookItem;
   drill: RapidRecallTimedParagraphDrill;
   stageIndex: number;
   selectedOptionIds: Record<string, string>;
   copyStatus: string | null;
+  sessionSummary?: TimedDrillSessionSummary;
+  sessionSummaryCopyStatus: string | null;
   onSelectStem: (stageId: string, optionId: string) => void;
   onNextStage: () => void;
   onReset: () => void;
   onCopySelectedStems: () => void;
+  onCopySessionSummary: () => void;
+  onRetryTimedDrill: () => void;
 }) {
   const isComplete = stageIndex >= drill.stages.length;
   const stage = isComplete ? null : drill.stages[stageIndex];
@@ -270,37 +380,47 @@ function TimedParagraphDrillPanel({
       </dl>
 
       {isComplete ? (
-        <div className="rounded-sm border border-green-200 bg-green-50 p-4 text-green-950">
-          <h3 className="font-serif text-xl">Route complete: thesis, Hard Times, Atonement, judgement.</h3>
-          <p className="mt-2 text-sm leading-relaxed">
-            Selected stems are ready to copy as planning notes. Keep them as openings, not a generated paragraph.
-          </p>
-          <div className="mt-3 grid gap-2">
-            {drill.stages.map((completedStage) => {
-              const selected = completedStage.stemOptions.find((option) => option.id === selectedOptionIds[completedStage.id]);
-              return (
-                <p key={completedStage.id} className="rounded-sm border border-green-200 bg-white/70 p-2 text-sm leading-snug">
-                  <b>{completedStage.label}:</b> {selected?.text ?? "Not selected"}
+        <>
+          <div className="rounded-sm border border-green-200 bg-green-50 p-4 text-green-950">
+            <h3 className="font-serif text-xl">Route complete: thesis, Hard Times, Atonement, judgement.</h3>
+            <p className="mt-2 text-sm leading-relaxed">
+              Selected stems are ready to copy as planning notes. Keep them as openings, not a generated paragraph.
+            </p>
+            <div className="mt-3 grid gap-2">
+              {drill.stages.map((completedStage) => {
+                const selected = completedStage.stemOptions.find((option) => option.id === selectedOptionIds[completedStage.id]);
+                return (
+                  <p key={completedStage.id} className="rounded-sm border border-green-200 bg-white/70 p-2 text-sm leading-snug">
+                    <b>{completedStage.label}:</b> {selected?.text ?? "Not selected"}
+                  </p>
+                );
+              })}
+            </div>
+            <div className="no-print mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onCopySelectedStems}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
+              >
+                <Clipboard className="h-3.5 w-3.5" />
+                Copy selected stems
+              </button>
+              {copyStatus && (
+                <p role="status" aria-live="polite" className="self-center text-xs font-mono text-green-950">
+                  {copyStatus}
                 </p>
-              );
-            })}
+              )}
+            </div>
           </div>
-          <div className="no-print mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onCopySelectedStems}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
-            >
-              <Clipboard className="h-3.5 w-3.5" />
-              Copy selected stems
-            </button>
-            {copyStatus && (
-              <p role="status" aria-live="polite" className="self-center text-xs font-mono text-green-950">
-                {copyStatus}
-              </p>
-            )}
-          </div>
-        </div>
+          {sessionSummary && (
+            <PracticeSessionSummaryPanel
+              summary={sessionSummary}
+              copyStatus={sessionSummaryCopyStatus}
+              onCopy={onCopySessionSummary}
+              onRetry={onRetryTimedDrill}
+            />
+          )}
+        </>
       ) : stage ? (
         <div className="rounded-sm border border-rule bg-white p-3 print:break-inside-avoid">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
@@ -556,6 +676,7 @@ export default function RapidRecallWorkbook() {
   const [timedDrillStageIndex, setTimedDrillStageIndex] = useState(0);
   const [timedDrillSelections, setTimedDrillSelections] = useState<Record<string, string>>({});
   const [timedDrillCopyStatus, setTimedDrillCopyStatus] = useState<string | null>(null);
+  const [timedDrillSessionSummaryCopyStatus, setTimedDrillSessionSummaryCopyStatus] = useState<string | null>(null);
 
   const filteredItems = useMemo(() => rapidRecallWorkbookItems.filter((item) => (
     item.type === activeType
@@ -571,6 +692,13 @@ export default function RapidRecallWorkbook() {
     : undefined;
   const timedParagraphDrill = routePlanItem && timedDrillItemId === routePlanItem.id
     ? getRapidRecallTimedParagraphDrillForItemId(routePlanItem.id)
+    : undefined;
+  const timedDrillSessionSummary = routePlanItem?.routePlan && timedParagraphDrill && timedDrillStageIndex >= timedParagraphDrill.stages.length
+    ? buildTimedDrillSessionSummary({
+      drill: timedParagraphDrill,
+      routePlan: routePlanItem.routePlan,
+      selectedOptionIds: timedDrillSelections,
+    })
     : undefined;
 
   const setDraft = (itemId: string, value: string) => {
@@ -610,6 +738,7 @@ export default function RapidRecallWorkbook() {
     setTimedDrillStageIndex(0);
     setTimedDrillSelections({});
     setTimedDrillCopyStatus(null);
+    setTimedDrillSessionSummaryCopyStatus(null);
   };
 
   const togglePrintMode = () => {
@@ -629,6 +758,7 @@ export default function RapidRecallWorkbook() {
     setTimedDrillStageIndex(0);
     setTimedDrillSelections({});
     setTimedDrillCopyStatus(null);
+    setTimedDrillSessionSummaryCopyStatus(null);
   };
 
   const copyRoutePlan = async (item: RapidRecallWorkbookItem) => {
@@ -648,22 +778,26 @@ export default function RapidRecallWorkbook() {
     setTimedDrillStageIndex(0);
     setTimedDrillSelections({});
     setTimedDrillCopyStatus(null);
+    setTimedDrillSessionSummaryCopyStatus(null);
   };
 
   const selectTimedParagraphStem = (stageId: string, optionId: string) => {
     setTimedDrillSelections((current) => ({ ...current, [stageId]: optionId }));
     setTimedDrillCopyStatus(null);
+    setTimedDrillSessionSummaryCopyStatus(null);
   };
 
   const advanceTimedParagraphStage = () => {
     if (!timedParagraphDrill) return;
     setTimedDrillStageIndex((current) => Math.min(current + 1, timedParagraphDrill.stages.length));
+    setTimedDrillSessionSummaryCopyStatus(null);
   };
 
   const resetTimedParagraphDrill = () => {
     setTimedDrillStageIndex(0);
     setTimedDrillSelections({});
     setTimedDrillCopyStatus(null);
+    setTimedDrillSessionSummaryCopyStatus(null);
   };
 
   const copyTimedParagraphDrill = async () => {
@@ -681,6 +815,17 @@ export default function RapidRecallWorkbook() {
     }
   };
 
+  const copyTimedDrillSessionSummary = async () => {
+    if (!timedDrillSessionSummary) return;
+
+    try {
+      await navigator.clipboard.writeText(formatTimedDrillSessionSummaryForCopy(timedDrillSessionSummary));
+      setTimedDrillSessionSummaryCopyStatus("Session summary copied");
+    } catch {
+      setTimedDrillSessionSummaryCopyStatus("Copy unavailable");
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 print:px-0 print:py-0 sm:px-6 sm:py-8 lg:px-10">
       <header className="mb-5 border-b border-rule pb-5 print:mb-3">
@@ -689,7 +834,7 @@ export default function RapidRecallWorkbook() {
           <div>
             <h1 className="font-serif text-3xl lg:text-4xl">Rapid Recall Workbook</h1>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">
-              Fast AO1–AO4 decision drills for Component 2 Prose.
+              Fast AO1-AO4 decision drills for Component 2 Prose.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 no-print">
@@ -818,10 +963,14 @@ export default function RapidRecallWorkbook() {
           stageIndex={timedDrillStageIndex}
           selectedOptionIds={timedDrillSelections}
           copyStatus={timedDrillCopyStatus}
+          sessionSummary={timedDrillSessionSummary}
+          sessionSummaryCopyStatus={timedDrillSessionSummaryCopyStatus}
           onSelectStem={selectTimedParagraphStem}
           onNextStage={advanceTimedParagraphStage}
           onReset={resetTimedParagraphDrill}
           onCopySelectedStems={copyTimedParagraphDrill}
+          onCopySessionSummary={copyTimedDrillSessionSummary}
+          onRetryTimedDrill={resetTimedParagraphDrill}
         />
       )}
 
