@@ -23,6 +23,23 @@ export type RapidRecallTheme =
 
 export type RapidRecallDifficulty = "Foundation" | "Secure" | "Stretch";
 
+export interface RapidRecallRoutePlanParagraph {
+  title: string;
+  hardTimesFocus: string;
+  atonementFocus: string;
+  aoFocus: Component2AO[];
+}
+
+export interface RapidRecallRoutePlan {
+  thesis: string;
+  paragraphOne: RapidRecallRoutePlanParagraph;
+  paragraphTwo: RapidRecallRoutePlanParagraph;
+  paragraphThree: RapidRecallRoutePlanParagraph;
+  conclusion: string;
+  examWarning?: string;
+  routeBridge?: string;
+}
+
 export interface RapidRecallBaseItem {
   id: string;
   type: RapidRecallDrillType;
@@ -39,6 +56,7 @@ export interface RapidRecallBaseItem {
   prompt: string;
   explanation: string;
   difficulty: RapidRecallDifficulty;
+  routePlan?: RapidRecallRoutePlan;
 }
 
 export interface MultipleChoiceRapidRecallItem extends RapidRecallBaseItem {

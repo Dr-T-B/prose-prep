@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   RAPID_RECALL_AOS,
@@ -24,6 +24,14 @@ function renderPage(initialPath = "/rapid-recall") {
 }
 
 describe("RapidRecall", () => {
+  beforeEach(() => {
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+      },
+    });
+  });
+
   it("renders the Rapid Recall Workbook title and core drill modes", () => {
     renderPage();
 
@@ -45,6 +53,18 @@ describe("RapidRecall", () => {
     expect(counts["route-selection"]).toBeGreaterThanOrEqual(8);
   });
 
+  it("adds static route plans to route-selection drills and comparative multiple-choice route drills", () => {
+    const routeSelectionItems = rapidRecallWorkbookItems.filter((item) => item.type === "route-selection");
+    const comparativeMultipleChoiceItems = rapidRecallWorkbookItems.filter((item) => (
+      item.type === "multiple-choice" && item.textFocus === "Comparative"
+    ));
+
+    expect(routeSelectionItems).toHaveLength(8);
+    expect(routeSelectionItems.every((item) => item.routePlan)).toBe(true);
+    expect(comparativeMultipleChoiceItems.length).toBeGreaterThanOrEqual(5);
+    expect(comparativeMultipleChoiceItems.every((item) => item.routePlan)).toBe(true);
+  });
+
   it("limits the AO filter to AO1, AO2, AO3 and AO4", () => {
     renderPage();
 
@@ -61,6 +81,16 @@ describe("RapidRecall", () => {
 
     expect(JSON.stringify(rapidRecallWorkbookItems)).not.toContain(excluded);
     expect(container).not.toHaveTextContent(excluded);
+  });
+
+  it("shows route handoff actions only for suitable cards", () => {
+    renderPage();
+
+    expect(screen.getAllByRole("button", { name: /Build route from this drill/i }).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Fill blanks" }));
+
+    expect(screen.queryByRole("button", { name: /Build route from this drill/i })).not.toBeInTheDocument();
   });
 
   it("narrows visible cards with theme and text filters", () => {
@@ -131,6 +161,42 @@ describe("RapidRecall", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Correct");
     expect(screen.getByText(/AO4 bridge:/i)).toBeInTheDocument();
     expect(screen.getAllByText(/McEwan makes narrative perception itself the central problem/i).length).toBeGreaterThan(0);
+  });
+
+  it("builds and copies a compact route plan from a route-selection drill", async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Route selection" }));
+    fireEvent.click(screen.getByRole("button", {
+      name: /Build route from this drill for Question focus: relationships damaged by misunderstanding/i,
+    }));
+
+    const panel = screen.getByLabelText("Rapid Recall route plan handoff");
+    expect(within(panel).getByRole("heading", { name: "4-step Component 2 route plan" })).toBeInTheDocument();
+    expect(within(panel).getByText(/Planning route only - not a full essay generator/i)).toBeInTheDocument();
+    expect(within(panel).getByText("1. Comparative thesis")).toBeInTheDocument();
+    expect(within(panel).getByRole("heading", { name: "2. Hard Times paragraph route" })).toBeInTheDocument();
+    expect(within(panel).getByRole("heading", { name: "3. Atonement paragraph route" })).toBeInTheDocument();
+    expect(within(panel).getByRole("heading", { name: "4. Comparative judgement route" })).toBeInTheDocument();
+    expect(within(panel).getAllByText(/AO4 bridge/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(within(panel).getByRole("button", { name: "Copy route plan" }));
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("Rapid Recall Route Plan"));
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("Planning route only - not a full essay."));
+    expect(await screen.findByText("Route plan copied")).toBeInTheDocument();
+  });
+
+  it("builds a route plan from a comparative multiple-choice drill without rendering excluded wording", () => {
+    const { container } = renderPage();
+    const excluded = ["AO", "5"].join("");
+
+    fireEvent.click(screen.getByRole("button", {
+      name: /Build route from this drill for For a question on childhood/i,
+    }));
+
+    expect(screen.getByLabelText("Rapid Recall route plan handoff")).toHaveTextContent("childhood as shaped by adult systems");
+    expect(container).not.toHaveTextContent(excluded);
   });
 
   it("renders a print-friendly workbook layout", () => {
