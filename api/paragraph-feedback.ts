@@ -64,6 +64,8 @@ function buildServerInstruction(request: ValidatedParagraphFeedbackRequest) {
       `Do not mention ${EXCLUDED_AO_LABEL}.`,
       "Do not grade, score, or mark the work.",
       "Do not rewrite the paragraph.",
+      "Do not provide a rewritten paragraph.",
+      "Do not generate a model answer.",
       "Do not generate a model paragraph.",
       "Do not generate a perfect answer.",
       "Do not generate an essay or full essay.",
