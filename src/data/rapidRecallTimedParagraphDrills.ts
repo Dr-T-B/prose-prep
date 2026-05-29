@@ -280,6 +280,20 @@ const TIMED_PARAGRAPH_DRILL_SEEDS: TimedParagraphDrillSeed[] = [
     },
   },
   {
+    itemId: "route-childhood-adult-systems",
+    theme: "childhood",
+    focusPhrase: "childhood shaped by adult systems",
+    questionFocus: "childhood shaped by adult systems",
+    hardTimesTopic: "Gradgrind, Louisa and utilitarian education",
+    atonementTopic: "Briony's play-making and confident interpretation",
+    bestStems: {
+      "Thesis opening": "Both writers present childhood as shaped by adult systems, but Dickens attacks utilitarian education while McEwan shows childhood imagination becoming dangerous when authority confirms it.",
+      "Hard Times paragraph opening": "Dickens makes Gradgrind's factual education a system that narrows childhood feeling and trains Louisa into emotional restraint.",
+      "Atonement paragraph opening": "McEwan presents Briony's childhood imagination as consequential because her confident interpretation is accepted by adult structures.",
+      "Comparative judgement opening": "Dickens shows adult systems suppressing childhood, while McEwan shows adult systems giving childish certainty destructive force.",
+    },
+  },
+  {
     itemId: "route-class-credibility",
     theme: "class",
     focusPhrase: "class and credibility",

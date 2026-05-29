@@ -8,6 +8,7 @@ import {
   getRapidRecallWorkbookCountByType,
   rapidRecallWorkbookItems,
 } from "@/data/rapidRecallWorkbook";
+import { matchesRapidRecallWorkbookFilters } from "@/data/rapidRecallWorkbookFilters";
 import {
   formatTimedParagraphDrillText,
   getRapidRecallTimedParagraphDrillForItemId,
@@ -39,6 +40,20 @@ function openRelationshipsRoutePlan() {
     name: /Build route from this drill for Question focus: relationships damaged by misunderstanding/i,
   }));
   return screen.getByLabelText("Rapid Recall route plan handoff");
+}
+
+function setWorkbookFilters({
+  theme,
+  ao,
+  text,
+}: {
+  theme?: string;
+  ao?: string;
+  text?: string;
+}) {
+  if (theme) fireEvent.change(screen.getByLabelText("Theme filter"), { target: { value: theme } });
+  if (ao) fireEvent.change(screen.getByLabelText("AO filter"), { target: { value: ao } });
+  if (text) fireEvent.change(screen.getByLabelText("Text filter"), { target: { value: text } });
 }
 
 function startRelationshipsTimedDrill() {
@@ -130,7 +145,7 @@ describe("RapidRecall", () => {
   it("ships at least eight static items for every required drill type", () => {
     const counts = getRapidRecallWorkbookCountByType();
 
-    expect(rapidRecallWorkbookItems).toHaveLength(32);
+    expect(rapidRecallWorkbookItems).toHaveLength(33);
     expect(counts["multiple-choice"]).toBeGreaterThanOrEqual(8);
     expect(counts["fill-blank"]).toBeGreaterThanOrEqual(8);
     expect(counts["match-pair"]).toBeGreaterThanOrEqual(8);
@@ -143,7 +158,7 @@ describe("RapidRecall", () => {
       item.type === "multiple-choice" && item.textFocus === "Comparative"
     ));
 
-    expect(routeSelectionItems).toHaveLength(8);
+    expect(routeSelectionItems).toHaveLength(9);
     expect(routeSelectionItems.every((item) => item.routePlan)).toBe(true);
     expect(comparativeMultipleChoiceItems.length).toBeGreaterThanOrEqual(5);
     expect(comparativeMultipleChoiceItems.every((item) => item.routePlan)).toBe(true);
@@ -160,7 +175,7 @@ describe("RapidRecall", () => {
     ));
 
     expect(getRapidRecallTimedParagraphDrillCount()).toBeGreaterThanOrEqual(12);
-    expect(timedRouteSelectionItems).toHaveLength(8);
+    expect(timedRouteSelectionItems).toHaveLength(9);
     expect(timedComparativeMultipleChoiceItems.length).toBeGreaterThanOrEqual(4);
 
     for (const drill of rapidRecallTimedParagraphDrills) {
@@ -248,6 +263,82 @@ describe("RapidRecall", () => {
 
     expect(screen.queryByText(/For a question on childhood/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Session summary")).toHaveTextContent("0");
+  });
+
+  it("shows route-selection coverage for childhood AO1 Hard Times filters", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Route selection" }));
+    setWorkbookFilters({ theme: "childhood", ao: "AO1", text: "Hard Times" });
+
+    expect(screen.getByText(/Question focus: childhood shaped by adult systems/i)).toBeInTheDocument();
+    expect(screen.queryByText("No workbook cards match these filters.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Session summary")).toHaveTextContent("1");
+  });
+
+  it("shows route-selection coverage for childhood AO1 Atonement filters", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Route selection" }));
+    setWorkbookFilters({ theme: "childhood", ao: "AO1", text: "Atonement" });
+
+    expect(screen.getByText(/Question focus: childhood shaped by adult systems/i)).toBeInTheDocument();
+    expect(screen.queryByText("No workbook cards match these filters.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Session summary")).toHaveTextContent("1");
+  });
+
+  it("shows route-selection coverage for childhood AO4 comparative filters", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Route selection" }));
+    setWorkbookFilters({ theme: "childhood", ao: "AO4", text: "Comparative" });
+
+    expect(screen.getByText(/Question focus: childhood shaped by adult systems/i)).toBeInTheDocument();
+    expect(screen.queryByText("No workbook cards match these filters.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Session summary")).toHaveTextContent("1");
+  });
+
+  it("keeps route-selection filter matching case and slug safe", () => {
+    const childhoodRoute = rapidRecallWorkbookItems.find((item) => item.id === "route-childhood-adult-systems");
+    if (!childhoodRoute) throw new Error("Missing childhood route-selection fixture");
+
+    expect(matchesRapidRecallWorkbookFilters({
+      item: childhoodRoute,
+      activeType: "route-selection",
+      themeFilter: "Childhood" as never,
+      aoFilter: "ao1" as never,
+      textFilter: "hard-times" as never,
+    })).toBe(true);
+  });
+
+  it("keeps the empty state for genuinely impossible route-selection filters", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Route selection" }));
+    setWorkbookFilters({ theme: "memory", ao: "AO3", text: "Hard Times" });
+
+    expect(screen.getByText("No workbook cards match these filters.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Session summary")).toHaveTextContent("0");
+  });
+
+  it("opens a route plan and timed drill for the childhood route-selection card", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Route selection" }));
+    setWorkbookFilters({ theme: "childhood", ao: "AO1", text: "Hard Times" });
+    fireEvent.click(screen.getByRole("button", {
+      name: /Build route from this drill for Question focus: childhood shaped by adult systems/i,
+    }));
+
+    const panel = screen.getByLabelText("Rapid Recall route plan handoff");
+    const feedbackCoachLink = within(panel).getByRole("link", { name: "Open feedback coach with this route" });
+    const params = searchParamsFromHref(feedbackCoachLink.getAttribute("href"));
+
+    expect(within(panel).getByRole("heading", { name: "4-step Component 2 route plan" })).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Start timed paragraph drill" })).toBeInTheDocument();
+    expect(params.get("questionFocus")).toBe("childhood shaped by adult systems");
+    expect(params.get("theme")).toBe("childhood");
+    expectNoUnsafeFeedbackHandoffParams(params);
   });
 
   it("opens the timed paragraph drill on the first thesis stage with three stem options", () => {
