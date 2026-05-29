@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { Clipboard, ClipboardCheck, Send, ShieldCheck } from "lucide-react";
+import { Clipboard, ClipboardCheck, Printer, Send, ShieldCheck } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,11 @@ import {
 import { formatParagraphFeedbackRecord } from "@/lib/paragraphFeedbackExport";
 import type { ParagraphFeedbackAoKey, ParagraphFeedbackCriterion, ParagraphFeedbackResponse } from "@/types/paragraphFeedback";
 
-const FEEDBACK_SECTIONS: Array<{ key: ParagraphFeedbackAoKey; title: string }> = [
-  { key: "ao1", title: "AO1: argument focus" },
-  { key: "ao2", title: "AO2: method / word / effect" },
-  { key: "ao3", title: "AO3: context relevance" },
-  { key: "ao4", title: "AO4: comparison quality" },
+const FEEDBACK_SECTIONS: Array<{ key: ParagraphFeedbackAoKey; cardTitle: string; recordTitle: string }> = [
+  { key: "ao1", cardTitle: "AO1: argument focus", recordTitle: "AO1 - Argument focus" },
+  { key: "ao2", cardTitle: "AO2: method / word / effect", recordTitle: "AO2 - Method / word / effect" },
+  { key: "ao3", cardTitle: "AO3: context relevance", recordTitle: "AO3 - Context relevance" },
+  { key: "ao4", cardTitle: "AO4: comparison quality", recordTitle: "AO4 - Comparison quality" },
 ];
 
 type FeedbackExportContext = {
@@ -59,7 +59,7 @@ function isErrorPayload(value: unknown): value is { error: string } {
 
 function FeedbackCriterionCard({ title, criterion }: { title: string; criterion: ParagraphFeedbackCriterion }) {
   return (
-    <article className="rounded-sm border border-rule bg-paper p-4 shadow-card print:break-inside-avoid print:bg-white print:shadow-none">
+    <article className="rounded-sm border border-rule bg-paper p-4 shadow-card">
       <h2 className="font-serif text-xl">{title}</h2>
       <dl className="mt-3 space-y-3 text-sm leading-relaxed">
         <div>
@@ -72,6 +72,137 @@ function FeedbackCriterionCard({ title, criterion }: { title: string; criterion:
         </div>
       </dl>
     </article>
+  );
+}
+
+function FeedbackRecordContextItem({ label, value }: { label: string; value?: string }) {
+  const safeValue = value?.trim();
+  if (!safeValue) return null;
+
+  return (
+    <div className="rounded-sm border border-rule bg-white p-3 print:border-black print:p-2">
+      <dt className="label-eyebrow mb-1 print:text-[9pt] print:text-black">{label}</dt>
+      <dd className="whitespace-pre-wrap text-sm leading-relaxed print:text-[10.5pt] print:leading-snug">{safeValue}</dd>
+    </div>
+  );
+}
+
+function FeedbackRecordCriterion({ title, criterion }: { title: string; criterion: ParagraphFeedbackCriterion }) {
+  return (
+    <article className="rounded-sm border border-rule bg-white p-3 print:break-inside-avoid print:border-black print:p-2">
+      <h3 className="font-serif text-lg print:text-[13pt]">{title}</h3>
+      <dl className="mt-2 grid gap-2 text-sm leading-relaxed print:mt-1 print:gap-1 print:text-[10.5pt] print:leading-snug">
+        <div>
+          <dt className="label-eyebrow mb-1 print:text-[9pt] print:text-black">Strength</dt>
+          <dd>{criterion.strength}</dd>
+        </div>
+        <div>
+          <dt className="label-eyebrow mb-1 print:text-[9pt] print:text-black">Target</dt>
+          <dd>{criterion.target}</dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
+function FeedbackRevisionPrompts() {
+  return (
+    <section
+      aria-label="Revision action"
+      className="rounded-sm border border-rule-strong bg-white p-3 print:break-inside-avoid print:border-black print:p-2"
+    >
+      <h3 className="font-serif text-lg print:text-[13pt]">Revision action</h3>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 print:mt-2 print:grid-cols-2 print:gap-2">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-ink-muted print:text-[9pt] print:text-black">What I will improve next:</p>
+          <div aria-hidden="true" className="mt-3 h-14 border-b border-dashed border-rule-strong print:h-12 print:border-black" />
+        </div>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-ink-muted print:text-[9pt] print:text-black">One sentence I will redraft:</p>
+          <div aria-hidden="true" className="mt-3 h-14 border-b border-dashed border-rule-strong print:h-12 print:border-black" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeedbackExportRecord({
+  context,
+  feedback,
+  copyStatus,
+  onCopy,
+  onPrint,
+}: {
+  context: FeedbackExportContext | null;
+  feedback: ParagraphFeedbackResponse;
+  copyStatus: string | null;
+  onCopy: () => void;
+  onPrint: () => void;
+}) {
+  const hasContext = Boolean(context?.questionFocus || context?.theme || context?.routeContext);
+
+  return (
+    <section
+      aria-label="Feedback export record"
+      className="rounded-sm border border-rule-strong bg-paper p-4 shadow-card print:m-0 print:break-inside-auto print:border-0 print:bg-white print:p-0 print:text-black print:shadow-none"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3 print:block">
+        <div>
+          <p className="label-eyebrow print:text-[9pt] print:text-black">Revision record</p>
+          <h2 className="font-serif text-2xl print:text-[18pt]">Paragraph Feedback Record</h2>
+        </div>
+        <div className="no-print flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button type="button" onClick={onCopy} className="w-full gap-2 sm:w-auto">
+            <Clipboard className="h-4 w-4" />
+            Copy feedback record
+          </Button>
+          <Button type="button" variant="outline" onClick={onPrint} className="w-full gap-2 sm:w-auto">
+            <Printer className="h-4 w-4" />
+            Print feedback record
+          </Button>
+        </div>
+      </div>
+
+      {copyStatus && (
+        <p role="status" aria-live="polite" className="no-print mt-3 text-xs font-mono text-ink-muted">
+          {copyStatus}
+        </p>
+      )}
+
+      <div className="mt-4 grid gap-3 print:mt-2 print:gap-2">
+        {hasContext && (
+          <section className="grid gap-2 print:break-inside-avoid print:gap-1" aria-label="Submitted feedback context">
+            <h3 className="font-serif text-lg print:text-[13pt]">Submitted focus</h3>
+            <dl className="grid gap-2 print:gap-1">
+              <FeedbackRecordContextItem label="Question focus" value={context?.questionFocus} />
+              <FeedbackRecordContextItem label="Theme" value={context?.theme} />
+              <FeedbackRecordContextItem label="Route context" value={context?.routeContext} />
+            </dl>
+          </section>
+        )}
+
+        <section className="grid gap-2 print:gap-1" aria-label="Assessment objective feedback">
+          {FEEDBACK_SECTIONS.map((section) => (
+            <FeedbackRecordCriterion key={section.key} title={section.recordTitle} criterion={feedback[section.key]} />
+          ))}
+          {feedback.routeMatch && <FeedbackRecordCriterion title="Route match" criterion={feedback.routeMatch} />}
+        </section>
+
+        <article className="rounded-sm border border-rule-strong bg-white p-3 print:break-inside-avoid print:border-black print:p-2">
+          <h3 className="font-serif text-lg print:text-[13pt]">Next target</h3>
+          <p className="mt-2 text-sm leading-relaxed print:mt-1 print:text-[10.5pt] print:leading-snug">{feedback.nextTarget}</p>
+        </article>
+
+        {feedback.safetyNotice && (
+          <article className="rounded-sm border border-rule-strong bg-white p-3 print:break-inside-avoid print:border-black print:p-2">
+            <h3 className="font-serif text-lg print:text-[13pt]">Safety notice</h3>
+            <p className="mt-2 text-sm leading-relaxed print:mt-1 print:text-[10.5pt] print:leading-snug">{feedback.safetyNotice}</p>
+          </article>
+        )}
+
+        <FeedbackRevisionPrompts />
+      </div>
+    </section>
   );
 }
 
@@ -168,9 +299,13 @@ export default function ParagraphFeedback() {
     }
   };
 
+  const printFeedbackRecord = () => {
+    window.print();
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 print:px-0 print:py-0">
-      <header className="mb-6 border-b border-rule pb-5 print:mb-3">
+      <header className="mb-6 border-b border-rule pb-5 print:hidden">
         <p className="label-eyebrow mb-2">Component 2 Prose</p>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -285,50 +420,34 @@ export default function ParagraphFeedback() {
       )}
 
       {feedback && (
-        <section className="mt-6 grid gap-4 print-area" aria-label="Paragraph feedback results">
+        <section className="mt-6 grid gap-4 print-area print:mt-0 print:block" aria-label="Paragraph feedback results">
           {feedbackRecord && (
-            <section
-              aria-label="Feedback export record"
-              className="rounded-sm border border-rule-strong bg-paper p-4 shadow-card print:break-inside-avoid print:border-0 print:bg-white print:p-0 print:shadow-none"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="label-eyebrow">Revision record</p>
-                  <h2 className="font-serif text-2xl">Paragraph Feedback Record</h2>
-                </div>
-                <Button type="button" onClick={copyFeedbackRecord} className="no-print w-full gap-2 sm:w-auto">
-                  <Clipboard className="h-4 w-4" />
-                  Copy feedback record
-                </Button>
-              </div>
-
-              {feedbackCopyStatus && (
-                <p role="status" aria-live="polite" className="no-print mt-3 text-xs font-mono text-ink-muted">
-                  {feedbackCopyStatus}
-                </p>
-              )}
-
-              <pre className="mt-3 whitespace-pre-wrap rounded-sm border border-rule bg-white p-3 font-sans text-sm leading-relaxed text-ink print:border-0 print:p-0">{feedbackRecord}</pre>
-            </section>
+            <FeedbackExportRecord
+              context={feedbackExportContext}
+              feedback={feedback}
+              copyStatus={feedbackCopyStatus}
+              onCopy={copyFeedbackRecord}
+              onPrint={printFeedbackRecord}
+            />
           )}
 
           {feedback.safetyNotice && (
-            <Alert className="rounded-sm border-amber-300 bg-amber-50 text-amber-950 print:break-inside-avoid">
+            <Alert className="no-print rounded-sm border-amber-300 bg-amber-50 text-amber-950">
               <AlertTitle>Safety notice</AlertTitle>
               <AlertDescription>{feedback.safetyNotice}</AlertDescription>
             </Alert>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2 print:grid-cols-1">
+          <div className="no-print grid gap-4 md:grid-cols-2">
             {FEEDBACK_SECTIONS.map((section) => (
-              <FeedbackCriterionCard key={section.key} title={section.title} criterion={feedback[section.key]} />
+              <FeedbackCriterionCard key={section.key} title={section.cardTitle} criterion={feedback[section.key]} />
             ))}
             {feedback.routeMatch && (
               <FeedbackCriterionCard title="Route match" criterion={feedback.routeMatch} />
             )}
           </div>
 
-          <article className="rounded-sm border border-primary/30 bg-highlight p-4 shadow-card print:break-inside-avoid print:bg-white print:shadow-none">
+          <article className="no-print rounded-sm border border-primary/30 bg-highlight p-4 shadow-card">
             <h2 className="font-serif text-xl">Next target</h2>
             <p className="mt-2 text-sm leading-relaxed">{feedback.nextTarget}</p>
           </article>
