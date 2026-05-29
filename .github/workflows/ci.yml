@@ -5,6 +5,7 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -22,9 +23,19 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run typecheck
       - name: Run unit tests
-        run: npm test
+        run: npm run test
+      - name: Run lint
+        run: npm run lint
+      - name: Validate Component 2 AO contract
+        run: npm run validate:component2-ao
+      - name: Check browser source for LLM secrets
+        run: npm run check:no-client-llm
+      - name: Check whitespace errors
+        run: git diff --check
+      - name: Run focused post-merge tests
+        run: npm run test -- src/pages/ParagraphFeedback.test.tsx src/lib/paragraphFeedbackContract.test.ts src/pages/RapidRecall.test.tsx src/App.test.tsx src/components/AppShell.test.tsx
 
   integration-test:
     name: Integration tests (live Supabase)
