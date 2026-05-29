@@ -11,7 +11,7 @@ export const PARAGRAPH_FEEDBACK_LIMITS = {
   paragraphMax: 2500,
   questionFocusMax: 300,
   themeMax: 120,
-  routeContextMax: 800,
+  routeContextMax: 1500,
 } as const;
 
 export const PARAGRAPH_FEEDBACK_ENDPOINT = "/api/paragraph-feedback";
@@ -81,7 +81,7 @@ export function validateParagraphFeedbackRequest(input: unknown): ParagraphFeedb
   const theme = optionalText(input.theme, "Theme", PARAGRAPH_FEEDBACK_LIMITS.themeMax);
   if (!theme.ok) return theme;
 
-  const routeContext = optionalText(input.routeContext, "Route-plan context", PARAGRAPH_FEEDBACK_LIMITS.routeContextMax);
+  const routeContext = optionalText(input.routeContext, "Route context", PARAGRAPH_FEEDBACK_LIMITS.routeContextMax);
   if (!routeContext.ok) return routeContext;
 
   const intentText = [paragraph, questionFocus.value, theme.value, routeContext.value].filter(Boolean).join("\n");
@@ -104,19 +104,19 @@ function hasUnsafeResponseText(text: string): boolean {
   return FORBIDDEN_RESPONSE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
-function readCriterion(value: unknown, key: ParagraphFeedbackAoKey): ParagraphFeedbackCriterion | string {
-  if (!isRecord(value)) return `${key.toUpperCase()} feedback must be structured.`;
+function readCriterion(value: unknown, label: string): ParagraphFeedbackCriterion | string {
+  if (!isRecord(value)) return `${label} feedback must be structured.`;
   if (typeof value.strength !== "string" || !value.strength.trim()) {
-    return `${key.toUpperCase()} strength is required.`;
+    return `${label} strength is required.`;
   }
   if (typeof value.target !== "string" || !value.target.trim()) {
-    return `${key.toUpperCase()} target is required.`;
+    return `${label} target is required.`;
   }
 
   const strength = value.strength.trim();
   const target = value.target.trim();
   if (hasUnsafeResponseText(strength) || hasUnsafeResponseText(target)) {
-    return `${key.toUpperCase()} feedback did not meet the safety contract.`;
+    return `${label} feedback did not meet the safety contract.`;
   }
 
   return { strength, target };
@@ -129,10 +129,15 @@ export function validateParagraphFeedbackResponse(input: unknown): ParagraphFeed
 
   const normalized = {} as Record<ParagraphFeedbackAoKey, ParagraphFeedbackCriterion>;
   for (const key of FEEDBACK_KEYS) {
-    const criterion = readCriterion(input[key], key);
+    const criterion = readCriterion(input[key], key.toUpperCase());
     if (typeof criterion === "string") return { ok: false, error: criterion };
     normalized[key] = criterion;
   }
+
+  const routeMatch = input.routeMatch === undefined
+    ? undefined
+    : readCriterion(input.routeMatch, "Route match");
+  if (typeof routeMatch === "string") return { ok: false, error: routeMatch };
 
   if (typeof input.nextTarget !== "string" || !input.nextTarget.trim()) {
     return { ok: false, error: "Next target is required." };
@@ -149,6 +154,8 @@ export function validateParagraphFeedbackResponse(input: unknown): ParagraphFeed
     normalized.ao3.target,
     normalized.ao4.strength,
     normalized.ao4.target,
+    routeMatch?.strength,
+    routeMatch?.target,
     nextTarget,
     safetyNotice,
   ].filter(Boolean).join("\n");
@@ -164,6 +171,7 @@ export function validateParagraphFeedbackResponse(input: unknown): ParagraphFeed
       ao2: normalized.ao2,
       ao3: normalized.ao3,
       ao4: normalized.ao4,
+      ...(routeMatch ? { routeMatch } : {}),
       nextTarget,
       ...(safetyNotice ? { safetyNotice } : {}),
     },
@@ -182,7 +190,10 @@ export function createUnsafeParagraphFeedbackFallback(): ParagraphFeedbackRespon
   };
 }
 
-export function createMissingProviderFeedback(reason = "AI feedback is unavailable because the server feedback provider is not configured."): ParagraphFeedbackResponse {
+export function createMissingProviderFeedback(
+  reason = "AI feedback is unavailable because the server feedback provider is not configured.",
+  options: { includeRouteMatch?: boolean } = {},
+): ParagraphFeedbackResponse {
   return {
     ao1: {
       strength: reason,
@@ -200,8 +211,14 @@ export function createMissingProviderFeedback(reason = "AI feedback is unavailab
       strength: reason,
       target: "Make the comparison explicit rather than leaving each text separate.",
     },
+    ...(options.includeRouteMatch ? {
+      routeMatch: {
+        strength: reason,
+        target: "Compare your paragraph against the selected route and make one route link explicit.",
+      },
+    } : {}),
     nextTarget: "Try again with one paragraph after the feedback provider is enabled.",
-    safetyNotice: `${reason} No paragraph was stored or logged.`,
+    safetyNotice: `${reason} No paragraph or route context was stored or logged.`,
   };
 }
 

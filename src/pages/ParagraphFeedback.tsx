@@ -13,7 +13,7 @@ import {
   createUnsafeParagraphFeedbackFallback,
   validateParagraphFeedbackResponse,
 } from "@/lib/paragraphFeedbackContract";
-import type { ParagraphFeedbackAoKey, ParagraphFeedbackResponse } from "@/types/paragraphFeedback";
+import type { ParagraphFeedbackAoKey, ParagraphFeedbackCriterion, ParagraphFeedbackResponse } from "@/types/paragraphFeedback";
 
 const FEEDBACK_SECTIONS: Array<{ key: ParagraphFeedbackAoKey; title: string }> = [
   { key: "ao1", title: "AO1: argument focus" },
@@ -42,6 +42,24 @@ function isErrorPayload(value: unknown): value is { error: string } {
   return typeof value === "object" && value !== null && "error" in value && typeof (value as { error: unknown }).error === "string";
 }
 
+function FeedbackCriterionCard({ title, criterion }: { title: string; criterion: ParagraphFeedbackCriterion }) {
+  return (
+    <article className="rounded-sm border border-rule bg-paper p-4 shadow-card">
+      <h2 className="font-serif text-xl">{title}</h2>
+      <dl className="mt-3 space-y-3 text-sm leading-relaxed">
+        <div>
+          <dt className="label-eyebrow mb-1">Strength</dt>
+          <dd>{criterion.strength}</dd>
+        </div>
+        <div>
+          <dt className="label-eyebrow mb-1">Target</dt>
+          <dd>{criterion.target}</dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
 export default function ParagraphFeedback() {
   const [questionFocus, setQuestionFocus] = useState("");
   const [theme, setTheme] = useState("");
@@ -57,7 +75,7 @@ export default function ParagraphFeedback() {
   ), [questionFocus]);
   const themeError = useMemo(() => getOptionalLengthError("Theme", theme, PARAGRAPH_FEEDBACK_LIMITS.themeMax), [theme]);
   const routeContextError = useMemo(() => (
-    getOptionalLengthError("Route-plan context", routeContext, PARAGRAPH_FEEDBACK_LIMITS.routeContextMax)
+    getOptionalLengthError("Route context", routeContext, PARAGRAPH_FEEDBACK_LIMITS.routeContextMax)
   ), [routeContext]);
   const validationError = paragraphError ?? questionError ?? themeError ?? routeContextError;
   const canSubmit = !validationError && !isSubmitting;
@@ -172,15 +190,22 @@ export default function ParagraphFeedback() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="route-context">Route-plan/context (optional, keep it short)</Label>
+                <Label htmlFor="route-context">Route context</Label>
                 <Textarea
                   id="route-context"
                   value={routeContext}
                   onChange={(event) => setRouteContext(event.target.value)}
                   maxLength={PARAGRAPH_FEEDBACK_LIMITS.routeContextMax + 1}
                   className="min-h-[110px] resize-y"
-                  placeholder="Add a short route-plan note if it helps the feedback stay focused."
+                  placeholder="Paste your practice session summary here."
+                  aria-describedby="route-context-help"
                 />
+                <div id="route-context-help" className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
+                  <span>
+                    Optional: paste your Rapid Recall practice session summary so the coach can check whether your paragraph follows your selected route.
+                  </span>
+                  <span>{routeContext.trim().length} / {PARAGRAPH_FEEDBACK_LIMITS.routeContextMax}</span>
+                </div>
                 {routeContextError && <p className="text-xs text-destructive">{routeContextError}</p>}
               </div>
 
@@ -224,24 +249,12 @@ export default function ParagraphFeedback() {
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
-            {FEEDBACK_SECTIONS.map((section) => {
-              const criterion = feedback[section.key];
-              return (
-                <article key={section.key} className="rounded-sm border border-rule bg-paper p-4 shadow-card">
-                  <h2 className="font-serif text-xl">{section.title}</h2>
-                  <dl className="mt-3 space-y-3 text-sm leading-relaxed">
-                    <div>
-                      <dt className="label-eyebrow mb-1">Strength</dt>
-                      <dd>{criterion.strength}</dd>
-                    </div>
-                    <div>
-                      <dt className="label-eyebrow mb-1">Target</dt>
-                      <dd>{criterion.target}</dd>
-                    </div>
-                  </dl>
-                </article>
-              );
-            })}
+            {FEEDBACK_SECTIONS.map((section) => (
+              <FeedbackCriterionCard key={section.key} title={section.title} criterion={feedback[section.key]} />
+            ))}
+            {feedback.routeMatch && (
+              <FeedbackCriterionCard title="Route match" criterion={feedback.routeMatch} />
+            )}
           </div>
 
           <article className="rounded-sm border border-primary/30 bg-highlight p-4 shadow-card">

@@ -16,6 +16,7 @@ import {
 import {
   buildTimedDrillSessionSummary,
   formatTimedDrillSessionSummaryForCopy,
+  formatTimedDrillSessionSummaryForFeedbackCoach,
 } from "@/data/rapidRecallTimedDrillSessionSummary";
 import type {
   Component2AO,
@@ -234,11 +235,13 @@ function PracticeSessionSummaryPanel({
   summary,
   copyStatus,
   onCopy,
+  onUseInFeedbackCoach,
   onRetry,
 }: {
   summary: TimedDrillSessionSummary;
   copyStatus: string | null;
   onCopy: () => void;
+  onUseInFeedbackCoach: () => void;
   onRetry: () => void;
 }) {
   return (
@@ -254,8 +257,16 @@ function PracticeSessionSummaryPanel({
         <div className="no-print flex w-full flex-wrap gap-2 sm:w-auto">
           <button
             type="button"
-            onClick={onCopy}
+            onClick={onUseInFeedbackCoach}
             className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
+          >
+            <Clipboard className="h-3.5 w-3.5" />
+            Use this summary in feedback coach
+          </button>
+          <button
+            type="button"
+            onClick={onCopy}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim sm:w-auto"
           >
             <Clipboard className="h-3.5 w-3.5" />
             Copy session summary
@@ -328,6 +339,7 @@ function TimedParagraphDrillPanel({
   onReset,
   onCopySelectedStems,
   onCopySessionSummary,
+  onUseSummaryInFeedbackCoach,
   onRetryTimedDrill,
 }: {
   item: RapidRecallWorkbookItem;
@@ -342,6 +354,7 @@ function TimedParagraphDrillPanel({
   onReset: () => void;
   onCopySelectedStems: () => void;
   onCopySessionSummary: () => void;
+  onUseSummaryInFeedbackCoach: () => void;
   onRetryTimedDrill: () => void;
 }) {
   const isComplete = stageIndex >= drill.stages.length;
@@ -417,6 +430,7 @@ function TimedParagraphDrillPanel({
               summary={sessionSummary}
               copyStatus={sessionSummaryCopyStatus}
               onCopy={onCopySessionSummary}
+              onUseInFeedbackCoach={onUseSummaryInFeedbackCoach}
               onRetry={onRetryTimedDrill}
             />
           )}
@@ -826,6 +840,17 @@ export default function RapidRecallWorkbook() {
     }
   };
 
+  const useTimedDrillSessionSummaryInFeedbackCoach = async () => {
+    if (!timedDrillSessionSummary) return;
+
+    try {
+      await navigator.clipboard.writeText(formatTimedDrillSessionSummaryForFeedbackCoach(timedDrillSessionSummary));
+      setTimedDrillSessionSummaryCopyStatus("Session summary copied. Paste it into Route context on the feedback coach.");
+    } catch {
+      setTimedDrillSessionSummaryCopyStatus("Copy unavailable");
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 print:px-0 print:py-0 sm:px-6 sm:py-8 lg:px-10">
       <header className="mb-5 border-b border-rule pb-5 print:mb-3">
@@ -970,6 +995,7 @@ export default function RapidRecallWorkbook() {
           onReset={resetTimedParagraphDrill}
           onCopySelectedStems={copyTimedParagraphDrill}
           onCopySessionSummary={copyTimedDrillSessionSummary}
+          onUseSummaryInFeedbackCoach={useTimedDrillSessionSummaryInFeedbackCoach}
           onRetryTimedDrill={resetTimedParagraphDrill}
         />
       )}

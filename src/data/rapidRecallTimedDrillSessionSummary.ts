@@ -100,3 +100,20 @@ export function formatTimedDrillSessionSummaryForCopy(summary: TimedDrillSession
     `Next revision target: ${summary.nextRevisionTarget}`,
   ].join("\n");
 }
+
+export function formatTimedDrillSessionSummaryForFeedbackCoach(summary: TimedDrillSessionSummary) {
+  return [
+    "Practice Session Summary",
+    `Theme: ${summary.theme}`,
+    `Question focus: ${summary.questionFocus}`,
+    "Selected route: thesis -> Hard Times -> Atonement -> comparative judgement",
+    `Thesis opening: ${selectedStemText(summary, "Thesis opening")}`,
+    `Hard Times opening: ${selectedStemText(summary, "Hard Times paragraph opening")}`,
+    `Atonement opening: ${selectedStemText(summary, "Atonement paragraph opening")}`,
+    `Comparative judgement opening: ${selectedStemText(summary, "Comparative judgement opening")}`,
+    `AO focus covered: ${summary.aoFocusCovered.join(", ")}`,
+    `Route bridge: ${summary.ao4Bridge ?? "Not available"}`,
+    `Next revision target: ${summary.nextRevisionTarget}`,
+    "Feedback focus: Check whether the student's paragraph follows this selected route.",
+  ].join("\n");
+}

@@ -13,6 +13,7 @@ export type ParagraphFeedbackCriterion = {
 };
 
 export type ParagraphFeedbackResponse = Record<ParagraphFeedbackAoKey, ParagraphFeedbackCriterion> & {
+  routeMatch?: ParagraphFeedbackCriterion;
   nextTarget: string;
   safetyNotice?: string;
 };
