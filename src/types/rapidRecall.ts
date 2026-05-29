@@ -70,6 +70,23 @@ export interface RapidRecallTimedParagraphDrill {
   examWarning: string;
 }
 
+export interface TimedDrillSessionSummaryStem {
+  stageLabel: TimedParagraphDrillStageLabel;
+  stemText: string;
+  aoFocus: Component2AO[];
+  isBest: boolean;
+}
+
+export interface TimedDrillSessionSummary {
+  theme: RapidRecallTheme;
+  questionFocus: string;
+  selectedStems: TimedDrillSessionSummaryStem[];
+  aoFocusCovered: Component2AO[];
+  ao4Bridge?: string;
+  examWarning?: string;
+  nextRevisionTarget: string;
+}
+
 export interface RapidRecallBaseItem {
   id: string;
   type: RapidRecallDrillType;
