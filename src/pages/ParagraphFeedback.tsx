@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { Clipboard, ClipboardCheck, Printer, Send, ShieldCheck } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
   validateParagraphFeedbackResponse,
 } from "@/lib/paragraphFeedbackContract";
 import { formatParagraphFeedbackRecord } from "@/lib/paragraphFeedbackExport";
+import { readParagraphFeedbackHandoff } from "@/lib/paragraphFeedbackHandoff";
 import type { ParagraphFeedbackAoKey, ParagraphFeedbackCriterion, ParagraphFeedbackResponse } from "@/types/paragraphFeedback";
 
 const FEEDBACK_SECTIONS: Array<{ key: ParagraphFeedbackAoKey; cardTitle: string; recordTitle: string }> = [
@@ -207,10 +209,13 @@ function FeedbackExportRecord({
 }
 
 export default function ParagraphFeedback() {
-  const [questionFocus, setQuestionFocus] = useState("");
-  const [theme, setTheme] = useState("");
+  const { search } = useLocation();
+  const initialHandoff = useMemo(() => readParagraphFeedbackHandoff(search), [search]);
+
+  const [questionFocus, setQuestionFocus] = useState(() => initialHandoff.questionFocus ?? "");
+  const [theme, setTheme] = useState(() => initialHandoff.theme ?? "");
   const [paragraph, setParagraph] = useState("");
-  const [routeContext, setRouteContext] = useState("");
+  const [routeContext, setRouteContext] = useState(() => initialHandoff.routeContext ?? "");
   const [feedback, setFeedback] = useState<ParagraphFeedbackResponse | null>(null);
   const [feedbackExportContext, setFeedbackExportContext] = useState<FeedbackExportContext | null>(null);
   const [feedbackCopyStatus, setFeedbackCopyStatus] = useState<string | null>(null);
@@ -311,7 +316,7 @@ export default function ParagraphFeedback() {
           <div>
             <h1 className="font-serif text-3xl lg:text-4xl">AI Paragraph Feedback Coach</h1>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-ink-muted">
-              AO1-AO4 feedback for one Component 2 paragraph. This coach gives improvement targets, not model paragraphs.
+              AO1, AO2, AO3 and AO4 feedback for one student-written Component 2 paragraph.
             </p>
           </div>
           <div className="flex items-center gap-2 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-mono text-ink-muted">
@@ -329,7 +334,7 @@ export default function ParagraphFeedback() {
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid gap-2">
-                <Label htmlFor="question-focus">Essay question or question focus (optional but recommended)</Label>
+                <Label htmlFor="question-focus">Question focus (optional but recommended)</Label>
                 <Input
                   id="question-focus"
                   value={questionFocus}
@@ -341,7 +346,7 @@ export default function ParagraphFeedback() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="theme">Theme (optional)</Label>
+                <Label htmlFor="theme">Theme or concern (optional)</Label>
                 <Input
                   id="theme"
                   value={theme}
@@ -353,16 +358,19 @@ export default function ParagraphFeedback() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="paragraph">Paragraph</Label>
+                <Label htmlFor="paragraph">Student paragraph</Label>
                 <Textarea
                   id="paragraph"
                   value={paragraph}
                   onChange={(event) => setParagraph(event.target.value)}
                   maxLength={PARAGRAPH_FEEDBACK_LIMITS.paragraphMax + 1}
                   className="min-h-[260px] resize-y leading-relaxed"
-                  placeholder="Paste one completed paragraph here."
-                  aria-describedby="paragraph-help"
+                  placeholder="Paste only your own completed paragraph here."
+                  aria-describedby="paragraph-guidance paragraph-help"
                 />
+                <p id="paragraph-guidance" className="text-xs leading-relaxed text-ink-muted">
+                  Paste only your own student-written paragraph. The coach checks AO1, AO2, AO3 and AO4 only; it will not produce a mark, grade, score, model answer, rewrite or full essay.
+                </p>
                 <div id="paragraph-help" className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
                   <span>{paragraphError ?? "Ready for feedback."}</span>
                   <span>{paragraph.trim().length} / {PARAGRAPH_FEEDBACK_LIMITS.paragraphMax}</span>
@@ -370,19 +378,19 @@ export default function ParagraphFeedback() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="route-context">Route context</Label>
+                <Label htmlFor="route-context">Route context (optional)</Label>
                 <Textarea
                   id="route-context"
                   value={routeContext}
                   onChange={(event) => setRouteContext(event.target.value)}
                   maxLength={PARAGRAPH_FEEDBACK_LIMITS.routeContextMax + 1}
                   className="min-h-[110px] resize-y"
-                  placeholder="Paste your practice session summary here."
+                  placeholder="Route plan or practice session summary."
                   aria-describedby="route-context-help"
                 />
                 <div id="route-context-help" className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
                   <span>
-                    Optional: paste your Rapid Recall practice session summary so the coach can check whether your paragraph follows your selected route.
+                    Optional: use a Rapid Recall route plan or practice session summary so the coach can check whether your paragraph follows your selected route. This context is not saved by this page.
                   </span>
                   <span>{routeContext.trim().length} / {PARAGRAPH_FEEDBACK_LIMITS.routeContextMax}</span>
                 </div>
@@ -404,9 +412,10 @@ export default function ParagraphFeedback() {
               <h2 className="font-serif text-xl">Guardrails</h2>
             </div>
             <ul className="space-y-2 text-sm leading-relaxed text-ink-muted">
-              <li>Paste one paragraph only.</li>
-              <li>The coach will not write or rewrite your answer.</li>
+              <li>Paste only your own completed paragraph.</li>
+              <li>Route context is optional planning support.</li>
               <li>Feedback uses AO1, AO2, AO3 and AO4 only.</li>
+              <li>No mark, grade, score, model answer, rewrite or full essay will be generated.</li>
             </ul>
           </section>
         </aside>

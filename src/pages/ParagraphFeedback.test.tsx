@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createMissingProviderFeedback } from "@/lib/paragraphFeedbackContract";
@@ -73,8 +74,15 @@ function mockClipboardUnavailable() {
   });
 }
 
-function renderPage() {
-  return render(<ParagraphFeedback />);
+function renderPage(initialPath = "/paragraph-feedback") {
+  return render(
+    <MemoryRouter
+      initialEntries={[initialPath]}
+      future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+    >
+      <ParagraphFeedback />
+    </MemoryRouter>,
+  );
 }
 
 function submitValidParagraph(
@@ -83,20 +91,20 @@ function submitValidParagraph(
   const { includeQuestionFocus = true, includeTheme = true, includeRouteContext = true } = options;
 
   if (includeQuestionFocus) {
-    fireEvent.change(screen.getByLabelText("Essay question or question focus (optional but recommended)"), {
+    fireEvent.change(screen.getByLabelText("Question focus (optional but recommended)"), {
       target: { value: "How do Dickens and McEwan present responsibility?" },
     });
   }
   if (includeTheme) {
-    fireEvent.change(screen.getByLabelText("Theme (optional)"), {
+    fireEvent.change(screen.getByLabelText("Theme or concern (optional)"), {
       target: { value: "responsibility" },
     });
   }
-  fireEvent.change(screen.getByLabelText("Paragraph"), {
+  fireEvent.change(screen.getByLabelText("Student paragraph"), {
     target: { value: validParagraph },
   });
   if (includeRouteContext) {
-    fireEvent.change(screen.getByLabelText("Route context"), {
+    fireEvent.change(screen.getByLabelText("Route context (optional)"), {
       target: { value: routeContext },
     });
   }
@@ -130,26 +138,67 @@ describe("ParagraphFeedback", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "AI Paragraph Feedback Coach" })).toBeInTheDocument();
-    expect(screen.getByText(/AO1-AO4 feedback for one Component 2 paragraph/i)).toBeInTheDocument();
-    expect(screen.getByText("Paste one paragraph only.")).toBeInTheDocument();
-    expect(screen.getByText("The coach will not write or rewrite your answer.")).toBeInTheDocument();
+    expect(screen.getByText(/AO1, AO2, AO3 and AO4 feedback for one student-written Component 2 paragraph/i)).toBeInTheDocument();
+    expect(screen.getByText("Paste only your own completed paragraph.")).toBeInTheDocument();
+    expect(screen.getByText("Route context is optional planning support.")).toBeInTheDocument();
     expect(screen.getByText("Feedback uses AO1, AO2, AO3 and AO4 only.")).toBeInTheDocument();
+    expect(screen.getByText("No mark, grade, score, model answer, rewrite or full essay will be generated.")).toBeInTheDocument();
   });
 
   it("renders the textarea and optional context inputs", () => {
     renderPage();
 
-    expect(screen.getByLabelText("Essay question or question focus (optional but recommended)")).toBeInTheDocument();
-    expect(screen.getByLabelText("Theme (optional)")).toBeInTheDocument();
-    expect(screen.getByLabelText("Paragraph")).toBeInTheDocument();
-    expect(screen.getByLabelText("Route context")).toBeInTheDocument();
-    expect(screen.getByText("Optional: paste your Rapid Recall practice session summary so the coach can check whether your paragraph follows your selected route.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Question focus (optional but recommended)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Theme or concern (optional)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Student paragraph")).toBeInTheDocument();
+    expect(screen.getByLabelText("Route context (optional)")).toBeInTheDocument();
+    expect(screen.getByText(/Paste only your own student-written paragraph/i)).toBeInTheDocument();
+    expect(screen.getByText(/Optional: use a Rapid Recall route plan or practice session summary/i)).toBeInTheDocument();
+    expect(screen.getByText(/This context is not saved by this page/i)).toBeInTheDocument();
+  });
+
+  it("prefills safe handoff context while leaving the paragraph manual and empty", () => {
+    const params = new URLSearchParams({
+      questionFocus: "relationships damaged by misunderstanding",
+      theme: "relationships",
+      routeContext: "Practice Session Summary\nSelected route: thesis to comparison.",
+    });
+
+    renderPage(`/paragraph-feedback?${params.toString()}`);
+
+    expect(screen.getByLabelText("Question focus (optional but recommended)")).toHaveValue("relationships damaged by misunderstanding");
+    expect(screen.getByLabelText("Theme or concern (optional)")).toHaveValue("relationships");
+    expect(screen.getByLabelText("Route context (optional)")).toHaveValue("Practice Session Summary\nSelected route: thesis to comparison.");
+    expect(screen.getByLabelText("Student paragraph")).toHaveValue("");
+  });
+
+  it("ignores unsafe handoff params and does not prefill paragraph text", () => {
+    const params = new URLSearchParams({
+      questionFocus: "memory and guilt",
+      theme: "memory",
+      routeContext: "Safe route context only.",
+      paragraph: validParagraph,
+      rewrittenParagraph: "A rewritten paragraph that must be ignored.",
+      modelAnswer: "A sample response that must be ignored.",
+      fullEssay: "An essay that must be ignored.",
+      score: "10",
+      mark: "20",
+      grade: "A",
+      [["ao", "5"].join("")]: "ignored",
+    });
+
+    renderPage(`/paragraph-feedback?${params.toString()}`);
+
+    expect(screen.getByLabelText("Question focus (optional but recommended)")).toHaveValue("memory and guilt");
+    expect(screen.getByLabelText("Theme or concern (optional)")).toHaveValue("memory");
+    expect(screen.getByLabelText("Route context (optional)")).toHaveValue("Safe route context only.");
+    expect(screen.getByLabelText("Student paragraph")).toHaveValue("");
   });
 
   it("keeps the submit button disabled for a too-short paragraph", () => {
     renderPage();
 
-    fireEvent.change(screen.getByLabelText("Paragraph"), { target: { value: "Too short." } });
+    fireEvent.change(screen.getByLabelText("Student paragraph"), { target: { value: "Too short." } });
 
     expect(screen.getByRole("button", { name: "Get AO feedback" })).toBeDisabled();
     expect(screen.getByText(/at least 80 characters/i)).toBeInTheDocument();

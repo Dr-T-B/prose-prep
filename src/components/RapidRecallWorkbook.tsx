@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, Clipboard, Clock3, Eye, Printer, Route, RotateCcw, XCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   RAPID_RECALL_AOS,
   RAPID_RECALL_DRILL_LABELS,
@@ -18,6 +19,7 @@ import {
   formatTimedDrillSessionSummaryForCopy,
   formatTimedDrillSessionSummaryForFeedbackCoach,
 } from "@/data/rapidRecallTimedDrillSessionSummary";
+import { buildParagraphFeedbackHandoffUrl } from "@/lib/paragraphFeedbackHandoff";
 import type {
   Component2AO,
   RapidRecallDrillType,
@@ -72,6 +74,13 @@ function isCorrect(item: RapidRecallWorkbookItem, response: string) {
 function answerLabel(item: RapidRecallWorkbookItem) {
   if (item.type === "match-pair") return `${item.left} -> ${item.answer}`;
   return item.answer;
+}
+
+function getRouteQuestionFocus(item: RapidRecallWorkbookItem) {
+  return item.prompt
+    .replace(/^Question focus:\s*/i, "")
+    .replace(/\.\s*Select the best route\.?$/i, "")
+    .trim();
 }
 
 function formatRoutePlanText(item: RapidRecallWorkbookItem, plan: RapidRecallRoutePlan) {
@@ -145,12 +154,14 @@ function RoutePlanPanel({
   item,
   copyStatus,
   hasTimedDrill,
+  feedbackCoachHref,
   onCopy,
   onStartTimedDrill,
 }: {
   item: RapidRecallWorkbookItem;
   copyStatus: string | null;
   hasTimedDrill: boolean;
+  feedbackCoachHref: string;
   onCopy: (item: RapidRecallWorkbookItem) => void;
   onStartTimedDrill: (item: RapidRecallWorkbookItem) => void;
 }) {
@@ -171,11 +182,18 @@ function RoutePlanPanel({
           </p>
         </div>
         <div className="no-print flex w-full flex-wrap gap-2 sm:w-auto">
+          <Link
+            to={feedbackCoachHref}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
+          >
+            <Route className="h-3.5 w-3.5" />
+            Open feedback coach with this route
+          </Link>
           {hasTimedDrill && (
             <button
               type="button"
               onClick={() => onStartTimedDrill(item)}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim sm:w-auto"
             >
               <Clock3 className="h-3.5 w-3.5" />
               Start timed paragraph drill
@@ -234,14 +252,14 @@ function RoutePlanPanel({
 function PracticeSessionSummaryPanel({
   summary,
   copyStatus,
+  feedbackCoachHref,
   onCopy,
-  onUseInFeedbackCoach,
   onRetry,
 }: {
   summary: TimedDrillSessionSummary;
   copyStatus: string | null;
+  feedbackCoachHref: string;
   onCopy: () => void;
-  onUseInFeedbackCoach: () => void;
   onRetry: () => void;
 }) {
   return (
@@ -255,14 +273,13 @@ function PracticeSessionSummaryPanel({
           <h3 className="font-serif text-xl">Practice session summary</h3>
         </div>
         <div className="no-print flex w-full flex-wrap gap-2 sm:w-auto">
-          <button
-            type="button"
-            onClick={onUseInFeedbackCoach}
+          <Link
+            to={feedbackCoachHref}
             className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
           >
-            <Clipboard className="h-3.5 w-3.5" />
-            Use this summary in feedback coach
-          </button>
+            <Route className="h-3.5 w-3.5" />
+            Open feedback coach with this route
+          </Link>
           <button
             type="button"
             onClick={onCopy}
@@ -339,7 +356,6 @@ function TimedParagraphDrillPanel({
   onReset,
   onCopySelectedStems,
   onCopySessionSummary,
-  onUseSummaryInFeedbackCoach,
   onRetryTimedDrill,
 }: {
   item: RapidRecallWorkbookItem;
@@ -354,7 +370,6 @@ function TimedParagraphDrillPanel({
   onReset: () => void;
   onCopySelectedStems: () => void;
   onCopySessionSummary: () => void;
-  onUseSummaryInFeedbackCoach: () => void;
   onRetryTimedDrill: () => void;
 }) {
   const isComplete = stageIndex >= drill.stages.length;
@@ -429,8 +444,12 @@ function TimedParagraphDrillPanel({
             <PracticeSessionSummaryPanel
               summary={sessionSummary}
               copyStatus={sessionSummaryCopyStatus}
+              feedbackCoachHref={buildParagraphFeedbackHandoffUrl({
+                questionFocus: sessionSummary.questionFocus,
+                theme: sessionSummary.theme,
+                routeContext: formatTimedDrillSessionSummaryForFeedbackCoach(sessionSummary),
+              })}
               onCopy={onCopySessionSummary}
-              onUseInFeedbackCoach={onUseSummaryInFeedbackCoach}
               onRetry={onRetryTimedDrill}
             />
           )}
@@ -840,17 +859,6 @@ export default function RapidRecallWorkbook() {
     }
   };
 
-  const useTimedDrillSessionSummaryInFeedbackCoach = async () => {
-    if (!timedDrillSessionSummary) return;
-
-    try {
-      await navigator.clipboard.writeText(formatTimedDrillSessionSummaryForFeedbackCoach(timedDrillSessionSummary));
-      setTimedDrillSessionSummaryCopyStatus("Session summary copied. Paste it into Route context on the feedback coach.");
-    } catch {
-      setTimedDrillSessionSummaryCopyStatus("Copy unavailable");
-    }
-  };
-
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 print:px-0 print:py-0 sm:px-6 sm:py-8 lg:px-10">
       <header className="mb-5 border-b border-rule pb-5 print:mb-3">
@@ -975,6 +983,11 @@ export default function RapidRecallWorkbook() {
         <RoutePlanPanel
           item={routePlanItem}
           copyStatus={routePlanCopyStatus}
+          feedbackCoachHref={buildParagraphFeedbackHandoffUrl({
+            questionFocus: getRouteQuestionFocus(routePlanItem),
+            theme: routePlanItem.theme,
+            routeContext: formatRoutePlanText(routePlanItem, routePlanItem.routePlan),
+          })}
           onCopy={copyRoutePlan}
           hasTimedDrill={hasRapidRecallTimedParagraphDrill(routePlanItem.id)}
           onStartTimedDrill={startTimedParagraphDrill}
@@ -995,7 +1008,6 @@ export default function RapidRecallWorkbook() {
           onReset={resetTimedParagraphDrill}
           onCopySelectedStems={copyTimedParagraphDrill}
           onCopySessionSummary={copyTimedDrillSessionSummary}
-          onUseSummaryInFeedbackCoach={useTimedDrillSessionSummaryInFeedbackCoach}
           onRetryTimedDrill={resetTimedParagraphDrill}
         />
       )}
