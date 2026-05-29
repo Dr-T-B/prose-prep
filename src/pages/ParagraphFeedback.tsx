@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from "react";
-import { ClipboardCheck, Send, ShieldCheck } from "lucide-react";
+import { Clipboard, ClipboardCheck, Send, ShieldCheck } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
   createUnsafeParagraphFeedbackFallback,
   validateParagraphFeedbackResponse,
 } from "@/lib/paragraphFeedbackContract";
+import { formatParagraphFeedbackRecord } from "@/lib/paragraphFeedbackExport";
 import type { ParagraphFeedbackAoKey, ParagraphFeedbackCriterion, ParagraphFeedbackResponse } from "@/types/paragraphFeedback";
 
 const FEEDBACK_SECTIONS: Array<{ key: ParagraphFeedbackAoKey; title: string }> = [
@@ -21,6 +22,12 @@ const FEEDBACK_SECTIONS: Array<{ key: ParagraphFeedbackAoKey; title: string }> =
   { key: "ao3", title: "AO3: context relevance" },
   { key: "ao4", title: "AO4: comparison quality" },
 ];
+
+type FeedbackExportContext = {
+  questionFocus?: string;
+  theme?: string;
+  routeContext?: string;
+};
 
 function getParagraphError(paragraph: string): string | null {
   const length = paragraph.trim().length;
@@ -38,13 +45,21 @@ function getOptionalLengthError(label: string, value: string, maxLength: number)
   return value.trim().length > maxLength ? `${label} must be ${maxLength} characters or fewer.` : null;
 }
 
+function getFeedbackExportContext(questionFocus: string, theme: string, routeContext: string): FeedbackExportContext {
+  return {
+    ...(questionFocus.trim() ? { questionFocus: questionFocus.trim() } : {}),
+    ...(theme.trim() ? { theme: theme.trim() } : {}),
+    ...(routeContext.trim() ? { routeContext: routeContext.trim() } : {}),
+  };
+}
+
 function isErrorPayload(value: unknown): value is { error: string } {
   return typeof value === "object" && value !== null && "error" in value && typeof (value as { error: unknown }).error === "string";
 }
 
 function FeedbackCriterionCard({ title, criterion }: { title: string; criterion: ParagraphFeedbackCriterion }) {
   return (
-    <article className="rounded-sm border border-rule bg-paper p-4 shadow-card">
+    <article className="rounded-sm border border-rule bg-paper p-4 shadow-card print:break-inside-avoid print:bg-white print:shadow-none">
       <h2 className="font-serif text-xl">{title}</h2>
       <dl className="mt-3 space-y-3 text-sm leading-relaxed">
         <div>
@@ -66,6 +81,8 @@ export default function ParagraphFeedback() {
   const [paragraph, setParagraph] = useState("");
   const [routeContext, setRouteContext] = useState("");
   const [feedback, setFeedback] = useState<ParagraphFeedbackResponse | null>(null);
+  const [feedbackExportContext, setFeedbackExportContext] = useState<FeedbackExportContext | null>(null);
+  const [feedbackCopyStatus, setFeedbackCopyStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -79,6 +96,14 @@ export default function ParagraphFeedback() {
   ), [routeContext]);
   const validationError = paragraphError ?? questionError ?? themeError ?? routeContextError;
   const canSubmit = !validationError && !isSubmitting;
+  const feedbackRecord = useMemo(() => {
+    if (!feedback) return "";
+
+    return formatParagraphFeedbackRecord({
+      ...(feedbackExportContext ?? {}),
+      feedback,
+    });
+  }, [feedback, feedbackExportContext]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -87,9 +112,13 @@ export default function ParagraphFeedback() {
       return;
     }
 
+    const submittedContext = getFeedbackExportContext(questionFocus, theme, routeContext);
+
     setIsSubmitting(true);
     setError(null);
     setFeedback(null);
+    setFeedbackExportContext(null);
+    setFeedbackCopyStatus(null);
 
     try {
       const response = await fetch(PARAGRAPH_FEEDBACK_ENDPOINT, {
@@ -111,11 +140,13 @@ export default function ParagraphFeedback() {
       const safeFeedback = validateParagraphFeedbackResponse(payload);
       if (!safeFeedback.ok) {
         setFeedback(createUnsafeParagraphFeedbackFallback());
+        setFeedbackExportContext(submittedContext);
         setError("Feedback unavailable because the response did not meet the safety contract.");
         return;
       }
 
       setFeedback(safeFeedback.value);
+      setFeedbackExportContext(submittedContext);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Feedback is unavailable. Try again with one paragraph.");
     } finally {
@@ -123,9 +154,23 @@ export default function ParagraphFeedback() {
     }
   };
 
+  const copyFeedbackRecord = async () => {
+    if (!feedbackRecord || !navigator.clipboard?.writeText) {
+      setFeedbackCopyStatus("Copy unavailable");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(feedbackRecord);
+      setFeedbackCopyStatus("Feedback record copied");
+    } catch {
+      setFeedbackCopyStatus("Copy unavailable");
+    }
+  };
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
-      <header className="mb-6 border-b border-rule pb-5">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 print:px-0 print:py-0">
+      <header className="mb-6 border-b border-rule pb-5 print:mb-3">
         <p className="label-eyebrow mb-2">Component 2 Prose</p>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -141,7 +186,7 @@ export default function ParagraphFeedback() {
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] print:hidden">
         <form onSubmit={handleSubmit} className="space-y-5" aria-label="Paragraph feedback form">
           <Card className="rounded-sm border-rule shadow-card">
             <CardHeader>
@@ -233,22 +278,48 @@ export default function ParagraphFeedback() {
       </div>
 
       {error && (
-        <Alert variant="destructive" className="mt-6 rounded-sm">
+        <Alert variant="destructive" className="mt-6 rounded-sm no-print">
           <AlertTitle>Feedback unavailable</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {feedback && (
-        <section className="mt-6 grid gap-4" aria-label="Paragraph feedback results">
+        <section className="mt-6 grid gap-4 print-area" aria-label="Paragraph feedback results">
+          {feedbackRecord && (
+            <section
+              aria-label="Feedback export record"
+              className="rounded-sm border border-rule-strong bg-paper p-4 shadow-card print:break-inside-avoid print:border-0 print:bg-white print:p-0 print:shadow-none"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="label-eyebrow">Revision record</p>
+                  <h2 className="font-serif text-2xl">Paragraph Feedback Record</h2>
+                </div>
+                <Button type="button" onClick={copyFeedbackRecord} className="no-print w-full gap-2 sm:w-auto">
+                  <Clipboard className="h-4 w-4" />
+                  Copy feedback record
+                </Button>
+              </div>
+
+              {feedbackCopyStatus && (
+                <p role="status" aria-live="polite" className="no-print mt-3 text-xs font-mono text-ink-muted">
+                  {feedbackCopyStatus}
+                </p>
+              )}
+
+              <pre className="mt-3 whitespace-pre-wrap rounded-sm border border-rule bg-white p-3 font-sans text-sm leading-relaxed text-ink print:border-0 print:p-0">{feedbackRecord}</pre>
+            </section>
+          )}
+
           {feedback.safetyNotice && (
-            <Alert className="rounded-sm border-amber-300 bg-amber-50 text-amber-950">
+            <Alert className="rounded-sm border-amber-300 bg-amber-50 text-amber-950 print:break-inside-avoid">
               <AlertTitle>Safety notice</AlertTitle>
               <AlertDescription>{feedback.safetyNotice}</AlertDescription>
             </Alert>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 print:grid-cols-1">
             {FEEDBACK_SECTIONS.map((section) => (
               <FeedbackCriterionCard key={section.key} title={section.title} criterion={feedback[section.key]} />
             ))}
@@ -257,7 +328,7 @@ export default function ParagraphFeedback() {
             )}
           </div>
 
-          <article className="rounded-sm border border-primary/30 bg-highlight p-4 shadow-card">
+          <article className="rounded-sm border border-primary/30 bg-highlight p-4 shadow-card print:break-inside-avoid print:bg-white print:shadow-none">
             <h2 className="font-serif text-xl">Next target</h2>
             <p className="mt-2 text-sm leading-relaxed">{feedback.nextTarget}</p>
           </article>

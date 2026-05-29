@@ -11,6 +11,7 @@ const validParagraph = [
 ].join(" ");
 
 const routeContext = "Practice Session Summary\nSelected route: Dickens external systems; McEwan private perception.";
+const safetyNotice = "AI feedback is unavailable, so no paragraph or route context was stored or logged.";
 
 const successfulFeedback: ParagraphFeedbackResponse = {
   ao1: {
@@ -40,12 +41,33 @@ const routeLinkedFeedback: ParagraphFeedbackResponse = {
   },
 };
 
+const routeLinkedFeedbackWithSafety: ParagraphFeedbackResponse = {
+  ...routeLinkedFeedback,
+  safetyNotice,
+};
+
 const fetchMock = vi.fn();
+const originalClipboard = navigator.clipboard;
 
 function mockFetch(payload: unknown, ok = true) {
   fetchMock.mockResolvedValue({
     ok,
     json: vi.fn().mockResolvedValue(payload),
+  });
+}
+
+function mockClipboard(writeText = vi.fn().mockResolvedValue(undefined)) {
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  return writeText;
+}
+
+function mockClipboardUnavailable() {
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: undefined,
   });
 }
 
@@ -78,6 +100,10 @@ describe("ParagraphFeedback", () => {
   });
 
   afterEach(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: originalClipboard,
+    });
     vi.unstubAllGlobals();
   });
 
@@ -108,6 +134,13 @@ describe("ParagraphFeedback", () => {
 
     expect(screen.getByRole("button", { name: "Get AO feedback" })).toBeDisabled();
     expect(screen.getByText(/at least 80 characters/i)).toBeInTheDocument();
+  });
+
+  it("does not show the feedback export action before feedback exists", () => {
+    renderPage();
+
+    expect(screen.queryByRole("button", { name: "Copy feedback record" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Feedback export record")).not.toBeInTheDocument();
   });
 
   it("submits valid input and route context to the internal endpoint", async () => {
@@ -153,7 +186,7 @@ describe("ParagraphFeedback", () => {
     expect(screen.getByRole("heading", { name: "AO3: context relevance" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "AO4: comparison quality" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Next target" })).toBeInTheDocument();
-    expect(screen.getByText("Use one explicit comparative hinge before moving to McEwan.")).toBeInTheDocument();
+    expect(screen.getAllByText("Use one explicit comparative hinge before moving to McEwan.").length).toBeGreaterThan(0);
   });
 
   it("renders route-match feedback when it is returned", async () => {
@@ -163,8 +196,81 @@ describe("ParagraphFeedback", () => {
     submitValidParagraph();
 
     expect(await screen.findByRole("heading", { name: "Route match" })).toBeInTheDocument();
-    expect(screen.getByText("The paragraph follows the selected Dickens-to-McEwan route.")).toBeInTheDocument();
-    expect(screen.getByText("Make the final comparative link back to the selected route explicit.")).toBeInTheDocument();
+    expect(screen.getAllByText("The paragraph follows the selected Dickens-to-McEwan route.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Make the final comparative link back to the selected route explicit.").length).toBeGreaterThan(0);
+  });
+
+  it("renders the feedback export record with submitted context and feedback sections", async () => {
+    mockFetch(routeLinkedFeedbackWithSafety);
+    renderPage();
+
+    submitValidParagraph();
+
+    const exportRecord = await screen.findByLabelText("Feedback export record");
+    expect(screen.getByRole("button", { name: "Copy feedback record" })).toBeInTheDocument();
+    expect(exportRecord).toHaveTextContent("Paragraph Feedback Record");
+    expect(exportRecord).toHaveTextContent("Question focus: How do Dickens and McEwan present responsibility?");
+    expect(exportRecord).toHaveTextContent("Theme: responsibility");
+    expect(exportRecord).toHaveTextContent("Route context: Practice Session Summary Selected route: Dickens external systems; McEwan private perception.");
+    expect(exportRecord).toHaveTextContent("AO1 - Argument focus Strength: The paragraph has a clear comparative argument about responsibility. Target: Make the topic sentence sharper by naming the precise judgement.");
+    expect(exportRecord).toHaveTextContent("AO2 - Method / word / effect Strength: Method is addressed through language and focalisation. Target: Zoom in on one word before explaining effect.");
+    expect(exportRecord).toHaveTextContent("AO3 - Context relevance Strength: Context is connected to education and social pressure. Target: Explain how context changes the reader's understanding of method.");
+    expect(exportRecord).toHaveTextContent("AO4 - Comparison quality Strength: The comparison links both writers through a shared concern. Target: Use one explicit comparative hinge before moving to McEwan.");
+    expect(exportRecord).toHaveTextContent("Route match Strength: The paragraph follows the selected Dickens-to-McEwan route. Target: Make the final comparative link back to the selected route explicit.");
+    expect(exportRecord).toHaveTextContent("Next target: Revise the topic sentence as one concise comparative claim.");
+    expect(exportRecord).toHaveTextContent(`Safety notice: ${safetyNotice}`);
+    expect(exportRecord).not.toHaveTextContent(validParagraph);
+  });
+
+  it("copies the feedback export record and confirms success", async () => {
+    const writeText = mockClipboard();
+    mockFetch(routeLinkedFeedbackWithSafety);
+    renderPage();
+
+    submitValidParagraph();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Copy feedback record" }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Paragraph Feedback Record")));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("AO4 - Comparison quality"));
+    expect(String(writeText.mock.calls[0][0])).not.toContain(validParagraph);
+    expect(screen.getByRole("status")).toHaveTextContent("Feedback record copied");
+  });
+
+  it("degrades safely when clipboard is unavailable", async () => {
+    mockClipboardUnavailable();
+    mockFetch(routeLinkedFeedbackWithSafety);
+    renderPage();
+
+    submitValidParagraph();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Copy feedback record" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("Copy unavailable");
+    expect(screen.getByLabelText("Feedback export record")).toHaveTextContent("Paragraph Feedback Record");
+  });
+
+  it("keeps the feedback export UI free of excluded output sections", async () => {
+    mockFetch(routeLinkedFeedbackWithSafety);
+    renderPage();
+    const excluded = ["AO", "5"].join("");
+
+    submitValidParagraph();
+
+    const exportRecord = await screen.findByLabelText("Feedback export record");
+    expect(exportRecord).not.toHaveTextContent(excluded);
+    for (const pattern of [
+      /\bgrade\b/i,
+      /\bscore\b/i,
+      /\bmark\b/i,
+      /model answer/i,
+      /model-answer/i,
+      /\brewrite\b/i,
+      /rewritten paragraph/i,
+      /full essay/i,
+    ]) {
+      expect(exportRecord).not.toHaveTextContent(pattern);
+    }
   });
 
   it("still renders AO1-AO4 feedback safely when route-match feedback is absent", async () => {
