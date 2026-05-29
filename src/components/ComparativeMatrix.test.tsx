@@ -412,6 +412,102 @@ describe("ComparativeMatrix", () => {
     expect(teacherRegion).toHaveClass("print:block");
   });
 
+  it("uses the AO-filtered row set for Teacher Pack print output", async () => {
+    const { container } = render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "AO2" }));
+    fireEvent.change(screen.getByRole("combobox", { name: /print layout/i }), {
+      target: { value: "teacher" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const teacherPrint = container.querySelector("section");
+    expect(teacherPrint).not.toBeNull();
+    expect(within(teacherPrint!).getByText(/Teacher Pack: prints the currently filtered routes/i)).toBeInTheDocument();
+    expect(within(teacherPrint!).getByText("AO2 specific method.")).toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("Dickens focuses on poverty.")).not.toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("Another AO3 context.")).not.toBeInTheDocument();
+  });
+
+  it("uses the search-filtered row set for Teacher Pack print output", async () => {
+    const { container } = render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByRole("textbox", { name: /search comparative routes/i }), {
+      target: { value: "poverty" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: /print layout/i }), {
+      target: { value: "teacher" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const teacherPrint = container.querySelector("section");
+    expect(teacherPrint).not.toBeNull();
+    expect(within(teacherPrint!).getByText("Dickens focuses on poverty.")).toBeInTheDocument();
+    expect(within(teacherPrint!).getByText("Another AO3 context.")).toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("Dickens uses circumstance as setting.")).not.toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("AO2 specific method.")).not.toBeInTheDocument();
+  });
+
+  it("uses the theme-filtered row set for Teacher Pack print output", async () => {
+    const { container } = render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Class theme filter" }));
+    fireEvent.change(screen.getByRole("combobox", { name: /print layout/i }), {
+      target: { value: "teacher" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const teacherPrint = container.querySelector("section");
+    expect(teacherPrint).not.toBeNull();
+    expect(within(teacherPrint!).getByText("Dickens focuses on poverty.")).toBeInTheDocument();
+    expect(within(teacherPrint!).getByText("Another AO4 comparison.")).toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("Dickens uses circumstance as setting.")).not.toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("AO2 specific method.")).not.toBeInTheDocument();
+  });
+
+  it("shows a Teacher Pack empty state when filters match no routes", async () => {
+    const { container } = render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Childhood theme filter" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /search comparative routes/i }), {
+      target: { value: "poverty" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: /print layout/i }), {
+      target: { value: "teacher" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 0 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const teacherPrint = container.querySelector("section");
+    expect(teacherPrint).not.toBeNull();
+    expect(within(teacherPrint!).getByText("No routes match the current filters. Clear filters before printing.")).toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("Dickens uses circumstance as setting.")).not.toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("Dickens focuses on poverty.")).not.toBeInTheDocument();
+  });
+
   it("does not output any AO5 data", async () => {
     render(<ComparativeMatrix />);
     await waitFor(() => {

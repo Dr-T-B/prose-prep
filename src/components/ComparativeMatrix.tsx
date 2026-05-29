@@ -349,6 +349,11 @@ export default function Component2ComparativeMatrix() {
                 Print {printMode === "compact" ? "compact matrix" : printMode === "cards" ? "revision cards" : "teacher pack"}
               </button>
             </div>
+            {printMode === "teacher" && (
+              <p className="w-full text-xs text-ink-muted">
+                Teacher Pack: prints the currently filtered routes with teaching notes.
+              </p>
+            )}
             {themeOptions.length > 0 && (
               <div className="w-full flex flex-wrap items-center gap-1.5 mt-2 bg-rule/5 p-2 rounded-md border border-rule/50">
                 <span className="text-xs font-mono uppercase tracking-wider text-ink-muted mr-2">Filter by Themes:</span>
@@ -576,24 +581,33 @@ export default function Component2ComparativeMatrix() {
           </>
         )}
 
-        {/* Printable full dump */}
+        {/* Printable teacher pack */}
         <section className={`hidden ${printMode === 'teacher' ? 'print:block' : 'print:hidden'}`}>
           <div className="space-y-6 pt-4">
-            {rows.map((row) => (
-              <div key={row.id} className="break-inside-avoid border-t border-rule pt-4">
-                <h2 className="font-serif text-xl font-semibold">{row.theme}</h2>
-                <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                  <Print term="Hard Times" def={row.hardTimes} />
-                  <Print term="Atonement" def={row.atonement} />
-                  <Print term="Comparative tension" def={row.divergence} />
-                  <Print term="AO2" def={row.ao2} />
-                  <Print term="AO3" def={row.ao3} />
-                  <Print term="AO4" def={row.ao4} />
-                  <Print term="Thesis" def={row.thesis} />
-                  <Print term="Exam fit" def={row.examFit} />
-                </dl>
-              </div>
-            ))}
+            <p className="text-xs text-ink-muted">
+              Teacher Pack: prints the currently filtered routes with teaching notes.
+            </p>
+            {filtered.length === 0 ? (
+              <p className="rounded-md border border-rule p-4 text-sm font-medium text-ink">
+                No routes match the current filters. Clear filters before printing.
+              </p>
+            ) : (
+              filtered.map((row) => (
+                <div key={row.id} className="break-inside-avoid border-t border-rule pt-4">
+                  <h2 className="font-serif text-xl font-semibold">{row.theme}</h2>
+                  <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                    <Print term="Hard Times" def={row.hardTimes} />
+                    <Print term="Atonement" def={row.atonement} />
+                    <Print term="Comparative tension" def={row.divergence} />
+                    <Print term="AO2" def={row.ao2} />
+                    <Print term="AO3" def={row.ao3} />
+                    <Print term="AO4" def={row.ao4} />
+                    <Print term="Thesis" def={row.thesis} />
+                    <Print term="Exam fit" def={row.examFit} />
+                  </dl>
+                </div>
+              ))
+            )}
           </div>
         </section>
       </div>
