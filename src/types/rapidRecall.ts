@@ -40,6 +40,36 @@ export interface RapidRecallRoutePlan {
   routeBridge?: string;
 }
 
+export type TimedParagraphDrillStageLabel =
+  | "Thesis opening"
+  | "Hard Times paragraph opening"
+  | "Atonement paragraph opening"
+  | "Comparative judgement opening";
+
+export interface TimedParagraphDrillStemOption {
+  id: string;
+  text: string;
+  isBest?: boolean;
+  explanation: string;
+}
+
+export interface TimedParagraphDrillStage {
+  id: string;
+  label: TimedParagraphDrillStageLabel;
+  suggestedTimeSeconds: number;
+  prompt: string;
+  aoFocus: Component2AO[];
+  stemOptions: TimedParagraphDrillStemOption[];
+}
+
+export interface RapidRecallTimedParagraphDrill {
+  itemId: string;
+  theme: RapidRecallTheme;
+  questionFocus: string;
+  stages: TimedParagraphDrillStage[];
+  examWarning: string;
+}
+
 export interface RapidRecallBaseItem {
   id: string;
   type: RapidRecallDrillType;

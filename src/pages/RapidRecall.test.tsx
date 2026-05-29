@@ -8,6 +8,12 @@ import {
   getRapidRecallWorkbookCountByType,
   rapidRecallWorkbookItems,
 } from "@/data/rapidRecallWorkbook";
+import {
+  formatTimedParagraphDrillText,
+  getRapidRecallTimedParagraphDrillForItemId,
+  getRapidRecallTimedParagraphDrillCount,
+  rapidRecallTimedParagraphDrills,
+} from "@/data/rapidRecallTimedParagraphDrills";
 import RapidRecall from "./RapidRecall";
 
 function renderPage(initialPath = "/rapid-recall") {
@@ -21,6 +27,33 @@ function renderPage(initialPath = "/rapid-recall") {
       </Routes>
     </MemoryRouter>,
   );
+}
+
+function openRelationshipsRoutePlan() {
+  fireEvent.click(screen.getByRole("tab", { name: "Route selection" }));
+  fireEvent.click(screen.getByRole("button", {
+    name: /Build route from this drill for Question focus: relationships damaged by misunderstanding/i,
+  }));
+  return screen.getByLabelText("Rapid Recall route plan handoff");
+}
+
+function startRelationshipsTimedDrill() {
+  const routePlanPanel = openRelationshipsRoutePlan();
+  fireEvent.click(within(routePlanPanel).getByRole("button", { name: "Start timed paragraph drill" }));
+  return screen.getByLabelText("Timed paragraph drill");
+}
+
+function selectBestStem(stageIndex: number) {
+  const drillData = getRapidRecallTimedParagraphDrillForItemId("route-relationships-misunderstanding");
+  if (!drillData) throw new Error("Missing timed paragraph drill fixture");
+
+  const stage = drillData.stages[stageIndex];
+  const bestStem = stage.stemOptions.find((option) => option.isBest);
+  if (!bestStem) throw new Error(`Missing best stem for stage ${stage.label}`);
+
+  const drillPanel = screen.getByLabelText("Timed paragraph drill");
+  fireEvent.click(within(drillPanel).getByLabelText(`Select stem: ${bestStem.text}`));
+  return { drillPanel, stage, bestStem };
 }
 
 describe("RapidRecall", () => {
@@ -65,6 +98,29 @@ describe("RapidRecall", () => {
     expect(comparativeMultipleChoiceItems.every((item) => item.routePlan)).toBe(true);
   });
 
+  it("adds static timed paragraph drills to all route-selection plans and comparative route plans", () => {
+    const routeSelectionItems = rapidRecallWorkbookItems.filter((item) => item.type === "route-selection");
+    const comparativeMultipleChoiceItems = rapidRecallWorkbookItems.filter((item) => (
+      item.type === "multiple-choice" && item.textFocus === "Comparative" && item.routePlan
+    ));
+    const timedRouteSelectionItems = routeSelectionItems.filter((item) => getRapidRecallTimedParagraphDrillForItemId(item.id));
+    const timedComparativeMultipleChoiceItems = comparativeMultipleChoiceItems.filter((item) => (
+      getRapidRecallTimedParagraphDrillForItemId(item.id)
+    ));
+
+    expect(getRapidRecallTimedParagraphDrillCount()).toBeGreaterThanOrEqual(12);
+    expect(timedRouteSelectionItems).toHaveLength(8);
+    expect(timedComparativeMultipleChoiceItems.length).toBeGreaterThanOrEqual(4);
+
+    for (const drill of rapidRecallTimedParagraphDrills) {
+      expect(drill.stages).toHaveLength(4);
+      for (const stage of drill.stages) {
+        expect(stage.stemOptions).toHaveLength(3);
+        expect(stage.stemOptions.filter((option) => option.isBest)).toHaveLength(1);
+      }
+    }
+  });
+
   it("limits the AO filter to AO1, AO2, AO3 and AO4", () => {
     renderPage();
 
@@ -80,7 +136,18 @@ describe("RapidRecall", () => {
     const excluded = ["AO", "5"].join("");
 
     expect(JSON.stringify(rapidRecallWorkbookItems)).not.toContain(excluded);
+    expect(JSON.stringify(rapidRecallTimedParagraphDrills)).not.toContain(excluded);
     expect(container).not.toHaveTextContent(excluded);
+  });
+
+  it("keeps timed paragraph drill AO tags limited to AO1, AO2, AO3 and AO4", () => {
+    const allowedAos = new Set(RAPID_RECALL_AOS);
+
+    for (const drill of rapidRecallTimedParagraphDrills) {
+      for (const stage of drill.stages) {
+        expect(stage.aoFocus.every((ao) => allowedAos.has(ao))).toBe(true);
+      }
+    }
   });
 
   it("shows route handoff actions only for suitable cards", () => {
@@ -93,6 +160,25 @@ describe("RapidRecall", () => {
     expect(screen.queryByRole("button", { name: /Build route from this drill/i })).not.toBeInTheDocument();
   });
 
+  it("shows the timed paragraph drill action only after a timed route plan is opened", () => {
+    renderPage();
+
+    expect(screen.queryByRole("button", { name: "Start timed paragraph drill" })).not.toBeInTheDocument();
+
+    const routePlanPanel = openRelationshipsRoutePlan();
+
+    expect(within(routePlanPanel).getByRole("button", { name: "Start timed paragraph drill" })).toBeInTheDocument();
+  });
+
+  it("does not show the timed paragraph drill action for cards without a route plan", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Fill blanks" }));
+
+    expect(screen.queryByRole("button", { name: "Start timed paragraph drill" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Build route from this drill/i })).not.toBeInTheDocument();
+  });
+
   it("narrows visible cards with theme and text filters", () => {
     renderPage();
 
@@ -101,10 +187,111 @@ describe("RapidRecall", () => {
 
     fireEvent.change(screen.getByLabelText("Theme filter"), { target: { value: "childhood" } });
     fireEvent.change(screen.getByLabelText("Text filter"), { target: { value: "Comparative" } });
+    fireEvent.change(screen.getByLabelText("AO filter"), { target: { value: "AO3" } });
 
     expect(screen.getByText(/For a question on childhood/i)).toBeInTheDocument();
     expect(screen.queryByText(/Which decision best frames gender/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Session summary")).toHaveTextContent("1");
+
+    fireEvent.change(screen.getByLabelText("AO filter"), { target: { value: "AO2" } });
+
+    expect(screen.queryByText(/For a question on childhood/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Session summary")).toHaveTextContent("0");
+  });
+
+  it("opens the timed paragraph drill on the first thesis stage with three stem options", () => {
+    renderPage();
+
+    const drillPanel = startRelationshipsTimedDrill();
+
+    expect(within(drillPanel).getByRole("heading", { name: "Timed paragraph drill" })).toBeInTheDocument();
+    expect(within(drillPanel).getByRole("heading", { name: "Thesis opening" })).toBeInTheDocument();
+    expect(within(drillPanel).getByText("Suggested time: 90 seconds")).toBeInTheDocument();
+    expect(within(drillPanel).getAllByRole("button", { name: /^Select stem:/ })).toHaveLength(3);
+  });
+
+  it("reveals the best timed stem explanation after selection", () => {
+    renderPage();
+
+    startRelationshipsTimedDrill();
+    const { drillPanel, bestStem } = selectBestStem(0);
+
+    expect(within(drillPanel).getByText("Why this works")).toBeInTheDocument();
+    expect(within(drillPanel).getByText(bestStem.explanation)).toBeInTheDocument();
+  });
+
+  it("moves through thesis, Hard Times, Atonement and comparative judgement stages", () => {
+    renderPage();
+
+    startRelationshipsTimedDrill();
+
+    let selected = selectBestStem(0);
+    fireEvent.click(within(selected.drillPanel).getByRole("button", { name: "Next stage" }));
+    expect(screen.getByRole("heading", { name: "Hard Times paragraph opening" })).toBeInTheDocument();
+
+    selected = selectBestStem(1);
+    fireEvent.click(within(selected.drillPanel).getByRole("button", { name: "Next stage" }));
+    expect(screen.getByRole("heading", { name: "Atonement paragraph opening" })).toBeInTheDocument();
+
+    selected = selectBestStem(2);
+    fireEvent.click(within(selected.drillPanel).getByRole("button", { name: "Next stage" }));
+    expect(screen.getByRole("heading", { name: "Comparative judgement opening" })).toBeInTheDocument();
+  });
+
+  it("resets the timed paragraph drill to the first stage", () => {
+    renderPage();
+
+    startRelationshipsTimedDrill();
+    const selected = selectBestStem(0);
+    fireEvent.click(within(selected.drillPanel).getByRole("button", { name: "Next stage" }));
+
+    expect(screen.getByRole("heading", { name: "Hard Times paragraph opening" })).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByLabelText("Timed paragraph drill")).getByRole("button", { name: "Reset drill" }));
+
+    expect(screen.getByRole("heading", { name: "Thesis opening" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Select stem:/ })).toHaveLength(3);
+  });
+
+  it("shows completion after the final timed paragraph drill stage", () => {
+    renderPage();
+
+    startRelationshipsTimedDrill();
+
+    for (let stageIndex = 0; stageIndex < 4; stageIndex += 1) {
+      const selected = selectBestStem(stageIndex);
+      fireEvent.click(within(selected.drillPanel).getByRole("button", {
+        name: stageIndex === 3 ? "Complete drill" : "Next stage",
+      }));
+    }
+
+    expect(screen.getByText("Route complete: thesis, Hard Times, Atonement, judgement.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy selected stems" })).toBeInTheDocument();
+  });
+
+  it("formats selected timed paragraph stems for copying", () => {
+    const item = rapidRecallWorkbookItems.find((candidate) => candidate.id === "route-relationships-misunderstanding");
+    const drill = getRapidRecallTimedParagraphDrillForItemId("route-relationships-misunderstanding");
+    if (!item || !drill) throw new Error("Missing timed paragraph drill fixture");
+
+    const selectedOptionIds = Object.fromEntries(drill.stages.map((stage) => {
+      const bestStem = stage.stemOptions.find((option) => option.isBest);
+      if (!bestStem) throw new Error(`Missing best stem for ${stage.label}`);
+      return [stage.id, bestStem.id];
+    }));
+    const formatted = formatTimedParagraphDrillText({ item, drill, selectedOptionIds });
+    const excluded = ["AO", "5"].join("");
+
+    expect(formatted).toContain("Timed Paragraph Drill");
+    expect(formatted).toContain("Theme:");
+    expect(formatted).toContain("Question focus:");
+    expect(formatted).toContain("Thesis opening:");
+    expect(formatted).toContain("Hard Times opening:");
+    expect(formatted).toContain("Atonement opening:");
+    expect(formatted).toContain("Comparative judgement opening:");
+    expect(formatted).toContain("AO focus: AO1, AO2, AO3, AO4");
+    expect(formatted).toContain("Exam warning:");
+    expect(formatted).not.toContain(excluded);
   });
 
   it("checks a multiple-choice answer and reveals a short explanation", () => {
