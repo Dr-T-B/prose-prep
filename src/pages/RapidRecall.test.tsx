@@ -86,6 +86,27 @@ function bestSelectionIdsForRelationships() {
   }));
 }
 
+function searchParamsFromHref(href: string | null) {
+  if (!href) throw new Error("Missing link href");
+  return new URL(href, "http://localhost").searchParams;
+}
+
+function expectNoUnsafeFeedbackHandoffParams(params: URLSearchParams) {
+  const excludedAo = ["ao", "5"].join("");
+  for (const key of [
+    "paragraph",
+    "rewrittenParagraph",
+    "modelAnswer",
+    "fullEssay",
+    "score",
+    "mark",
+    "grade",
+    excludedAo,
+  ]) {
+    expect(params.has(key)).toBe(false);
+  }
+}
+
 describe("RapidRecall", () => {
   beforeEach(() => {
     Object.assign(navigator, {
@@ -293,7 +314,7 @@ describe("RapidRecall", () => {
 
     expect(screen.getByText("Route complete: thesis, Hard Times, Atonement, judgement.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy selected stems" })).toBeInTheDocument();
-    expect(within(summary).getByRole("button", { name: "Use this summary in feedback coach" })).toBeInTheDocument();
+    expect(within(summary).getByRole("link", { name: "Open feedback coach with this route" })).toBeInTheDocument();
     expect(within(summary).getByRole("heading", { name: "Practice session summary" })).toBeInTheDocument();
     for (const selectedStem of selectedStems) {
       expect(within(summary).getByText(selectedStem)).toBeInTheDocument();
@@ -322,28 +343,29 @@ describe("RapidRecall", () => {
     expect(await screen.findByText("Session summary copied")).toBeInTheDocument();
   });
 
-  it("copies a compact practice session summary for the feedback coach", async () => {
+  it("links a compact practice session summary to the feedback coach", () => {
     renderPage();
 
     const selectedStems = completeRelationshipsTimedDrillWithBestStems();
-    fireEvent.click(within(screen.getByLabelText("Practice session summary")).getByRole("button", {
-      name: "Use this summary in feedback coach",
-    }));
-
-    const writeTextMock = vi.mocked(navigator.clipboard.writeText);
-    const lastCall = writeTextMock.mock.calls[writeTextMock.mock.calls.length - 1];
-    const copiedSummary = String(lastCall?.[0]);
+    const feedbackCoachLink = within(screen.getByLabelText("Practice session summary")).getByRole("link", {
+      name: "Open feedback coach with this route",
+    });
+    const params = searchParamsFromHref(feedbackCoachLink.getAttribute("href"));
+    const routeContext = params.get("routeContext") ?? "";
     const excluded = ["AO", "5"].join("");
 
-    expect(copiedSummary).toContain("Practice Session Summary");
-    expect(copiedSummary).toContain("Selected route: thesis -> Hard Times -> Atonement -> comparative judgement");
-    expect(copiedSummary).toContain("Route bridge:");
+    expect(feedbackCoachLink).toHaveAttribute("href", expect.stringContaining("/paragraph-feedback?"));
+    expect(params.get("questionFocus")).toBe("relationships damaged by misunderstanding");
+    expect(params.get("theme")).toBe("relationships");
+    expect(routeContext).toContain("Practice Session Summary");
+    expect(routeContext).toContain("Selected route: thesis -> Hard Times -> Atonement -> comparative judgement");
+    expect(routeContext).toContain("Route bridge:");
     for (const selectedStem of selectedStems) {
-      expect(copiedSummary).toContain(selectedStem);
+      expect(routeContext).toContain(selectedStem);
     }
-    expect(copiedSummary).not.toContain(excluded);
-    expect(copiedSummary).not.toMatch(/full essay|model answer|rewrite/i);
-    expect(await screen.findByText("Session summary copied. Paste it into Route context on the feedback coach.")).toBeInTheDocument();
+    expect(routeContext).not.toContain(excluded);
+    expect(routeContext).not.toMatch(/full essay|model answer|rewrite/i);
+    expectNoUnsafeFeedbackHandoffParams(params);
   });
 
   it("clears the practice session summary when retrying the timed drill", () => {
@@ -520,6 +542,17 @@ describe("RapidRecall", () => {
     expect(within(panel).getByRole("heading", { name: "3. Atonement paragraph route" })).toBeInTheDocument();
     expect(within(panel).getByRole("heading", { name: "4. Comparative judgement route" })).toBeInTheDocument();
     expect(within(panel).getAllByText(/AO4 bridge/i).length).toBeGreaterThan(0);
+    const feedbackCoachLink = within(panel).getByRole("link", { name: "Open feedback coach with this route" });
+    const params = searchParamsFromHref(feedbackCoachLink.getAttribute("href"));
+    const routeContext = params.get("routeContext") ?? "";
+
+    expect(feedbackCoachLink).toHaveAttribute("href", expect.stringContaining("/paragraph-feedback?"));
+    expect(params.get("questionFocus")).toBe("relationships damaged by misunderstanding");
+    expect(params.get("theme")).toBe("relationships");
+    expect(routeContext).toContain("Rapid Recall Route Plan");
+    expect(routeContext).toContain("Source drill: Question focus: relationships damaged by misunderstanding");
+    expect(routeContext).toContain("Planning route only - not a full essay.");
+    expectNoUnsafeFeedbackHandoffParams(params);
 
     fireEvent.click(within(panel).getByRole("button", { name: "Copy route plan" }));
 
