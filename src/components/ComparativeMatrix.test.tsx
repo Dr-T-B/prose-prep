@@ -8,6 +8,7 @@ const mockComparativeRows = vi.hoisted(() => {
       axis: "Difficult circumstances",
       hard_times: "Dickens uses circumstance as setting.",
       atonement: "McEwan uses circumstance as plot device.",
+      divergence: "External pressure in Dickens contrasts with retrospective moral reconstruction in McEwan.",
       ao2: "AO2 specific method.",
       ao3: "AO3 historical context.",
       ao4: "AO4 comparison link.",
@@ -23,6 +24,7 @@ const mockComparativeRows = vi.hoisted(() => {
       axis: "Difficult circumstances",
       hard_times: "Dickens focuses on poverty.",
       atonement: "McEwan focuses on war.",
+      divergence: "Dickens frames pressure socially while McEwan frames it through wartime aftermath.",
       ao2: "",
       ao3: "Another AO3 context.",
       ao4: "Another AO4 comparison.",
@@ -89,6 +91,24 @@ describe("ComparativeMatrix", () => {
     await waitFor(() => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
     });
+    expect(screen.getByRole("heading", { name: "Comparative Revision Matrix" })).toBeInTheDocument();
+  });
+
+  it("surfaces comparative tension from the canonical matrix data contract", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const table = screen.getByRole("table");
+    expect(within(table).getByText(/Comparative tension/i)).toBeInTheDocument();
+    expect(within(table).getByText(/External pressure in Dickens contrasts/i)).toBeInTheDocument();
+
+    const firstArticle = screen.getAllByRole("article")[0];
+    fireEvent.click(within(firstArticle).getAllByRole("button")[0]);
+
+    expect(within(firstArticle).getByText(/Comparative tension/i)).toBeInTheDocument();
+    expect(within(firstArticle).getByText(/External pressure in Dickens contrasts/i)).toBeInTheDocument();
   });
 
   it("renders card route subtitles separating duplicate themes", async () => {
@@ -246,6 +266,7 @@ describe("ComparativeMatrix", () => {
         axis: "Threshold spaces",
         hard_times: "Dickens presents threshold rooms as controlled spaces.",
         atonement: "McEwan presents threshold rooms as sites of misreading.",
+        divergence: "Thresholds are social boundaries in Dickens and perceptual traps in McEwan.",
         ao2: "AO2 spatial imagery around thresholds.",
         ao3: "Domestic context.",
         ao4: "Both writers use rooms as pressure points.",
@@ -261,6 +282,7 @@ describe("ComparativeMatrix", () => {
         axis: "Threshold testimony",
         hard_times: "Dickens presents threshold testimony without method notes.",
         atonement: "McEwan presents threshold testimony as unreliable.",
+        divergence: "Dickens stresses public testimony while McEwan stresses private misreading.",
         ao2: "",
         ao3: "Legal and social context.",
         ao4: "Both texts test evidence across thresholds.",
@@ -428,6 +450,7 @@ describe("ComparativeMatrix", () => {
         axis: "Sparse route",
         hard_times: "Some Dickens content.",
         atonement: "Some McEwan content.",
+        divergence: "",
         ao2: "",
         ao3: "",
         ao4: "",
@@ -578,6 +601,7 @@ describe("ComparativeMatrix", () => {
     expect(exportedText).toContain("Thesis:\nBoth texts...");
     expect(exportedText).toContain("Hard Times:\nDickens uses circumstance as setting.");
     expect(exportedText).toContain("Atonement:\nMcEwan uses circumstance as plot device.");
+    expect(exportedText).toContain("Comparative tension:\nExternal pressure in Dickens contrasts with retrospective moral reconstruction in McEwan.");
     expect(exportedText).toContain("AO2 — Method:\nAO2 specific method.");
     expect(exportedText).toContain("AO3 — Context:\nAO3 historical context.");
     expect(exportedText).toContain("AO4 — Comparison:\nAO4 comparison link.");
@@ -626,6 +650,7 @@ describe("ComparativeMatrix", () => {
     expect(handoffPayload.metadata.source).toBe("comparative_matrix");
     expect(handoffPayload.metadata.hardTimes).toBe("Dickens uses circumstance as setting.");
     expect(handoffPayload.metadata.atonement).toBe("McEwan uses circumstance as plot device.");
+    expect(handoffPayload.metadata.divergence).toBe("External pressure in Dickens contrasts with retrospective moral reconstruction in McEwan.");
     expect(handoffPayload.metadata.thesis).toBe("Both texts...");
     expect(handoffPayload.metadata.ao2).toBe("AO2 specific method.");
     expect(handoffPayload.metadata.ao3).toBe("AO3 historical context.");

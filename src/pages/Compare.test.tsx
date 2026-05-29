@@ -1,53 +1,38 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-
-vi.mock("@/lib/ContentProvider", () => ({
-  useContent: () => ({
-    comparative_matrix: [
-      {
-        id: "cm-test-01",
-        axis: "Roles of children",
-        hard_times: "Dickens tests childhood through a restrictive schoolroom.",
-        atonement: "McEwan tests childhood through a misreading child narrator.",
-        divergence: "Dickens condemns formation from outside; McEwan stages error from within.",
-        themes: ["childhood", "education"],
-        ao2: "AO2 method detail long enough to behave like migrated matrix prose.",
-        ao3: "AO3 context detail long enough to behave like migrated matrix prose.",
-        ao4: "AO4 comparison detail long enough to behave like migrated matrix prose.",
-        thesis: "Both novels use childhood as the point where social systems become personal damage.",
-        character: "Louisa and Briony expose different kinds of formation.",
-        narrative: "Narrative perspective controls how each childhood is judged.",
-        structure: "The opening formation shapes the consequences that follow.",
-        exam_fit: "2023 Q2 direct fit.",
-      },
-    ],
-  }),
-}));
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { describe, expect, it } from "vitest";
 
 import Compare from "./Compare";
 
+function LocationProbe() {
+  const location = useLocation();
+  return <span data-testid="location-path">{location.pathname}</span>;
+}
+
 describe("Compare", () => {
-  it("renders populated comparative matrix AO-content fields", () => {
-    render(<Compare />);
+  it("redirects legacy /compare traffic to the canonical /matrix experience", () => {
+    render(
+      <MemoryRouter
+        initialEntries={["/compare"]}
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
+        <Routes>
+          <Route path="/compare" element={<Compare />} />
+          <Route
+            path="/matrix"
+            element={(
+              <>
+                <h1>Comparative Revision Matrix</h1>
+                <LocationProbe />
+              </>
+            )}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
 
-    expect(screen.getByText("Roles of children")).toBeInTheDocument();
-    expect(screen.getByText("AO2")).toBeInTheDocument();
-    expect(screen.getByText("AO3")).toBeInTheDocument();
-    expect(screen.getByText("AO4")).toBeInTheDocument();
-    expect(screen.getByText("Thesis")).toBeInTheDocument();
-    expect(screen.getByText("Character")).toBeInTheDocument();
-    expect(screen.getByText("Narrative")).toBeInTheDocument();
-    expect(screen.getByText("Structure")).toBeInTheDocument();
-    expect(screen.getByText("Exam fit")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Comparative Revision Matrix" })).toBeInTheDocument();
+    expect(screen.getByTestId("location-path")).toHaveTextContent("/matrix");
     expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
-
-    expect(screen.getByText(/AO2 method detail/)).toBeInTheDocument();
-    expect(screen.getByText(/AO3 context detail/)).toBeInTheDocument();
-    expect(screen.getByText(/AO4 comparison detail/)).toBeInTheDocument();
-    expect(screen.getByText(/Both novels use childhood/)).toBeInTheDocument();
-    expect(screen.getByText(/Louisa and Briony expose/)).toBeInTheDocument();
-    expect(screen.getByText(/Narrative perspective controls/)).toBeInTheDocument();
-    expect(screen.getByText(/The opening formation shapes/)).toBeInTheDocument();
-    expect(screen.getByText(/2023 Q2 direct fit/)).toBeInTheDocument();
   });
 });
