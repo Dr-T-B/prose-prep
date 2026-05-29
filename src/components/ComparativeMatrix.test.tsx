@@ -495,16 +495,116 @@ describe("ComparativeMatrix", () => {
     expect(screen.getByRole("textbox", { name: /search comparative routes/i })).toHaveValue("");
   });
 
-  it("renders sparse comparative rows without crashing", async () => {
+  it("renders deliberate desktop fallbacks for missing optional cells", async () => {
     mockComparativeRows.setRows([
       {
         id: "sparse-1",
         axis: "Sparse route",
         hard_times: "Some Dickens content.",
         atonement: "Some McEwan content.",
+        divergence: " ",
+        ao2: "Meaningful AO2 note.",
+        ao3: "   ",
+        ao4: "",
+        thesis: "\t",
+        character: "Meaningful character detail.",
+        narrative: " ",
+        structure: "",
+        exam_fit: "  ",
+        themes: null,
+      },
+    ]);
+
+    render(<ComparativeMatrix />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 1 comparative routes/i)).toBeInTheDocument();
+    });
+    expect(screen.getAllByText(/Sparse route/i).length).toBeGreaterThan(0);
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Meaningful AO2 note.")).toBeInTheDocument();
+    expect(within(table).getAllByLabelText("No content available")).toHaveLength(4);
+    expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
+  });
+
+  it("suppresses empty labelled mobile and teacher-print sections for sparse rows", async () => {
+    mockComparativeRows.setRows([
+      {
+        id: "sparse-mobile",
+        axis: "Sparse mobile route",
+        hard_times: "Some Dickens content.",
+        atonement: "Some McEwan content.",
+        divergence: " ",
+        ao2: "Meaningful AO2 note.",
+        ao3: "   ",
+        ao4: "",
+        thesis: "\t",
+        character: "Meaningful character detail.",
+        narrative: " ",
+        structure: "",
+        exam_fit: "  ",
+        themes: null,
+      },
+    ]);
+
+    const { container } = render(<ComparativeMatrix />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 1 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const article = screen.getByRole("article");
+    fireEvent.click(within(article).getByRole("button", { name: /Sparse mobile route/i }));
+
+    expect(within(article).getByText("AO2 Method")).toBeInTheDocument();
+    expect(within(article).getByText("Meaningful AO2 note.")).toBeInTheDocument();
+    expect(within(article).getByText("Character")).toBeInTheDocument();
+    expect(within(article).getByText("Meaningful character detail.")).toBeInTheDocument();
+    expect(within(article).queryByText("Comparative tension")).not.toBeInTheDocument();
+    expect(within(article).queryByText("AO3 Context")).not.toBeInTheDocument();
+    expect(within(article).queryByText("AO4 Compare")).not.toBeInTheDocument();
+    expect(within(article).queryByText("Thesis starter")).not.toBeInTheDocument();
+    expect(within(article).queryByText("Narrative")).not.toBeInTheDocument();
+    expect(within(article).queryByText("Structure")).not.toBeInTheDocument();
+    expect(within(article).queryByText("Exam fit")).not.toBeInTheDocument();
+
+    const teacherPrint = container.querySelector("section");
+    expect(teacherPrint).not.toBeNull();
+    expect(within(teacherPrint!).getByText("AO2")).toBeInTheDocument();
+    expect(within(teacherPrint!).getByText("Meaningful AO2 note.")).toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("Comparative tension")).not.toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("AO3")).not.toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("AO4")).not.toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("Thesis")).not.toBeInTheDocument();
+    expect(within(teacherPrint!).queryByText("Exam fit")).not.toBeInTheDocument();
+  });
+
+  it("treats whitespace-only AO values as empty for AO filters", async () => {
+    mockComparativeRows.setRows([
+      {
+        id: "whitespace-ao3",
+        axis: "Whitespace AO3 route",
+        hard_times: "Dickens content.",
+        atonement: "McEwan content.",
         divergence: "",
         ao2: "",
-        ao3: "",
+        ao3: "   ",
+        ao4: "",
+        thesis: "",
+        character: "",
+        narrative: "",
+        structure: "",
+        exam_fit: "",
+        themes: null,
+      },
+      {
+        id: "meaningful-ao3",
+        axis: "Meaningful AO3 route",
+        hard_times: "Dickens content.",
+        atonement: "McEwan content.",
+        divergence: "",
+        ao2: "",
+        ao3: "Useful AO3 context.",
         ao4: "",
         thesis: "",
         character: "",
@@ -516,12 +616,74 @@ describe("ComparativeMatrix", () => {
     ]);
 
     render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
 
+    fireEvent.click(screen.getByRole("button", { name: "AO3" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+      expect(screen.getByText(/\(AO3 filter active\)/i)).toBeInTheDocument();
+    });
+
+    const table = screen.getByRole("table");
+    expect(within(table).getByText("Meaningful AO3 route")).toBeInTheDocument();
+    expect(within(table).getByText("Useful AO3 context.")).toBeInTheDocument();
+    expect(within(table).queryByText("Whitespace AO3 route")).not.toBeInTheDocument();
+  });
+
+  it("omits whitespace-only labelled sections from copy export", async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    mockComparativeRows.setRows([
+      {
+        id: "sparse-copy",
+        axis: "Sparse copy route",
+        hard_times: "Some Dickens content.",
+        atonement: "Some McEwan content.",
+        divergence: " ",
+        ao2: "Meaningful AO2 note.",
+        ao3: "   ",
+        ao4: "",
+        thesis: "\t",
+        character: "",
+        narrative: "",
+        structure: "",
+        exam_fit: "  ",
+        themes: null,
+      },
+    ]);
+
+    render(<ComparativeMatrix />);
     await waitFor(() => {
       expect(screen.getByText(/Showing 1 of 1 comparative routes/i)).toBeInTheDocument();
     });
-    expect(screen.getAllByText(/Sparse route/i).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Copy comparative route for/i })[0]);
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledTimes(1);
+    });
+
+    const exportedText = writeTextMock.mock.calls[0][0];
+    expect(exportedText).toContain("# Comparative Route: Sparse copy route");
+    expect(exportedText).toContain("Hard Times:\nSome Dickens content.");
+    expect(exportedText).toContain("Atonement:\nSome McEwan content.");
+    expect(exportedText).toContain("AO2 — Method:\nMeaningful AO2 note.");
+    expect(exportedText).not.toContain("Thesis:");
+    expect(exportedText).not.toContain("Comparative tension:");
+    expect(exportedText).not.toContain("AO3 — Context:");
+    expect(exportedText).not.toContain("AO4 — Comparison:");
+    expect(exportedText).not.toContain("Exam fit:");
+    expect(exportedText).not.toContain("AO5");
+
+    vi.unstubAllGlobals();
   });
 
   it("renders theme filter buttons derived from row data in title case", async () => {
