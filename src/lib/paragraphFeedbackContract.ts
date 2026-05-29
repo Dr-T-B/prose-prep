@@ -4,7 +4,7 @@ import type {
   ParagraphFeedbackRequestValidation,
   ParagraphFeedbackResponse,
   ParagraphFeedbackResponseValidation,
-} from "@/types/paragraphFeedback";
+} from "../types/paragraphFeedback.js";
 
 export const PARAGRAPH_FEEDBACK_LIMITS = {
   paragraphMin: 80,
