@@ -42,6 +42,8 @@ function hasServerProviderKey(): boolean {
 }
 
 function buildServerInstruction(request: ValidatedParagraphFeedbackRequest) {
+  const hasRouteContext = Boolean(request.routeContext);
+
   return {
     system: [
       "You are giving feedback on one A-Level English Literature Component 2 paragraph.",
@@ -53,10 +55,16 @@ function buildServerInstruction(request: ValidatedParagraphFeedbackRequest) {
       "Do not rewrite the paragraph.",
       "Do not generate a model paragraph.",
       "Do not generate an essay.",
+      "Do not create a new route plan.",
       "Do not invent quotations.",
-      "Do not add new quotations unless clearly framed as check your text before using.",
+      "Do not ask the student to add unsupported quotations.",
       "Give concise, actionable feedback.",
-      "Output only a structured object with ao1, ao2, ao3, ao4 and nextTarget fields.",
+      hasRouteContext
+        ? "If route context is provided, check whether the student paragraph follows the selected route plan and practice-session summary. Comment only on route alignment, not on whether the route itself is perfect."
+        : "No route context was provided, so do not include route-match feedback.",
+      hasRouteContext
+        ? "Output only a structured object with ao1, ao2, ao3, ao4, routeMatch and nextTarget fields."
+        : "Output only a structured object with ao1, ao2, ao3, ao4 and nextTarget fields.",
     ].join("\n"),
     user: JSON.stringify({
       paragraph: request.paragraph,
@@ -68,8 +76,10 @@ function buildServerInstruction(request: ValidatedParagraphFeedbackRequest) {
 }
 
 async function createProviderFeedback(request: ValidatedParagraphFeedbackRequest): Promise<ParagraphFeedbackResponse> {
+  const includeRouteMatch = Boolean(request.routeContext);
+
   if (!hasServerProviderKey()) {
-    return createMissingProviderFeedback();
+    return createMissingProviderFeedback(undefined, { includeRouteMatch });
   }
 
   // V1 keeps provider wiring server-side and disabled until a live adapter is added.
@@ -77,6 +87,7 @@ async function createProviderFeedback(request: ValidatedParagraphFeedbackRequest
   void buildServerInstruction(request);
   return createMissingProviderFeedback(
     "AI feedback is unavailable because live provider wiring is not enabled in this version.",
+    { includeRouteMatch },
   );
 }
 
