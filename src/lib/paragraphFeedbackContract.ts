@@ -25,7 +25,7 @@ const BLOCKED_REQUEST_PATTERNS = [
   /\b(write|generate|draft|compose|create|produce)\b[\s\S]{0,80}\b(full\s+)?essay\b/i,
   /\b(write|generate|draft|compose|create|produce)\b[\s\S]{0,80}\b(sample|model|perfect)\s+(answer|paragraph|response)\b/i,
   /\b(rewrite|rephrase)\b[\s\S]{0,60}\b(paragraph|answer|essay|response)\b/i,
-  /\b(full\s+essay|sample\s+answer|perfect\s+version)\b/i,
+  /\b(full\s+essay|sample\s+answer|model\s+answer|model\s+paragraph|perfect\s+version)\b/i,
 ];
 
 const FORBIDDEN_RESPONSE_PATTERNS = [
