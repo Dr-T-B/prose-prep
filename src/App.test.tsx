@@ -47,7 +47,7 @@ describe("App routing", () => {
 
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Rapid Recall" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Rapid Recall Workbook" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Rapid Recall" })).toHaveAttribute("href", "/rapid-recall");
   });
 });
