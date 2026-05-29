@@ -16,6 +16,7 @@ const STUDENT_NAV: readonly NavItem[] = [
   { to: "/library/questions", label: "Past Questions" },
   { to: "/matrix", label: "Compare" },
   { to: "/rapid-recall", label: "Rapid Recall" },
+  { to: "/paragraph-feedback", label: "Feedback" },
   { to: "/builder", label: "Plan" },
   { to: "/essay-marker", label: "Mark" },
   { to: "/library/glossary", label: "Glossary" },
