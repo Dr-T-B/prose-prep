@@ -2,11 +2,11 @@ import {
   coerceSafeParagraphFeedbackResponse,
   createMissingProviderFeedback,
   validateParagraphFeedbackRequest,
-} from "../src/lib/paragraphFeedbackContract";
+} from "../src/lib/paragraphFeedbackContract.js";
 import type {
   ParagraphFeedbackResponse,
   ValidatedParagraphFeedbackRequest,
-} from "../src/types/paragraphFeedback";
+} from "../src/types/paragraphFeedback.js";
 
 type JsonResponder = {
   json: (payload: unknown) => void;
