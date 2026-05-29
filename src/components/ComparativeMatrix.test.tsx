@@ -111,6 +111,58 @@ describe("ComparativeMatrix", () => {
     expect(within(firstArticle).getByText(/External pressure in Dickens contrasts/i)).toBeInTheDocument();
   });
 
+  it("labels toolbar search and print layout controls for assistive technology", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const search = screen.getByRole("textbox", { name: /search comparative routes/i });
+    const printLayout = screen.getByRole("combobox", { name: /print layout/i });
+
+    expect(search).toHaveAttribute("id", "matrix-search");
+    expect(search).toHaveAttribute("placeholder", "Search rows (e.g. Briony, Coketown, Dunkirk)…");
+    expect(printLayout).toHaveAttribute("id", "matrix-print-layout");
+  });
+
+  it("keeps toolbar controls touch-sized with visible keyboard focus classes", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const search = screen.getByRole("textbox", { name: /search comparative routes/i });
+    const printLayout = screen.getByRole("combobox", { name: /print layout/i });
+    const ao2Filter = screen.getByRole("button", { name: "AO2" });
+    const lensButton = screen.getByRole("button", { name: "Character / function" });
+    const expandButton = screen.getByRole("button", { name: "Expand all" });
+    const collapseButton = screen.getByRole("button", { name: "Collapse all" });
+    const clearButton = screen.getByRole("button", { name: "Clear filters" });
+    const printButton = screen.getByRole("button", { name: /Print compact matrix/i });
+    const themeChip = screen.getByRole("button", { name: "Toggle Childhood theme filter" });
+
+    for (const control of [
+      search,
+      printLayout,
+      ao2Filter,
+      lensButton,
+      expandButton,
+      collapseButton,
+      clearButton,
+      printButton,
+      themeChip,
+    ]) {
+      expect(control).toHaveClass("min-h-10");
+      expect(control).toHaveClass("focus-visible:ring-2");
+      expect(control).toHaveClass("focus-visible:outline-none");
+    }
+
+    fireEvent.click(themeChip);
+    const resetThemesButton = await screen.findByRole("button", { name: /Reset theme filters/i });
+    expect(resetThemesButton).toHaveClass("min-h-10");
+    expect(resetThemesButton).toHaveClass("focus-visible:ring-2");
+  });
+
   it("renders card route subtitles separating duplicate themes", async () => {
     render(<ComparativeMatrix />);
     await waitFor(() => {
@@ -201,7 +253,7 @@ describe("ComparativeMatrix", () => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
     });
 
-    const search = screen.getByPlaceholderText(/Search rows/i);
+    const search = screen.getByRole("textbox", { name: /search comparative routes/i });
     fireEvent.change(search, { target: { value: "poverty" } });
 
     await waitFor(() => {
@@ -301,7 +353,7 @@ describe("ComparativeMatrix", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "AO2" }));
-    fireEvent.change(screen.getByPlaceholderText(/Search rows/i), {
+    fireEvent.change(screen.getByRole("textbox", { name: /search comparative routes/i }), {
       target: { value: "threshold" },
     });
 
@@ -325,7 +377,7 @@ describe("ComparativeMatrix", () => {
     const printButton = screen.getByRole("button", { name: /Print compact matrix/i });
     expect(printButton).toBeInTheDocument();
 
-    const select = screen.getByRole("combobox");
+    const select = screen.getByRole("combobox", { name: /print layout/i });
     fireEvent.change(select, { target: { value: "cards" } });
     
     expect(screen.getByRole("button", { name: /Print revision cards/i })).toBeInTheDocument();
@@ -343,7 +395,7 @@ describe("ComparativeMatrix", () => {
     const compactRegion = screen.getByRole("table").closest("div");
     const cardsRegion = screen.getAllByRole("article")[0].parentElement;
     const teacherRegion = container.querySelector("section");
-    const select = screen.getByRole("combobox");
+    const select = screen.getByRole("combobox", { name: /print layout/i });
 
     expect(compactRegion).toHaveClass("print:block");
     expect(cardsRegion).toHaveClass("print:hidden");
@@ -426,7 +478,7 @@ describe("ComparativeMatrix", () => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByPlaceholderText(/Search rows/i), {
+    fireEvent.change(screen.getByRole("textbox", { name: /search comparative routes/i }), {
       target: { value: "setting" },
     });
     fireEvent.click(screen.getByRole("button", { name: "AO2" }));
@@ -440,7 +492,7 @@ describe("ComparativeMatrix", () => {
     await waitFor(() => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
     });
-    expect(screen.getByPlaceholderText(/Search rows/i)).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: /search comparative routes/i })).toHaveValue("");
   });
 
   it("renders sparse comparative rows without crashing", async () => {
@@ -546,7 +598,7 @@ describe("ComparativeMatrix", () => {
     });
 
     // Search query that matches nothing in Row 1 (e.g. "poverty", which is in Row 2)
-    fireEvent.change(screen.getByPlaceholderText(/Search rows/i), {
+    fireEvent.change(screen.getByRole("textbox", { name: /search comparative routes/i }), {
       target: { value: "poverty" },
     });
 
@@ -565,7 +617,7 @@ describe("ComparativeMatrix", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/Search rows/i)).toHaveValue("");
+      expect(screen.getByRole("textbox", { name: /search comparative routes/i })).toHaveValue("");
     });
   });
 

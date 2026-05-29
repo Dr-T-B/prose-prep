@@ -56,6 +56,9 @@ const AO_ROW_KEYS: Record<Exclude<AoFilter, "all">, AoRowKey> = {
 };
 
 const hasText = (value: unknown) => typeof value === "string" && value.trim().length > 0;
+const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper";
+const toolbarButtonBase = `min-h-10 rounded-md border border-rule px-3 py-2 text-xs font-medium transition hover:bg-rule ${focusRing}`;
+const segmentedButtonBase = `min-h-10 rounded px-3 py-2 text-xs font-medium transition ${focusRing}`;
 
 export default function Component2ComparativeMatrix() {
   const navigate = useNavigate();
@@ -278,11 +281,15 @@ export default function Component2ComparativeMatrix() {
               {aoFilter !== "all" ? ` (${aoFilter.toUpperCase()} filter active)` : ""}
               {selectedThemes.length > 0 ? ` (${selectedThemes.length} theme${selectedThemes.length > 1 ? "s" : ""} selected)` : ""}
             </span>
+            <label htmlFor="matrix-search" className="sr-only">
+              Search comparative routes
+            </label>
             <input
+              id="matrix-search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search rows (e.g. Briony, Coketown, Dunkirk)…"
-              className="w-72 rounded-md border border-rule bg-paper px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ink"
+              className={`min-h-10 w-full rounded-md border border-rule bg-paper px-3 py-2 text-sm shadow-sm sm:w-72 ${focusRing}`}
             />
             <div className="flex flex-wrap gap-1 rounded-md border border-rule p-1">
               {AO_FILTER_OPTIONS.map((ao) => (
@@ -290,7 +297,7 @@ export default function Component2ComparativeMatrix() {
                   key={ao.key}
                   onClick={() => setAoFilter(ao.key)}
                   aria-pressed={aoFilter === ao.key}
-                  className={`rounded px-3 py-1 text-xs font-medium transition ${
+                  className={`${segmentedButtonBase} ${
                     aoFilter === ao.key
                       ? "bg-ink text-paper"
                       : "text-ink-muted hover:bg-rule"
@@ -306,7 +313,7 @@ export default function Component2ComparativeMatrix() {
                   key={opt.key}
                   onClick={() => setLens(opt.key)}
                   aria-pressed={lens === opt.key}
-                  className={`rounded px-3 py-1 text-xs font-medium transition ${
+                  className={`${segmentedButtonBase} ${
                     lens === opt.key
                       ? "bg-ink text-paper"
                       : "text-ink-muted hover:bg-rule"
@@ -317,15 +324,19 @@ export default function Component2ComparativeMatrix() {
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={expandAll} className="rounded-md border border-rule px-3 py-1 text-xs font-medium hover:bg-rule">Expand all</button>
-              <button type="button" onClick={collapseAll} className="rounded-md border border-rule px-3 py-1 text-xs font-medium hover:bg-rule">Collapse all</button>
-              <button type="button" onClick={clearFilters} className="rounded-md border border-rule px-3 py-1 text-xs font-medium hover:bg-rule">Clear filters</button>
+              <button type="button" onClick={expandAll} className={toolbarButtonBase}>Expand all</button>
+              <button type="button" onClick={collapseAll} className={toolbarButtonBase}>Collapse all</button>
+              <button type="button" onClick={clearFilters} className={toolbarButtonBase}>Clear filters</button>
             </div>
             <div className="ml-auto flex flex-wrap items-center gap-2">
+              <label htmlFor="matrix-print-layout" className="sr-only">
+                Print layout
+              </label>
               <select
+                id="matrix-print-layout"
                 value={printMode}
                 onChange={(e) => setPrintMode(e.target.value as any)}
-                className="rounded-md border border-rule bg-paper px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ink"
+                className={`min-h-10 rounded-md border border-rule bg-paper px-3 py-2 text-xs ${focusRing}`}
               >
                 <option value="compact">Compact Matrix</option>
                 <option value="cards">Revision Cards</option>
@@ -333,7 +344,7 @@ export default function Component2ComparativeMatrix() {
               </select>
               <button
                 onClick={() => window.print()}
-                className="rounded-md border border-rule px-3 py-2 text-xs font-medium hover:bg-rule"
+                className={toolbarButtonBase}
               >
                 Print {printMode === "compact" ? "compact matrix" : printMode === "cards" ? "revision cards" : "teacher pack"}
               </button>
@@ -350,7 +361,7 @@ export default function Component2ComparativeMatrix() {
                       onClick={() => toggleTheme(theme)}
                       aria-pressed={isSelected}
                       aria-label={`Toggle ${label} theme filter`}
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition ${
+                      className={`min-h-10 rounded-full px-3 py-2 text-xs font-medium transition ${focusRing} ${
                         isSelected
                           ? "bg-ink text-paper"
                           : "border border-rule bg-paper text-ink-muted hover:bg-rule/40 hover:text-ink"
@@ -364,7 +375,7 @@ export default function Component2ComparativeMatrix() {
                   <button
                     onClick={() => setSelectedThemes([])}
                     aria-label="Reset theme filters"
-                    className="ml-auto text-xs font-medium text-ink-muted hover:text-ink underline underline-offset-2 decoration-dotted"
+                    className={`ml-auto min-h-10 rounded-md px-3 py-2 text-xs font-medium text-ink-muted underline decoration-dotted underline-offset-2 hover:text-ink ${focusRing}`}
                   >
                     Reset themes
                   </button>
@@ -382,7 +393,7 @@ export default function Component2ComparativeMatrix() {
             <button
               onClick={clearFilters}
               aria-label="Clear all active filters"
-              className="mt-3 rounded-md border border-rule px-3 py-1.5 text-xs font-medium hover:bg-rule"
+              className={`mt-3 ${toolbarButtonBase}`}
             >
               Clear all filters
             </button>
