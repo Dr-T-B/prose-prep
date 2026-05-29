@@ -37,4 +37,21 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("link", { name: "Compare" })).toHaveAttribute("href", "/matrix");
   });
+
+  it("includes Rapid Recall in the primary student navigation", () => {
+    render(
+      <MemoryRouter
+        initialEntries={["/"]}
+        future={{ v7_relativeSplatPath: true, v7_startTransition: true }}
+      >
+        <Routes>
+          <Route element={<AppShell />}>
+            <Route path="/" element={<div>Dashboard</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: "Rapid Recall" })).toHaveAttribute("href", "/rapid-recall");
+  });
 });
