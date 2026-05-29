@@ -100,7 +100,7 @@ export default function ParagraphFeedback() {
     if (!feedback) return "";
 
     return formatParagraphFeedbackRecord({
-      ...feedbackExportContext,
+      ...(feedbackExportContext ?? {}),
       feedback,
     });
   }, [feedback, feedbackExportContext]);
@@ -308,9 +308,7 @@ export default function ParagraphFeedback() {
                 </p>
               )}
 
-              <pre className="mt-3 whitespace-pre-wrap rounded-sm border border-rule bg-white p-3 font-sans text-sm leading-relaxed text-ink print:border-0 print:p-0">
-                {feedbackRecord}
-              </pre>
+              <pre className="mt-3 whitespace-pre-wrap rounded-sm border border-rule bg-white p-3 font-sans text-sm leading-relaxed text-ink print:border-0 print:p-0">{feedbackRecord}</pre>
             </section>
           )}
 
