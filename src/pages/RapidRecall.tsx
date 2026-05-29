@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
+import { flushSync } from "react-dom";
 import { BookOpen, CheckCircle2, Clipboard, Printer, RotateCcw, XCircle } from "lucide-react";
 import {
   RAPID_RECALL_MODE_LABELS,
@@ -14,6 +15,14 @@ type AnswerRecord = {
 };
 
 const MODES = Object.keys(RAPID_RECALL_MODE_LABELS) as RapidRecallMode[];
+
+function modeTabId(mode: RapidRecallMode) {
+  return `rapid-recall-mode-${mode}`;
+}
+
+function modePanelId(mode: RapidRecallMode) {
+  return `rapid-recall-panel-${mode}`;
+}
 
 function normalise(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim().replace(/\s+/g, " ");
@@ -105,7 +114,10 @@ function TaskCard({
   };
 
   return (
-    <article className="rounded-sm border border-rule bg-paper p-4 shadow-card print:break-inside-avoid print:bg-white print:shadow-none">
+    <article
+      className="min-w-0 break-words rounded-sm border border-rule bg-paper p-4 shadow-card print:break-inside-avoid print:bg-white print:shadow-none"
+      aria-labelledby={`${task.id}-prompt`}
+    >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="label-eyebrow">{RAPID_RECALL_TASK_TYPE_LABELS[task.type]}</span>
         <span className="rounded-sm border border-rule bg-paper-dim/70 px-2 py-0.5 text-[10px] font-mono text-ink-muted">
@@ -116,7 +128,7 @@ function TaskCard({
         </span>
       </div>
 
-      <h3 className="mb-3 font-serif text-xl leading-snug">{task.prompt}</h3>
+      <h3 id={`${task.id}-prompt`} className="mb-3 font-serif text-xl leading-snug">{task.prompt}</h3>
 
       <div className="mb-4 flex flex-wrap gap-1.5">
         {task.aoFocus.map((ao) => (
@@ -137,7 +149,7 @@ function TaskCard({
             onChange={(event) => onDraftChange(task.id, event.target.value)}
             className="w-full rounded-sm border border-rule-strong bg-paper px-3 py-2 text-sm outline-none focus:border-primary"
             placeholder="Type the missing word or phrase"
-            aria-label={`Answer for ${task.id}`}
+            aria-label={`Short answer for ${task.prompt}`}
           />
         </label>
       ) : (
@@ -149,6 +161,7 @@ function TaskCard({
                 key={option}
                 type="button"
                 onClick={() => task.type === "matching" ? toggleMatch(option) : onDraftChange(task.id, option)}
+                aria-pressed={active}
                 className={`rounded-sm border px-3 py-2 text-left text-sm transition-colors ${
                   active
                     ? "border-primary bg-highlight text-ink"
@@ -166,6 +179,7 @@ function TaskCard({
         <button
           type="button"
           onClick={() => onSubmit(task)}
+          aria-label={`Check answer for ${task.prompt}`}
           className="inline-flex items-center gap-1.5 rounded-sm bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -181,6 +195,8 @@ function TaskCard({
       {answerRecord && (
         <div
           role="status"
+          aria-live="polite"
+          aria-atomic="true"
           className={`mt-4 rounded-sm border p-3 ${
             answerRecord.correct
               ? "border-green-200 bg-green-50 text-green-950"
@@ -223,6 +239,8 @@ export default function RapidRecall() {
   const correct = Object.values(answers).filter((answer) => answer.correct).length;
   const accuracy = attempted === 0 ? 0 : Math.round((correct / attempted) * 100);
   const modeLabel = RAPID_RECALL_MODE_LABELS[mode];
+  const activeModePanelId = modePanelId(mode);
+  const activeModeTabId = modeTabId(mode);
 
   const handleDraftChange = (taskId: string, value: string | string[]) => {
     setDrafts((current) => ({ ...current, [taskId]: value }));
@@ -246,6 +264,34 @@ export default function RapidRecall() {
     setCopyStatus(null);
   };
 
+  const handleModeKeyDown = (event: KeyboardEvent<HTMLButtonElement>, currentMode: RapidRecallMode) => {
+    const currentIndex = MODES.indexOf(currentMode);
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % MODES.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = (currentIndex - 1 + MODES.length) % MODES.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = MODES.length - 1;
+    }
+
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const nextMode = MODES[nextIndex];
+    setMode(nextMode);
+    window.requestAnimationFrame(() => document.getElementById(modeTabId(nextMode))?.focus());
+  };
+
+  const printWorksheet = () => {
+    flushSync(() => {
+      setWorksheetMode(true);
+    });
+    window.print();
+  };
+
   const copyWorksheet = async () => {
     const text = buildWorksheetText(tasksForMode, modeLabel, showAnswerKey);
     try {
@@ -257,7 +303,7 @@ export default function RapidRecall() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 print:px-0 print:py-0 sm:px-6 lg:px-10">
+    <div className="mx-auto max-w-7xl px-4 py-6 print:px-0 print:py-0 sm:px-6 sm:py-8 lg:px-10">
       <header className="mb-6 rounded-sm border border-rule bg-paper p-5 shadow-card print:border-b print:border-l-0 print:border-r-0 print:border-t-0 print:bg-white print:shadow-none">
         <p className="label-eyebrow mb-2">Component 2 Prose Workbook</p>
         <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
@@ -272,15 +318,18 @@ export default function RapidRecall() {
             <button
               type="button"
               onClick={() => setWorksheetMode((current) => !current)}
-              className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim"
+              aria-expanded={worksheetMode}
+              aria-controls={activeModePanelId}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim sm:w-auto"
             >
               <BookOpen className="h-3.5 w-3.5" />
               {worksheetMode ? "Hide worksheet" : "Worksheet mode"}
             </button>
             <button
               type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim"
+              onClick={printWorksheet}
+              aria-label="Print Rapid Recall worksheet"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim sm:w-auto"
             >
               <Printer className="h-3.5 w-3.5" />
               Print
@@ -296,11 +345,15 @@ export default function RapidRecall() {
             {MODES.map((item) => (
               <button
                 key={item}
+                id={modeTabId(item)}
                 type="button"
                 role="tab"
                 aria-selected={mode === item}
+                aria-controls={modePanelId(item)}
+                tabIndex={mode === item ? 0 : -1}
                 onClick={() => setMode(item)}
-                className={`rounded-sm border px-3 py-2 text-xs font-medium transition-colors ${
+                onKeyDown={(event) => handleModeKeyDown(event, item)}
+                className={`min-w-[8.5rem] flex-1 rounded-sm border px-3 py-2 text-xs font-medium transition-colors sm:flex-none ${
                   mode === item
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-rule bg-paper hover:bg-paper-dim"
@@ -318,6 +371,7 @@ export default function RapidRecall() {
             <button
               type="button"
               onClick={resetSession}
+              aria-label="Reset Rapid Recall session"
               className="inline-flex items-center gap-1 rounded-sm border border-rule px-2 py-1 text-[10px] font-mono text-ink-muted hover:text-ink"
             >
               <RotateCcw className="h-3 w-3" />
@@ -345,53 +399,66 @@ export default function RapidRecall() {
         </aside>
       </section>
 
-      <section className={worksheetMode ? "hidden print:block" : "grid gap-4 print:hidden md:grid-cols-2"}>
-        {tasksForMode.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            answerRecord={answers[task.id]}
-            draft={drafts[task.id] ?? (task.type === "matching" ? [] : "")}
-            onDraftChange={handleDraftChange}
-            onSubmit={handleSubmit}
-          />
-        ))}
-      </section>
+      {!worksheetMode && (
+        <section
+          id={activeModePanelId}
+          role="tabpanel"
+          aria-labelledby={activeModeTabId}
+          className="grid gap-4 print:hidden md:grid-cols-2"
+        >
+          {tasksForMode.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              answerRecord={answers[task.id]}
+              draft={drafts[task.id] ?? (task.type === "matching" ? [] : "")}
+              onDraftChange={handleDraftChange}
+              onSubmit={handleSubmit}
+            />
+          ))}
+        </section>
+      )}
 
       {worksheetMode && (
         <section
+          id={activeModePanelId}
           aria-label="Printable worksheet"
-          className="rounded-sm border border-rule bg-paper p-5 shadow-card print:border-0 print:bg-white print:p-0 print:shadow-none"
+          className="min-w-0 rounded-sm border border-rule bg-paper p-4 shadow-card print:border-0 print:bg-white print:p-0 print:shadow-none sm:p-5"
         >
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:mb-2">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 print:mb-2 sm:items-center">
             <div>
               <p className="label-eyebrow">Print-friendly worksheet</p>
               <h2 className="font-serif text-2xl">{modeLabel}</h2>
             </div>
-            <div className="flex flex-wrap gap-2 no-print">
+            <div className="flex w-full flex-wrap gap-2 no-print sm:w-auto">
               <button
                 type="button"
                 onClick={() => setShowAnswerKey((current) => !current)}
-                className="rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim"
+                aria-pressed={showAnswerKey}
+                className="w-full rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim sm:w-auto"
               >
                 {showAnswerKey ? "Hide answer key" : "Show answer key"}
               </button>
               <button
                 type="button"
                 onClick={copyWorksheet}
-                className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim sm:w-auto"
               >
                 <Clipboard className="h-3.5 w-3.5" />
                 Copy worksheet
               </button>
             </div>
           </div>
-          {copyStatus && <p role="status" className="mb-3 text-xs font-mono text-ink-muted no-print">{copyStatus}</p>}
+          {copyStatus && (
+            <p role="status" aria-live="polite" className="mb-3 text-xs font-mono text-ink-muted no-print">
+              {copyStatus}
+            </p>
+          )}
 
           <div className="mb-5 grid gap-3 print:gap-2">
             <h3 className="font-serif text-xl">Questions</h3>
             {tasksForMode.map((task, index) => (
-              <article key={task.id} className="break-inside-avoid rounded-sm border border-rule bg-white p-3 print:p-2">
+              <article key={task.id} className="min-w-0 break-inside-avoid break-words rounded-sm border border-rule bg-white p-3 print:p-2">
                 <p className="mb-1 text-xs font-mono text-ink-muted">
                   {index + 1}. {RAPID_RECALL_TASK_TYPE_LABELS[task.type]} | {task.textFocus} | {task.theme} | {task.aoFocus.join(", ")}
                 </p>
@@ -399,7 +466,7 @@ export default function RapidRecall() {
                 {task.options?.length ? (
                   <ul className="mt-2 grid gap-1 text-xs leading-relaxed sm:grid-cols-2 print:grid-cols-2">
                     {task.options.map((option) => (
-                      <li key={option} className="rounded-sm border border-rule px-2 py-1">
+                      <li key={option} className="min-w-0 break-words rounded-sm border border-rule px-2 py-1">
                         {option}
                       </li>
                     ))}
@@ -415,7 +482,7 @@ export default function RapidRecall() {
             <div className="grid gap-3 print:gap-2" aria-label="Answer key">
               <h3 className="font-serif text-xl">Answer Key</h3>
               {tasksForMode.map((task, index) => (
-                <article key={`${task.id}-answer`} className="break-inside-avoid rounded-sm border border-rule bg-white p-3 print:p-2">
+                <article key={`${task.id}-answer`} className="min-w-0 break-inside-avoid break-words rounded-sm border border-rule bg-white p-3 print:p-2">
                   <p className="text-sm font-semibold">{index + 1}. {formatAnswer(task.answer)}</p>
                   <p className="mt-1 text-xs leading-relaxed text-ink-muted">{task.explanation}</p>
                   <p className="mt-1 text-xs leading-relaxed text-ink-muted">
