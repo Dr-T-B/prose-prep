@@ -141,6 +141,7 @@ function buildOpenAiRequestBody(request: ValidatedParagraphFeedbackRequest) {
 
   return {
     model: OPENAI_MODEL,
+    store: false,
     instructions: instruction.system,
     input: instruction.user,
     temperature: 0.2,

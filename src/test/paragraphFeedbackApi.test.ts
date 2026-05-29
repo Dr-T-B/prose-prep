@@ -162,6 +162,7 @@ describe("paragraph feedback API provider", () => {
 
     const providerRequest = getProviderRequestBody();
     expect(providerRequest.model).toBe("gpt-4.1-mini");
+    expect(providerRequest.store).toBe(false);
     expect(providerRequest.text).toMatchObject({
       format: { type: "json_schema", strict: true },
     });
