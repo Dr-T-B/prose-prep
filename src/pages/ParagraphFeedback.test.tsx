@@ -283,8 +283,8 @@ describe("ParagraphFeedback", () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining("Paragraph Feedback Record")));
     const copiedRecord = String(writeText.mock.calls[0][0]);
-    expect(copiedRecord).toContain("Question focus: relationships damaged by misunderstanding");
-    expect(copiedRecord).toContain("Theme: relationships");
+    expect(copiedRecord).toContain("Question focus:\nrelationships damaged by misunderstanding");
+    expect(copiedRecord).toContain("Theme:\nrelationships");
     expect(copiedRecord).toContain("Route context:");
     expect(copiedRecord).toContain("AO4 - Comparison quality");
     expect(copiedRecord).toContain("Route match");
