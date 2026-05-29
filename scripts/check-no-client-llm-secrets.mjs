@@ -17,6 +17,12 @@ const FORBIDDEN = [
   { pattern: /new\s+GoogleGenAI/, label: 'new GoogleGenAI(' },
   { pattern: /import\.meta\.env\.VITE_GEMINI/, label: 'import.meta.env.VITE_GEMINI*' },
   { pattern: /process\.env\.GEMINI/, label: 'process.env.GEMINI*' },
+  { pattern: /OPENAI_API_KEY/, label: 'OPENAI_API_KEY in browser source' },
+  { pattern: /import\.meta\.env\.VITE_OPENAI/, label: 'import.meta.env.VITE_OPENAI*' },
+  { pattern: /process\.env\.OPENAI/, label: 'process.env.OPENAI* in browser source' },
+  { pattern: /from\s+['"]openai['"]/, label: 'openai package import' },
+  { pattern: /new\s+OpenAI\s*\(/, label: 'new OpenAI(' },
+  { pattern: /api\.openai\.com/, label: 'OpenAI API host' },
 ];
 
 const SCAN_TARGETS = [
