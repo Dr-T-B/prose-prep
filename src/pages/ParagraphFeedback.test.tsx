@@ -27,7 +27,7 @@ const successfulFeedback: ParagraphFeedbackResponse = {
     strength: "The comparison links both writers through a shared concern.",
     target: "Use one explicit comparative hinge before moving to McEwan.",
   },
-  nextTarget: "Rewrite the topic sentence as one concise comparative claim.",
+  nextTarget: "Revise the topic sentence as one concise comparative claim.",
 };
 
 const fetchMock = vi.fn();
