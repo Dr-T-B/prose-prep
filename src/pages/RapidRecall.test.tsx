@@ -58,11 +58,25 @@ describe("RapidRecall", () => {
     expect(screen.queryByText(/Gradgrind's demand for 'Facts'/i)).not.toBeInTheDocument();
   });
 
+  it("supports keyboard movement between mode tabs", () => {
+    renderPage();
+
+    const themeMatch = screen.getByRole("tab", { name: "Theme Match" });
+    themeMatch.focus();
+
+    fireEvent.keyDown(themeMatch, { key: "ArrowRight" });
+
+    expect(screen.getByRole("tab", { name: "Quote Function" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText(/best function of the repeated word 'Facts'/i)).toBeInTheDocument();
+  });
+
   it("answers a multiple-choice task and shows feedback", () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Childhood" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Check answer" })[0]);
+    fireEvent.click(screen.getByRole("button", {
+      name: /Check answer for Which theme is most directly triggered/i,
+    }));
 
     expect(screen.getByRole("status")).toHaveTextContent("Correct");
     expect(screen.getByText(/Dickens criticises systems that narrow a child's imagination/i)).toBeInTheDocument();
@@ -71,9 +85,11 @@ describe("RapidRecall", () => {
   it("answers a fill-in-the-blank task and shows feedback", () => {
     renderPage();
 
-    const input = screen.getByLabelText("Answer for theme-education-sissy");
+    const input = screen.getByLabelText(/Short answer for Fill the blank: Sissy Jupe challenges/i);
     fireEvent.change(input, { target: { value: "feeling" } });
-    fireEvent.click(screen.getAllByRole("button", { name: "Check answer" })[2]);
+    fireEvent.click(screen.getByRole("button", {
+      name: /Check answer for Fill the blank: Sissy Jupe challenges/i,
+    }));
 
     expect(screen.getByRole("status")).toHaveTextContent("Correct");
     expect(screen.getByText(/Sissy's emotional intelligence counters/i)).toBeInTheDocument();
@@ -86,7 +102,9 @@ describe("RapidRecall", () => {
     fireEvent.click(screen.getByRole("button", {
       name: /both writers show childhood being shaped by adult systems/i,
     }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Check answer" })[0]);
+    fireEvent.click(screen.getByRole("button", {
+      name: /Check answer for Best comparative route for a childhood question/i,
+    }));
 
     expect(screen.getByRole("status")).toHaveTextContent("Correct");
     expect(screen.getByText(/similarity and difference/i)).toBeInTheDocument();
@@ -96,7 +114,9 @@ describe("RapidRecall", () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Childhood" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Check answer" })[0]);
+    fireEvent.click(screen.getByRole("button", {
+      name: /Check answer for Which theme is most directly triggered/i,
+    }));
 
     const summary = screen.getByLabelText("Session summary");
     expect(within(summary).getByText("Theme Match")).toBeInTheDocument();
@@ -108,8 +128,10 @@ describe("RapidRecall", () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Childhood" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Check answer" })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    fireEvent.click(screen.getByRole("button", {
+      name: /Check answer for Which theme is most directly triggered/i,
+    }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset Rapid Recall session" }));
 
     const summary = screen.getByLabelText("Session summary");
     expect(within(summary).getAllByText("0")).toHaveLength(2);
@@ -147,6 +169,34 @@ describe("RapidRecall", () => {
 
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("Rapid Recall Workbook"));
     expect(await screen.findByText("Worksheet copied")).toBeInTheDocument();
+  });
+
+  it("excludes the answer key from copied worksheet text until the key is visible", async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Worksheet mode" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy worksheet" }));
+
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expect.not.stringContaining("Answer Key"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Show answer key" }));
+    fireEvent.click(screen.getByRole("button", { name: "Copy worksheet" }));
+
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expect.stringContaining("Answer Key"));
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expect.stringContaining("Exam-use:"));
+    expect(await screen.findByText("Worksheet copied")).toBeInTheDocument();
+  });
+
+  it("prepares worksheet mode before printing from the standard drill view", () => {
+    const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    renderPage();
+
+    expect(screen.queryByLabelText("Printable worksheet")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Print Rapid Recall worksheet" }));
+
+    expect(screen.getByLabelText("Printable worksheet")).toBeInTheDocument();
+    expect(print).toHaveBeenCalledTimes(1);
   });
 
   it("does not render excluded assessment-objective wording in active data or UI", () => {
