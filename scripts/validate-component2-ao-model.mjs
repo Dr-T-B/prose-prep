@@ -98,9 +98,18 @@ const COMPARATIVE_MATRIX_CONTRACT_FILES = [
     tokens: COMPARATIVE_MATRIX_AO_FIELDS.map((field) => `${field}?: string | null`)
   },
   {
-    path: "src/pages/Compare.tsx",
-    description: "Compare page renderer",
-    tokens: COMPARATIVE_MATRIX_AO_FIELDS.map((field) => `c.${field}`)
+    path: "src/components/ComparativeMatrix.tsx",
+    description: "canonical Comparative Matrix renderer",
+    tokens: [
+      "ao2:",
+      "ao3:",
+      "ao4:",
+      "thesis:",
+      "character:",
+      "narrative:",
+      "structure:",
+      "examFit:"
+    ]
   },
   {
     path: "src/components/admin/ContentAudit.tsx",

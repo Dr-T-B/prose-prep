@@ -8,6 +8,7 @@ interface Row {
   theme: string;
   hardTimes: string;
   atonement: string;
+  divergence: string;
   ao2: string;
   ao3: string;
   ao4: string;
@@ -22,6 +23,7 @@ interface Row {
 const COLS: { key: keyof Row; label: string; ao?: string }[] = [
   { key: "hardTimes", label: "Hard Times argument" },
   { key: "atonement", label: "Atonement argument" },
+  { key: "divergence", label: "Comparative tension" },
   { key: "ao2", label: "AO2 method trigger", ao: "AO2" },
   { key: "ao3", label: "AO3 context", ao: "AO3" },
   { key: "ao4", label: "AO4 comparative link", ao: "AO4" },
@@ -76,7 +78,7 @@ export default function Component2ComparativeMatrix() {
     supabase
       .from("comparative_matrix")
       .select(
-        "id, axis, hard_times, atonement, ao2, ao3, ao4, thesis, character, narrative, structure, exam_fit, themes",
+        "id, axis, hard_times, atonement, divergence, ao2, ao3, ao4, thesis, character, narrative, structure, exam_fit, themes",
       )
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
@@ -92,6 +94,7 @@ export default function Component2ComparativeMatrix() {
           theme: (r.axis as string) ?? "",
           hardTimes: (r.hard_times as string) ?? "",
           atonement: (r.atonement as string) ?? "",
+          divergence: ((r as { divergence?: string }).divergence) ?? "",
           ao2: ((r as { ao2?: string }).ao2) ?? "",
           ao3: ((r as { ao3?: string }).ao3) ?? "",
           ao4: ((r as { ao4?: string }).ao4) ?? "",
@@ -485,6 +488,16 @@ export default function Component2ComparativeMatrix() {
                       <div id={`comparative-matrix-route-${row.id}`} className="space-y-4 p-4">
                         <Pair label="Hard Times" body={row.hardTimes} />
                         <Pair label="Atonement" body={row.atonement} />
+                        {row.divergence && (
+                          <div className="rounded-md border-l-4 border-primary bg-primary/5 p-3">
+                            <p className="font-mono text-[10px] uppercase tracking-wider text-primary">
+                              Comparative tension
+                            </p>
+                            <p className="mt-1 font-serif text-sm italic">
+                              {row.divergence}
+                            </p>
+                          </div>
+                        )}
                         {(() => {
                           const aoItems = [
                             { key: "ao2", label: "AO2 Method", body: row.ao2 },
@@ -557,6 +570,7 @@ export default function Component2ComparativeMatrix() {
                 <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
                   <Print term="Hard Times" def={row.hardTimes} />
                   <Print term="Atonement" def={row.atonement} />
+                  <Print term="Comparative tension" def={row.divergence} />
                   <Print term="AO2" def={row.ao2} />
                   <Print term="AO3" def={row.ao3} />
                   <Print term="AO4" def={row.ao4} />
@@ -585,6 +599,7 @@ function visibleCols(lens: LensKey, aoFilter: AoFilter) {
   const lensCols = [
     { key: "hardTimes" as keyof Row, label: "Hard Times argument" },
     { key: "atonement" as keyof Row, label: "Atonement argument" },
+    { key: "divergence" as keyof Row, label: "Comparative tension" },
     { key: "thesis" as keyof Row, label: "Thesis sentence starter" },
   ];
   if (selectedAoKey) {
@@ -667,6 +682,10 @@ function formatComparativeRouteExport(row: Row): string {
   if (row.atonement) {
     parts.push(`Atonement:\n${row.atonement}`);
   }
+
+  if (row.divergence) {
+    parts.push(`Comparative tension:\n${row.divergence}`);
+  }
   
   if (row.ao2) {
     parts.push(`AO2 — Method:\n${row.ao2}`);
@@ -695,6 +714,7 @@ function createMatrixRouteBuilderHandoff(row: Row): BuilderHandoffItem {
     axis: row.theme,
     hardTimes: row.hardTimes,
     atonement: row.atonement,
+    divergence: row.divergence,
     thesis: row.thesis,
     ao2: row.ao2,
     ao3: row.ao3,
