@@ -1,6 +1,7 @@
 import type {
   Component2AO,
   RapidRecallDrillType,
+  RapidRecallRoutePlan,
   RapidRecallTextFocus,
   RapidRecallTheme,
   RapidRecallWorkbookItem,
@@ -42,6 +43,10 @@ export const RAPID_RECALL_TEXT_FOCI: RapidRecallTextFocus[] = [
   "Comparative",
 ];
 
+function routePlan(plan: RapidRecallRoutePlan): RapidRecallRoutePlan {
+  return plan;
+}
+
 export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
   {
     id: "mc-childhood-route",
@@ -65,6 +70,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     ],
     answer: "Dickens presents childhood as damaged by utilitarian education, while McEwan presents childhood imagination as morally dangerous when unchecked.",
     explanation: "This gives a precise AO4 contrast while opening AO1, AO2 and AO3 routes.",
+    routePlan: routePlan({
+      thesis: "Both writers present childhood as shaped by adult systems, but Dickens attacks the narrowing force of utilitarian education while McEwan warns that childish imagination can become morally dangerous when unchecked.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Gradgrind's demand for Facts to show childhood reduced to obedience and measurable utility.",
+        atonementFocus: "Briefly contrast Briony's freedom to invent stories, which creates a different kind of danger.",
+        aoFocus: ["AO1", "AO2", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Return to Sissy as Dickens's humane challenge to Gradgrind's system.",
+        atonementFocus: "Use Briony's misreading of Robbie and Cecilia to show imagination becoming ethical risk.",
+        aoFocus: ["AO1", "AO2"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens makes childhood a site of social reform.",
+        atonementFocus: "McEwan makes childhood perception unstable and consequential.",
+        aoFocus: ["AO1", "AO4"],
+      },
+      conclusion: "End by judging that both texts reject simple innocence: childhood is vulnerable in Dickens and morally powerful in McEwan.",
+      examWarning: "Keep this as a route plan. Do not turn it into a full essay before choosing evidence.",
+      routeBridge: "AO4 hinge: damaged imagination in Dickens; dangerous imagination in McEwan.",
+    }),
     difficulty: "Foundation",
   },
   {
@@ -89,6 +118,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     ],
     answer: "Focus on gendered reputation, marriage pressure and who gets believed.",
     explanation: "The route keeps gender tied to character choices, social judgement and comparison.",
+    routePlan: routePlan({
+      thesis: "Both novels show women being read through social expectations, but Dickens stresses marriage and education while McEwan stresses reputation, sexuality and narrative judgement.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Louisa's marriage to Bounderby to show gendered choice shaped by Gradgrind's emotional training.",
+        atonementFocus: "Set up Cecilia as a later contrast: her desire is also judged through social codes.",
+        aoFocus: ["AO1", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Briefly compare Mrs Sparsit's surveillance of Louisa with Briony's policing of adult behaviour.",
+        atonementFocus: "Use Cecilia and Briony to show how reputation and belief become gendered pressures.",
+        aoFocus: ["AO1", "AO2", "AO3"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens exposes gender through social satire and marriage convention.",
+        atonementFocus: "McEwan exposes gender through focalisation and misinterpretation.",
+        aoFocus: ["AO2", "AO4"],
+      },
+      conclusion: "Conclude that both writers show gender as a system of interpretation, not just a private identity.",
+      examWarning: "Avoid a general gender paragraph: keep each point tied to a choice, scene or method.",
+      routeBridge: "AO4 hinge: public marriage pressure in Dickens; private reputation pressure in McEwan.",
+    }),
     difficulty: "Secure",
   },
   {
@@ -113,6 +166,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     ],
     answer: "Compare how class decides who is heard and who is reduced to a function.",
     explanation: "This turns class into an argument about power, credibility and social position.",
+    routePlan: routePlan({
+      thesis: "Both writers show class controlling credibility and freedom: Dickens foregrounds industrial labour while McEwan shows class prejudice shaping accusation and trust.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Stephen and the label Hands to show workers reduced to labouring function.",
+        atonementFocus: "Briefly contrast Robbie as educated but still vulnerable to class judgement.",
+        aoFocus: ["AO1", "AO2", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare Bounderby's self-made myth as class performance.",
+        atonementFocus: "Use Robbie's position as a servant's son to show why accusation attaches to him so easily.",
+        aoFocus: ["AO1", "AO3"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens makes class power visible in economic language.",
+        atonementFocus: "McEwan makes class power visible through household hierarchy and suspicion.",
+        aoFocus: ["AO2", "AO4"],
+      },
+      conclusion: "End by judging that both texts show class as a system that decides whose version of events carries authority.",
+      examWarning: "Do not list rich and poor characters; make class a claim about power.",
+      routeBridge: "AO4 hinge: reduction in Dickens; credibility in McEwan.",
+    }),
     difficulty: "Foundation",
   },
   {
@@ -161,6 +238,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     ],
     answer: "Compare social, emotional and bodily harm, then explain the different historical scales.",
     explanation: "This prevents a narrow definition of violence and creates a comparative line.",
+    routePlan: routePlan({
+      thesis: "Both novels widen violence beyond immediate physical harm: Dickens exposes social and industrial damage while McEwan links accusation to bodily and historical trauma.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Coketown, Stephen and industrial pressure to frame violence as systemic social harm.",
+        atonementFocus: "Foreshadow Robbie's later bodily suffering as a different scale of damage.",
+        aoFocus: ["AO1", "AO2", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare social damage in Dickens with the consequences of misreading in McEwan.",
+        atonementFocus: "Use accusation and Dunkirk to show private injustice expanding into war trauma.",
+        aoFocus: ["AO1", "AO2", "AO3"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens presents violence through repeated industrial atmosphere.",
+        atonementFocus: "McEwan presents violence through fragmented war description and narrative guilt.",
+        aoFocus: ["AO2", "AO4"],
+      },
+      conclusion: "Conclude that both writers make violence systemic, though Dickens targets economic systems and McEwan tests perception, law and war.",
+      examWarning: "Avoid claiming only battlefield injury counts as violence.",
+      routeBridge: "AO4 hinge: industrial damage versus wartime and narrative damage.",
+    }),
     difficulty: "Stretch",
   },
   {
@@ -185,6 +286,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     ],
     answer: "Coketown's repeated sameness and the Tallis estate's ordered rooms both organise power.",
     explanation: "The route uses setting as method and makes the social meaning explicit.",
+    routePlan: routePlan({
+      thesis: "Both writers turn place into social architecture: Dickens uses Coketown's repeated sameness to expose industrial control, while McEwan uses the Tallis estate to stage class and sexual judgement.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Coketown's brick, smoke and repetition to show setting as a pressure system.",
+        atonementFocus: "Briefly contrast the Tallis estate as ordered privilege rather than factory uniformity.",
+        aoFocus: ["AO2", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare Gradgrind's schoolroom as another controlled space.",
+        atonementFocus: "Use the house, rooms and fountain scene to show place framing interpretation.",
+        aoFocus: ["AO1", "AO2", "AO3"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens makes place openly satirical and repetitive.",
+        atonementFocus: "McEwan makes place theatrical and perspectival.",
+        aoFocus: ["AO2", "AO4"],
+      },
+      conclusion: "End by judging that setting is never background: it trains behaviour and reveals who has power.",
+      examWarning: "Do not describe setting decoratively; make each place do argumentative work.",
+      routeBridge: "AO4 hinge: industrial uniformity versus country-house hierarchy.",
+    }),
     difficulty: "Foundation",
   },
   {
@@ -610,6 +735,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     answer: "Hard Times: Louisa/Bounderby and emotional miseducation; Atonement: Briony's misreading of Robbie and Cecilia.",
     ao4Bridge: "Both writers show misunderstanding as socially produced, but McEwan makes narrative perception itself the central problem.",
     explanation: "The route links relationship damage to education, class codes and narrative method.",
+    routePlan: routePlan({
+      thesis: "Both writers present relationships as damaged by misunderstanding, but Dickens roots that damage in emotional miseducation while McEwan makes perception and storytelling the central problem.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Louisa and Bounderby to show a relationship produced by Gradgrind's emotional training.",
+        atonementFocus: "Briefly contrast Briony as someone who misreads desire rather than being forced into marriage.",
+        aoFocus: ["AO1", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare Louisa's inability to name feeling with Briony's false certainty.",
+        atonementFocus: "Use Briony's misreading of Robbie and Cecilia to show relationship damage created by focalisation.",
+        aoFocus: ["AO1", "AO2"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens presents misunderstanding as socially trained.",
+        atonementFocus: "McEwan presents misunderstanding as narratively produced and ethically destructive.",
+        aoFocus: ["AO2", "AO4"],
+      },
+      conclusion: "Conclude that both texts show relationships failing when social systems teach characters to misread feeling.",
+      examWarning: "Keep the plan comparative; avoid two separate relationship summaries.",
+      routeBridge: "AO4 bridge: social miseducation in Dickens; narrative misperception in McEwan.",
+    }),
     difficulty: "Foundation",
   },
   {
@@ -635,6 +784,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     answer: "Sissy as a humane challenge to Gradgrind; Briony as a child whose storytelling becomes morally dangerous.",
     ao4Bridge: "Both writers use children to test adult values: Dickens makes Sissy corrective, while McEwan makes Briony ethically unstable.",
     explanation: "The route creates a strong contrast without abandoning the shared theme.",
+    routePlan: routePlan({
+      thesis: "Both writers use children to expose adult systems, but Dickens makes Sissy a humane corrective while McEwan makes Briony a child whose storytelling becomes ethically unstable.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Sissy against Gradgrind's Facts to show feeling challenging utilitarian education.",
+        atonementFocus: "Briefly contrast Briony's imaginative authority as less humane and more dangerous.",
+        aoFocus: ["AO1", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare Sissy's moral feeling with Briony's confident performance of adult judgement.",
+        atonementFocus: "Use Briony's play-making and misreading to show a child reproducing adult power.",
+        aoFocus: ["AO1", "AO2"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens trusts the child who resists systematised thought.",
+        atonementFocus: "McEwan distrusts the child who turns imagination into certainty.",
+        aoFocus: ["AO1", "AO4"],
+      },
+      conclusion: "End by judging that children are not simple symbols of innocence: they reveal what adult systems reward or damage.",
+      examWarning: "Avoid saying both children are innocent; the comparison depends on contrast.",
+      routeBridge: "AO4 bridge: Sissy corrects adult values; Briony exposes their danger.",
+    }),
     difficulty: "Secure",
   },
   {
@@ -660,6 +833,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     answer: "Stephen is reduced by industrial class language; Robbie is vulnerable because class shapes suspicion.",
     ao4Bridge: "Both writers connect class to credibility, but Dickens works through public labour systems while McEwan works through domestic accusation.",
     explanation: "This route gives a direct answer to class without becoming biographical context.",
+    routePlan: routePlan({
+      thesis: "Both novels show class shaping whose voice is believed, with Dickens exposing public labour hierarchy and McEwan exposing class prejudice inside domestic accusation.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Stephen and the Hands to show how industrial class language reduces workers.",
+        atonementFocus: "Briefly contrast Robbie's education with his vulnerable class position.",
+        aoFocus: ["AO1", "AO2", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare Stephen's limited social authority with Robbie's limited credibility.",
+        atonementFocus: "Use Robbie as the servant's son whose guilt becomes socially believable.",
+        aoFocus: ["AO1", "AO3"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens attacks class power through economic systems.",
+        atonementFocus: "McEwan attacks class power through suspicion, service and household hierarchy.",
+        aoFocus: ["AO3", "AO4"],
+      },
+      conclusion: "Conclude that both texts make class a force that controls interpretation before evidence is weighed.",
+      examWarning: "Do not treat class as background context; connect it to credibility.",
+      routeBridge: "AO4 bridge: class reduces Stephen; class incriminates Robbie.",
+    }),
     difficulty: "Secure",
   },
   {
@@ -685,6 +882,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     answer: "Coketown's uniformity and the Tallis estate's ordered spaces both reveal social control.",
     ao4Bridge: "Both settings encode power: Dickens uses industrial repetition, while McEwan uses class-coded domestic space.",
     explanation: "The route uses place as method, which is fast and exam-friendly.",
+    routePlan: routePlan({
+      thesis: "Both writers use settings to organise power: Coketown disciplines through industrial repetition, while the Tallis estate disciplines through class-coded domestic space.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Coketown's uniformity to show people living inside industrial control.",
+        atonementFocus: "Briefly contrast the Tallis estate as ordered privilege rather than factory sameness.",
+        aoFocus: ["AO2", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare Gradgrind's schoolroom as a controlled interpretive space.",
+        atonementFocus: "Use the Tallis house, fountain and rooms to show space framing desire and misreading.",
+        aoFocus: ["AO1", "AO2"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens makes setting oppressive through repetition.",
+        atonementFocus: "McEwan makes setting unstable through perspective.",
+        aoFocus: ["AO2", "AO4"],
+      },
+      conclusion: "End by judging that place is a method for making invisible social control visible.",
+      examWarning: "Name the method of setting, not only the location.",
+      routeBridge: "AO4 bridge: factory uniformity versus domestic hierarchy.",
+    }),
     difficulty: "Foundation",
   },
   {
@@ -710,6 +931,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     answer: "Compare Dickens's moral patterning with McEwan's retrospective narrative guilt.",
     ao4Bridge: "Both novels ask how stories judge the past, but McEwan makes the storyteller's authority the central problem.",
     explanation: "This creates interpretive nuance while staying inside AO1-AO4.",
+    routePlan: routePlan({
+      thesis: "Both novels use narrative to judge the past, but Dickens directs moral judgement outward towards social reform while McEwan makes memory, authorship and guilt ethically unstable.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Dickens's satiric patterning to show past choices judged by a reformist moral design.",
+        atonementFocus: "Briefly contrast Briony's later narrative as an attempt to repair rather than simply judge.",
+        aoFocus: ["AO1", "AO2"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare Dickens's clearer moral structure with McEwan's unstable retrospective disclosure.",
+        atonementFocus: "Use Briony's authorship and the title idea of atonement to frame memory as moral repair.",
+        aoFocus: ["AO1", "AO2"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens makes storytelling a vehicle for critique.",
+        atonementFocus: "McEwan makes storytelling itself morally questionable.",
+        aoFocus: ["AO2", "AO4"],
+      },
+      conclusion: "Conclude that both texts depend on narrative judgement, but McEwan is more sceptical about whether storytelling can repair harm.",
+      examWarning: "Use critical perspective language here, not a separate assessment-objective label.",
+      routeBridge: "AO4 bridge: reformist narration versus guilty retrospective narration.",
+    }),
     difficulty: "Stretch",
   },
   {
@@ -735,6 +980,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     answer: "Dickens presents social and industrial damage; McEwan presents accusation and war as escalating bodily harm.",
     ao4Bridge: "Both texts make violence systemic, but the historical forms differ: industrial capitalism in Dickens and legal/war trauma in McEwan.",
     explanation: "The route broadens the theme while keeping comparison controlled.",
+    routePlan: routePlan({
+      thesis: "Both writers present violence as systemic rather than isolated: Dickens exposes industrial and social damage while McEwan links false accusation to bodily, legal and wartime harm.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Stephen and Coketown to show social violence produced by industrial capitalism.",
+        atonementFocus: "Briefly set up Robbie as another damaged figure, though through accusation and war.",
+        aoFocus: ["AO1", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare Dickens's social harm with McEwan's escalation from misreading to prison and war.",
+        atonementFocus: "Use Robbie at Dunkirk to connect private injustice with historical trauma.",
+        aoFocus: ["AO1", "AO2", "AO3"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens uses atmosphere and labour systems to imply violence.",
+        atonementFocus: "McEwan uses narrative consequence and war imagery to embody violence.",
+        aoFocus: ["AO2", "AO4"],
+      },
+      conclusion: "End by judging that both writers make harm structural, though their historical causes and narrative scales differ.",
+      examWarning: "Do not narrow violence to visible injury only.",
+      routeBridge: "AO4 bridge: industrial harm versus accusation and war trauma.",
+    }),
     difficulty: "Secure",
   },
   {
@@ -760,6 +1029,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     answer: "Louisa's marriage shows emotional training; Cecilia's choice of Robbie exposes class and sexual judgement.",
     ao4Bridge: "Both writers show female choice under social pressure, with Dickens stressing education and McEwan stressing reputation and perception.",
     explanation: "This route can feed a quick paragraph plan without generating an essay.",
+    routePlan: routePlan({
+      thesis: "Both novels present female choice as constrained by social pressure, with Dickens emphasising emotional education and marriage while McEwan emphasises reputation, class and perception.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Louisa's marriage to show a choice shaped by Gradgrind's system rather than free desire.",
+        atonementFocus: "Briefly contrast Cecilia's desire as socially risky in a different context.",
+        aoFocus: ["AO1", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare Louisa's constrained marriage with Cecilia's constrained reputation.",
+        atonementFocus: "Use Cecilia and Robbie to show how gender and class shape interpretation of intimacy.",
+        aoFocus: ["AO1", "AO2", "AO3"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens critiques patriarchal and utilitarian training.",
+        atonementFocus: "McEwan critiques sexual judgement and class-coded belief.",
+        aoFocus: ["AO3", "AO4"],
+      },
+      conclusion: "Conclude that both writers show choice as real but pressured by the social language around women.",
+      examWarning: "Avoid presenting either woman as simply passive; focus on constrained agency.",
+      routeBridge: "AO4 bridge: marriage pressure in Dickens; reputation pressure in McEwan.",
+    }),
     difficulty: "Foundation",
   },
   {
@@ -785,6 +1078,30 @@ export const rapidRecallWorkbookItems: RapidRecallWorkbookItem[] = [
     answer: "Louisa's choice is shaped by utilitarian upbringing; Briony's accusation choice is shaped by misreading and social codes.",
     ao4Bridge: "Both novels challenge the idea of free choice by showing how systems train judgement before the decisive moment.",
     explanation: "The route makes a fast thesis and leaves room for AO2 evidence.",
+    routePlan: routePlan({
+      thesis: "Both novels challenge simple ideas of free choice: Dickens shows choices shaped by utilitarian upbringing, while McEwan shows choices distorted by perception, class codes and later guilt.",
+      paragraphOne: {
+        title: "Hard Times paragraph route",
+        hardTimesFocus: "Use Louisa's marriage decision to show choice narrowed by emotional training.",
+        atonementFocus: "Briefly contrast Briony's accusation as a choice made through false certainty.",
+        aoFocus: ["AO1", "AO3"],
+      },
+      paragraphTwo: {
+        title: "Atonement paragraph route",
+        hardTimesFocus: "Compare Louisa's learned passivity with Briony's learned confidence in interpretation.",
+        atonementFocus: "Use Briony's accusation and later narration to show choice becoming lifelong responsibility.",
+        aoFocus: ["AO1", "AO2"],
+      },
+      paragraphThree: {
+        title: "Comparative judgement route",
+        hardTimesFocus: "Dickens stresses social conditioning before the choice.",
+        atonementFocus: "McEwan stresses narrative consequence after the choice.",
+        aoFocus: ["AO1", "AO4"],
+      },
+      conclusion: "End by judging that important choices in both texts expose the systems that formed them.",
+      examWarning: "Keep the plan short: thesis, route, evidence choices, judgement.",
+      routeBridge: "AO4 bridge: conditioned choice versus misread choice.",
+    }),
     difficulty: "Stretch",
   },
 ];

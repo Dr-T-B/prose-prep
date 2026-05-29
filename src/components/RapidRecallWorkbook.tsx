@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Eye, Printer, RotateCcw, XCircle } from "lucide-react";
+import { CheckCircle2, Clipboard, Eye, Printer, Route, RotateCcw, XCircle } from "lucide-react";
 import {
   RAPID_RECALL_AOS,
   RAPID_RECALL_DRILL_LABELS,
@@ -11,6 +11,8 @@ import {
 import type {
   Component2AO,
   RapidRecallDrillType,
+  RapidRecallRoutePlan,
+  RapidRecallRoutePlanParagraph,
   RapidRecallTheme,
   RapidRecallWorkbookItem,
 } from "@/types/rapidRecall";
@@ -52,12 +54,136 @@ function answerLabel(item: RapidRecallWorkbookItem) {
   return item.answer;
 }
 
+function formatRoutePlanText(item: RapidRecallWorkbookItem, plan: RapidRecallRoutePlan) {
+  const paragraphLines = [
+    ["1. Comparative thesis", plan.thesis],
+    [`2. ${plan.paragraphOne.title}`, `Hard Times: ${plan.paragraphOne.hardTimesFocus}`, `Atonement: ${plan.paragraphOne.atonementFocus}`, `AO focus: ${plan.paragraphOne.aoFocus.join(", ")}`],
+    [`3. ${plan.paragraphTwo.title}`, `Hard Times: ${plan.paragraphTwo.hardTimesFocus}`, `Atonement: ${plan.paragraphTwo.atonementFocus}`, `AO focus: ${plan.paragraphTwo.aoFocus.join(", ")}`],
+    [`4. ${plan.paragraphThree.title}`, `Hard Times: ${plan.paragraphThree.hardTimesFocus}`, `Atonement: ${plan.paragraphThree.atonementFocus}`, `AO focus: ${plan.paragraphThree.aoFocus.join(", ")}`],
+  ];
+
+  return [
+    "Rapid Recall Route Plan",
+    `Source drill: ${item.prompt}`,
+    `Theme: ${item.theme}`,
+    `Text focus: ${item.textFocus}`,
+    "",
+    ...paragraphLines.flatMap((lines) => [...lines, ""]),
+    `Conclusion route: ${plan.conclusion}`,
+    plan.routeBridge ? `Route bridge: ${plan.routeBridge}` : "",
+    plan.examWarning ? `Exam warning: ${plan.examWarning}` : "",
+    "",
+    "Planning route only - not a full essay.",
+  ].filter(Boolean).join("\n");
+}
+
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
       <dt className="meta-mono">{label}</dt>
       <dd className="mt-1 break-words text-sm leading-snug text-ink">{value}</dd>
     </div>
+  );
+}
+
+function RoutePlanParagraphBlock({
+  index,
+  paragraph,
+}: {
+  index: number;
+  paragraph: RapidRecallRoutePlanParagraph;
+}) {
+  return (
+    <article className="min-w-0 rounded-sm border border-rule bg-white p-3 print:break-inside-avoid">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-serif text-lg leading-snug">{index}. {paragraph.title}</h3>
+        <div className="flex flex-wrap gap-1">
+          {paragraph.aoFocus.map((ao) => (
+            <span key={ao} className={`rounded-sm px-2 py-1 text-[10px] font-mono font-medium ${aoChipClass[ao]}`}>
+              {ao}
+            </span>
+          ))}
+        </div>
+      </div>
+      <dl className="grid gap-2 text-sm sm:grid-cols-2">
+        <DetailRow label="Hard Times" value={paragraph.hardTimesFocus} />
+        <DetailRow label="Atonement" value={paragraph.atonementFocus} />
+      </dl>
+    </article>
+  );
+}
+
+function RoutePlanPanel({
+  item,
+  copyStatus,
+  onCopy,
+}: {
+  item: RapidRecallWorkbookItem;
+  copyStatus: string | null;
+  onCopy: (item: RapidRecallWorkbookItem) => void;
+}) {
+  if (!item.routePlan) return null;
+  const { routePlan } = item;
+
+  return (
+    <section
+      aria-label="Rapid Recall route plan handoff"
+      className="mb-5 rounded-sm border border-rule-strong bg-paper p-4 shadow-card print:break-inside-avoid print:bg-white print:shadow-none sm:p-5"
+    >
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="label-eyebrow">Route plan handoff</p>
+          <h2 className="font-serif text-2xl">4-step Component 2 route plan</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-ink-muted">
+            Planning route only - not a full essay generator.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onCopy(item)}
+          className="no-print inline-flex w-full items-center justify-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim sm:w-auto"
+        >
+          <Clipboard className="h-3.5 w-3.5" />
+          Copy route plan
+        </button>
+      </div>
+
+      {copyStatus && (
+        <p role="status" aria-live="polite" className="mb-3 text-xs font-mono text-ink-muted no-print">
+          {copyStatus}
+        </p>
+      )}
+
+      <div className="mb-3 rounded-sm border border-rule bg-white p-3">
+        <p className="meta-mono">1. Comparative thesis</p>
+        <p className="mt-1 text-sm leading-relaxed">{routePlan.thesis}</p>
+      </div>
+
+      <div className="grid gap-3">
+        <RoutePlanParagraphBlock index={2} paragraph={routePlan.paragraphOne} />
+        <RoutePlanParagraphBlock index={3} paragraph={routePlan.paragraphTwo} />
+        <RoutePlanParagraphBlock index={4} paragraph={routePlan.paragraphThree} />
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div className="rounded-sm border border-rule bg-white p-3">
+          <p className="meta-mono">Conclusion route</p>
+          <p className="mt-1 text-sm leading-relaxed">{routePlan.conclusion}</p>
+        </div>
+        {routePlan.routeBridge && (
+          <div className="rounded-sm border border-rule bg-white p-3">
+            <p className="meta-mono">AO4 bridge</p>
+            <p className="mt-1 text-sm leading-relaxed">{routePlan.routeBridge}</p>
+          </div>
+        )}
+      </div>
+
+      {routePlan.examWarning && (
+        <p className="mt-3 rounded-sm border border-amber-200 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950">
+          <b>Exam warning:</b> {routePlan.examWarning}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -68,6 +194,7 @@ function WorkbookCard({
   onDraftChange,
   onCheck,
   onReveal,
+  onBuildRoutePlan,
 }: {
   item: RapidRecallWorkbookItem;
   draft: string;
@@ -75,6 +202,7 @@ function WorkbookCard({
   onDraftChange: (itemId: string, value: string) => void;
   onCheck: (item: RapidRecallWorkbookItem) => void;
   onReveal: (item: RapidRecallWorkbookItem) => void;
+  onBuildRoutePlan: (item: RapidRecallWorkbookItem) => void;
 }) {
   const options = item.type === "fill-blank" ? [] : item.options;
   const showAnswer = Boolean(result?.revealed);
@@ -174,6 +302,17 @@ function WorkbookCard({
           <Eye className="h-3.5 w-3.5" />
           Reveal answer
         </button>
+        {item.routePlan && (
+          <button
+            type="button"
+            onClick={() => onBuildRoutePlan(item)}
+            aria-label={`Build route from this drill for ${item.prompt}`}
+            className="inline-flex items-center gap-1.5 rounded-sm border border-rule bg-paper px-3 py-2 text-xs font-medium hover:bg-paper-dim"
+          >
+            <Route className="h-3.5 w-3.5" />
+            Build route from this drill
+          </button>
+        )}
         {result?.response && (
           <span className="text-xs font-mono text-ink-muted">
             Your answer: {result.response}
@@ -225,6 +364,8 @@ export default function RapidRecallWorkbook() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [results, setResults] = useState<Record<string, WorkbookResult>>({});
   const [printMode, setPrintMode] = useState(false);
+  const [routePlanItemId, setRoutePlanItemId] = useState<string | null>(null);
+  const [routePlanCopyStatus, setRoutePlanCopyStatus] = useState<string | null>(null);
 
   const filteredItems = useMemo(() => rapidRecallWorkbookItems.filter((item) => (
     item.type === activeType
@@ -235,6 +376,9 @@ export default function RapidRecallWorkbook() {
 
   const attempted = Object.values(results).filter((result) => result.response).length;
   const correct = Object.values(results).filter((result) => result.response && result.correct).length;
+  const routePlanItem = routePlanItemId
+    ? rapidRecallWorkbookItems.find((item) => item.id === routePlanItemId && item.routePlan)
+    : undefined;
 
   const setDraft = (itemId: string, value: string) => {
     setDrafts((current) => ({ ...current, [itemId]: value }));
@@ -267,6 +411,8 @@ export default function RapidRecallWorkbook() {
   const resetSession = () => {
     setDrafts({});
     setResults({});
+    setRoutePlanItemId(null);
+    setRoutePlanCopyStatus(null);
   };
 
   const togglePrintMode = () => {
@@ -276,6 +422,23 @@ export default function RapidRecallWorkbook() {
   const printWorkbook = () => {
     setPrintMode(true);
     window.requestAnimationFrame(() => window.print());
+  };
+
+  const buildRoutePlan = (item: RapidRecallWorkbookItem) => {
+    if (!item.routePlan) return;
+    setRoutePlanItemId(item.id);
+    setRoutePlanCopyStatus(null);
+  };
+
+  const copyRoutePlan = async (item: RapidRecallWorkbookItem) => {
+    if (!item.routePlan) return;
+
+    try {
+      await navigator.clipboard.writeText(formatRoutePlanText(item, item.routePlan));
+      setRoutePlanCopyStatus("Route plan copied");
+    } catch {
+      setRoutePlanCopyStatus("Copy unavailable");
+    }
   };
 
   return (
@@ -398,6 +561,14 @@ export default function RapidRecallWorkbook() {
         </label>
       </section>
 
+      {routePlanItem && (
+        <RoutePlanPanel
+          item={routePlanItem}
+          copyStatus={routePlanCopyStatus}
+          onCopy={copyRoutePlan}
+        />
+      )}
+
       {!printMode && (
         <section className="grid gap-4 print:hidden md:grid-cols-2" aria-label={`${RAPID_RECALL_DRILL_LABELS[activeType]} cards`}>
           {filteredItems.map((item) => (
@@ -409,6 +580,7 @@ export default function RapidRecallWorkbook() {
               onDraftChange={setDraft}
               onCheck={checkItem}
               onReveal={revealItem}
+              onBuildRoutePlan={buildRoutePlan}
             />
           ))}
           {filteredItems.length === 0 && (
