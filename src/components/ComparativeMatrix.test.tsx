@@ -37,15 +37,41 @@ const mockComparativeRows = vi.hoisted(() => {
     },
   ];
   let rows = defaultRows;
+  let responseMode: "success" | "error" | "reject" = "success";
 
   return {
     defaultRows,
     getRows: () => rows,
+    getResult: () => {
+      if (responseMode === "error") {
+        return Promise.resolve({
+          data: null,
+          error: { message: "local Supabase unavailable" },
+        });
+      }
+      if (responseMode === "reject") {
+        return Promise.reject(new TypeError("Failed to fetch"));
+      }
+      return Promise.resolve({
+        data: rows,
+        error: null,
+      });
+    },
     resetRows: () => {
       rows = defaultRows;
+      responseMode = "success";
     },
     setRows: (nextRows: typeof defaultRows) => {
       rows = nextRows;
+    },
+    setError: () => {
+      responseMode = "error";
+    },
+    setReject: () => {
+      responseMode = "reject";
+    },
+    setEmpty: () => {
+      rows = [];
     },
   };
 });
@@ -57,10 +83,7 @@ vi.mock("@/integrations/supabase/client", () => {
       from: () => ({
         select: () => ({
           eq: () => ({
-            order: () => Promise.resolve({
-              data: mockComparativeRows.getRows(),
-              error: null
-            })
+            order: () => mockComparativeRows.getResult()
           })
         })
       })
@@ -92,6 +115,101 @@ describe("ComparativeMatrix", () => {
       expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
     });
     expect(screen.getByRole("heading", { name: "Comparative Revision Matrix" })).toBeInTheDocument();
+    expect(screen.queryByText(/Using local read-only comparison data/i)).not.toBeInTheDocument();
+  });
+
+  it("renders bundled fallback rows with a notice when live matrix data errors", async () => {
+    mockComparativeRows.setError();
+
+    render(<ComparativeMatrix />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 7 of 7 comparative routes/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Using local read-only comparison data because live matrix data could not be loaded.",
+    );
+    expect(screen.getAllByText(/Class and voice/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Imagining children/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
+  });
+
+  it("uses bundled fallback rows when live matrix data returns no rows", async () => {
+    mockComparativeRows.setEmpty();
+
+    render(<ComparativeMatrix />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 7 of 7 comparative routes/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(/Using local read-only comparison data/i);
+    expect(screen.getAllByText(/Naturalised systems/i).length).toBeGreaterThan(0);
+  });
+
+  it("keeps AO, search, and theme filters working on fallback rows", async () => {
+    mockComparativeRows.setReject();
+
+    render(<ComparativeMatrix />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 7 of 7 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "AO2" }));
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 6 of 7 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /search comparative routes/i }), {
+      target: { value: "Robbie" },
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 7 comparative routes/i)).toBeInTheDocument();
+    });
+    expect(screen.getAllByText(/Class and voice/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Imagining children/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Class theme filter" }));
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 7 comparative routes/i)).toBeInTheDocument();
+    });
+    expect(screen.getAllByText(/Class and voice/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Naturalised systems/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/AO5/i)).not.toBeInTheDocument();
+  });
+
+  it("uses filtered fallback rows in compact, cards, and Teacher Pack print layouts", async () => {
+    mockComparativeRows.setError();
+
+    const { container } = render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 7 of 7 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByRole("textbox", { name: /search comparative routes/i }), {
+      target: { value: "Robbie" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: /print layout/i }), {
+      target: { value: "teacher" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 7 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const compactRegion = screen.getByRole("table").closest("div");
+    const cardsRegion = screen.getByRole("article").parentElement;
+    const teacherRegion = container.querySelector("section");
+
+    for (const region of [compactRegion, cardsRegion, teacherRegion]) {
+      expect(region).not.toBeNull();
+      expect(within(region!).getAllByText(/Class and voice/i).length).toBeGreaterThan(0);
+      expect(within(region!).queryByText(/Imagining children/i)).not.toBeInTheDocument();
+      expect(within(region!).getByText("Printing 1 filtered route")).toBeInTheDocument();
+    }
+    expect(within(teacherRegion!).queryByText(/AO5/i)).not.toBeInTheDocument();
   });
 
   it("surfaces comparative tension from the canonical matrix data contract", async () => {

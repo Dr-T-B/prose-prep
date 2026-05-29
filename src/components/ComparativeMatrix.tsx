@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { integrateBuilderHandoffsIntoCurrentPlan, type BuilderHandoffItem } from "@/lib/builderHandoff";
+import { COMPARATIVE_MATRIX as LOCAL_COMPARATIVE_MATRIX, type ComparativeMatrixEntry } from "@/data/seed";
 
 interface Row {
   id: string;
@@ -59,6 +60,56 @@ const hasText = (value: unknown) => typeof value === "string" && value.trim().le
 const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper";
 const toolbarButtonBase = `min-h-10 rounded-md border border-rule px-3 py-2 text-xs font-medium transition hover:bg-rule ${focusRing}`;
 const segmentedButtonBase = `min-h-10 rounded px-3 py-2 text-xs font-medium transition ${focusRing}`;
+const fallbackNotice = "Using local read-only comparison data because live matrix data could not be loaded.";
+
+type MatrixQueryRow = {
+  id?: string | number | null;
+  axis?: string | null;
+  hard_times?: string | null;
+  atonement?: string | null;
+  divergence?: string | null;
+  ao2?: string | null;
+  ao3?: string | null;
+  ao4?: string | null;
+  thesis?: string | null;
+  character?: string | null;
+  narrative?: string | null;
+  structure?: string | null;
+  exam_fit?: string | null;
+  themes?: string[] | null;
+};
+
+const canUseLocalMatrixFallback = () => import.meta.env.DEV || import.meta.env.MODE === "test";
+
+const mapMatrixRow = (r: MatrixQueryRow): Row => ({
+  id: String(r.id ?? ""),
+  theme: r.axis ?? "",
+  hardTimes: r.hard_times ?? "",
+  atonement: r.atonement ?? "",
+  divergence: r.divergence ?? "",
+  ao2: r.ao2 ?? "",
+  ao3: r.ao3 ?? "",
+  ao4: r.ao4 ?? "",
+  thesis: r.thesis ?? "",
+  character: r.character ?? "",
+  narrative: r.narrative ?? "",
+  structure: r.structure ?? "",
+  examFit: r.exam_fit ?? "",
+  themes: Array.isArray(r.themes) ? r.themes : null,
+});
+
+const localFallbackRows = (): Row[] =>
+  LOCAL_COMPARATIVE_MATRIX.map((entry: ComparativeMatrixEntry) => mapMatrixRow({
+    ...entry,
+    ao2: entry.ao2 ?? (entry.id === "cmx_repair" ? "" : `AO2 method focus: ${entry.hard_times}`),
+    ao3: entry.ao3 ?? (entry.id === "cmx_imag_child" ? "" : `AO3 context focus: ${entry.themes.join(", ")}.`),
+    ao4: entry.ao4 ?? `AO4 comparative link: ${entry.divergence}`,
+    thesis: entry.thesis ?? `Both texts use ${entry.axis.toLowerCase()} to expose pressure on moral judgement.`,
+    character: entry.character ?? "",
+    narrative: entry.narrative ?? "",
+    structure: entry.structure ?? "",
+    exam_fit: entry.exam_fit ?? "Use as a local read-only route for visual testing and revision planning.",
+  }));
 
 export default function Component2ComparativeMatrix() {
   const navigate = useNavigate();
@@ -73,11 +124,20 @@ export default function Component2ComparativeMatrix() {
   const [printMode, setPrintMode] = useState<"compact" | "cards" | "teacher">("compact");
   const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [usingFallback, setUsingFallback] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setUsingFallback(false);
+    const applyLocalFallback = () => {
+      setRows(localFallbackRows());
+      setUsingFallback(true);
+      setError(null);
+      setLoading(false);
+    };
+
     supabase
       .from("comparative_matrix")
       .select(
@@ -88,27 +148,30 @@ export default function Component2ComparativeMatrix() {
       .then(({ data, error: err }) => {
         if (cancelled) return;
         if (err) {
+          if (canUseLocalMatrixFallback()) {
+            applyLocalFallback();
+            return;
+          }
           setError(err.message);
           setLoading(false);
           return;
         }
-        const mapped: Row[] = (data ?? []).map((r) => ({
-          id: r.id as string,
-          theme: (r.axis as string) ?? "",
-          hardTimes: (r.hard_times as string) ?? "",
-          atonement: (r.atonement as string) ?? "",
-          divergence: ((r as { divergence?: string }).divergence) ?? "",
-          ao2: ((r as { ao2?: string }).ao2) ?? "",
-          ao3: ((r as { ao3?: string }).ao3) ?? "",
-          ao4: ((r as { ao4?: string }).ao4) ?? "",
-          thesis: ((r as { thesis?: string }).thesis) ?? "",
-          character: ((r as { character?: string }).character) ?? "",
-          narrative: ((r as { narrative?: string }).narrative) ?? "",
-          structure: ((r as { structure?: string }).structure) ?? "",
-          examFit: ((r as { exam_fit?: string }).exam_fit) ?? "",
-          themes: ((r as { themes?: string[] | null }).themes) ?? null,
-        }));
+        const mapped: Row[] = (data ?? []).map(mapMatrixRow);
+        if (mapped.length === 0 && canUseLocalMatrixFallback()) {
+          applyLocalFallback();
+          return;
+        }
         setRows(mapped);
+        setUsingFallback(false);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (canUseLocalMatrixFallback()) {
+          applyLocalFallback();
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Could not load comparative matrix data.");
         setLoading(false);
       });
     return () => {
@@ -275,6 +338,11 @@ export default function Component2ComparativeMatrix() {
             rows with text-specific arguments, AO2–AO4 triggers and a thesis
             sentence starter for the comparative essay.
           </p>
+          {usingFallback && (
+            <p role="status" className="mt-3 rounded-md border border-rule bg-rule/20 px-3 py-2 text-sm text-ink-muted print:hidden">
+              {fallbackNotice}
+            </p>
+          )}
 
           <div
             role="region"
