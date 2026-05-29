@@ -412,6 +412,83 @@ describe("ComparativeMatrix", () => {
     expect(teacherRegion).toHaveClass("print:block");
   });
 
+  it("updates the filtered print count after AO filtering across print layouts", async () => {
+    const { container } = render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "AO2" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    const compactRegion = screen.getByRole("table").closest("div");
+    const cardsRegion = screen.getAllByRole("article")[0].parentElement;
+    const teacherRegion = container.querySelector("section");
+
+    expect(screen.getAllByText("Printing 1 filtered route").length).toBeGreaterThanOrEqual(1);
+    expect(within(compactRegion!).getByText("Printing 1 filtered route")).toBeInTheDocument();
+    expect(within(cardsRegion!).getByText("Printing 1 filtered route")).toBeInTheDocument();
+    expect(within(teacherRegion!).getByText("Printing 1 filtered route")).toBeInTheDocument();
+  });
+
+  it("updates the filtered print count after search", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByRole("textbox", { name: /search comparative routes/i }), {
+      target: { value: "poverty" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+      expect(screen.getAllByText("Printing 1 filtered route").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("updates the filtered print count after theme chip selection", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Class theme filter" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 1 of 2 comparative routes/i)).toBeInTheDocument();
+      expect(screen.getAllByText("Printing 1 filtered route").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("shows a no-results print status and clears filters from the print toolbar affordance", async () => {
+    render(<ComparativeMatrix />);
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Childhood theme filter" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /search comparative routes/i }), {
+      target: { value: "poverty" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 0 of 2 comparative routes/i)).toBeInTheDocument();
+      expect(screen.getAllByText("No routes match the current filters").length).toBeGreaterThanOrEqual(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters before printing" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Showing 2 of 2 comparative routes/i)).toBeInTheDocument();
+      expect(screen.getAllByText("Printing 2 filtered routes").length).toBeGreaterThanOrEqual(1);
+    });
+    expect(screen.getByRole("textbox", { name: /search comparative routes/i })).toHaveValue("");
+  });
+
   it("uses the AO-filtered row set for Teacher Pack print output", async () => {
     const { container } = render(<ComparativeMatrix />);
     await waitFor(() => {

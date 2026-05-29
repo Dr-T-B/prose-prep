@@ -208,6 +208,11 @@ export default function Component2ComparativeMatrix() {
         .includes(q)
     );
   }, [rows, query, aoFilter, selectedThemes]);
+  const hasActiveFilters = aoFilter !== "all" || selectedThemes.length > 0 || query.trim().length > 0;
+  const printStatus =
+    filtered.length === 0
+      ? "No routes match the current filters"
+      : `Printing ${filtered.length} filtered route${filtered.length === 1 ? "" : "s"}`;
 
   const getSubtitle = (ht: string, at: string) => {
     const getFocus = (str: string) => str.split(/[.,;]/)[0];
@@ -354,6 +359,18 @@ export default function Component2ComparativeMatrix() {
                 Teacher Pack: prints the currently filtered routes with teaching notes.
               </p>
             )}
+            <div className="w-full flex flex-wrap items-center gap-2 text-xs text-ink-muted">
+              <span aria-live="polite">{printStatus}</span>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className={`min-h-10 rounded-md px-3 py-2 font-medium text-ink-muted underline decoration-dotted underline-offset-2 hover:text-ink ${focusRing}`}
+                >
+                  Clear filters before printing
+                </button>
+              )}
+            </div>
             {themeOptions.length > 0 && (
               <div className="w-full flex flex-wrap items-center gap-1.5 mt-2 bg-rule/5 p-2 rounded-md border border-rule/50">
                 <span className="text-xs font-mono uppercase tracking-wider text-ink-muted mr-2">Filter by Themes:</span>
@@ -392,6 +409,9 @@ export default function Component2ComparativeMatrix() {
 
         {filtered.length === 0 ? (
           <div className="rounded-lg border border-rule p-8 text-center bg-paper mt-4">
+            <p className="hidden text-xs font-medium text-ink-muted print:block">
+              {printStatus}
+            </p>
             <p className="text-sm text-ink font-medium">
               No comparative routes match the current filters. Try clearing a theme or search term.
             </p>
@@ -407,6 +427,9 @@ export default function Component2ComparativeMatrix() {
           <>
             {/* Wide-screen matrix */}
             <div className={`hidden overflow-x-auto rounded-lg border border-rule lg:block ${printMode === 'compact' ? 'print:block' : 'print:hidden'}`}>
+              <p className="hidden border-b border-rule px-3 py-2 text-xs font-medium text-ink-muted print:block">
+                {printStatus}
+              </p>
               <table className="w-full border-collapse text-left text-sm">
                 <thead className="bg-rule/50">
                   <tr>
@@ -475,6 +498,9 @@ export default function Component2ComparativeMatrix() {
 
             {/* Mobile / tablet accordion */}
             <div className={`space-y-3 lg:hidden ${printMode === 'cards' ? 'print:block' : 'print:hidden'}`}>
+              <p className="hidden text-xs font-medium text-ink-muted print:block">
+                {printStatus}
+              </p>
               {filtered.map((row) => {
                 const open = expandedIds.has(row.id);
                 return (
@@ -586,6 +612,9 @@ export default function Component2ComparativeMatrix() {
           <div className="space-y-6 pt-4">
             <p className="text-xs text-ink-muted">
               Teacher Pack: prints the currently filtered routes with teaching notes.
+            </p>
+            <p className="text-xs font-medium text-ink-muted">
+              {printStatus}
             </p>
             {filtered.length === 0 ? (
               <p className="rounded-md border border-rule p-4 text-sm font-medium text-ink">
