@@ -459,7 +459,7 @@ export default function Component2ComparativeMatrix() {
                           key={c.key as string}
                           className="min-w-[14rem] border-l border-t border-rule p-3 align-top text-sm leading-relaxed"
                         >
-                          {row[c.key]}
+                          <CellValue value={row[c.key]} />
                         </td>
                       ))}
                     </tr>
@@ -499,7 +499,7 @@ export default function Component2ComparativeMatrix() {
                       <div id={`comparative-matrix-route-${row.id}`} className="space-y-4 p-4">
                         <Pair label="Hard Times" body={row.hardTimes} />
                         <Pair label="Atonement" body={row.atonement} />
-                        {row.divergence && (
+                        {hasText(row.divergence) && (
                           <div className="rounded-md border-l-4 border-primary bg-primary/5 p-3">
                             <p className="font-mono text-[10px] uppercase tracking-wider text-primary">
                               Comparative tension
@@ -533,20 +533,24 @@ export default function Component2ComparativeMatrix() {
                             <AO key={item.key} label={item.label} body={item.body} />
                           ));
                         })()}
-                        <div className="rounded-md border-l-4 border-ink bg-ink/5 p-3">
-                          <p className="font-mono text-[10px] uppercase tracking-wider text-ink">
-                            Thesis starter
-                          </p>
-                          <p className="mt-1 font-serif text-sm italic">
-                            {row.thesis}
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <Meta label="Character" body={row.character} />
-                          <Meta label="Narrative" body={row.narrative} />
-                          <Meta label="Structure" body={row.structure} />
-                          <Meta label="Exam fit" body={row.examFit} />
-                        </div>
+                        {hasText(row.thesis) && (
+                          <div className="rounded-md border-l-4 border-ink bg-ink/5 p-3">
+                            <p className="font-mono text-[10px] uppercase tracking-wider text-ink">
+                              Thesis starter
+                            </p>
+                            <p className="mt-1 font-serif text-sm italic">
+                              {row.thesis}
+                            </p>
+                          </div>
+                        )}
+                        {hasAnyText(row.character, row.narrative, row.structure, row.examFit) && (
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <Meta label="Character" body={row.character} />
+                            <Meta label="Narrative" body={row.narrative} />
+                            <Meta label="Structure" body={row.structure} />
+                            <Meta label="Exam fit" body={row.examFit} />
+                          </div>
+                        )}
                         <div className="grid grid-cols-2 gap-2 mt-3 print:hidden">
                           <button
                             onClick={() => handleCopy(row)}
@@ -623,7 +627,23 @@ function visibleCols(lens: LensKey, aoFilter: AoFilter) {
   return lensCols;
 }
 
+function hasAnyText(...values: unknown[]) {
+  return values.some(hasText);
+}
+
+function CellValue({ value }: { value: unknown }) {
+  if (hasText(value)) return <>{String(value)}</>;
+
+  return (
+    <span className="text-ink-muted" aria-label="No content available">
+      —
+    </span>
+  );
+}
+
 function Pair({ label, body }: { label: string; body: string }) {
+  if (!hasText(body)) return null;
+
   return (
     <div>
       <p className="font-mono text-[10px] uppercase tracking-wider text-ink-muted">
@@ -635,6 +655,8 @@ function Pair({ label, body }: { label: string; body: string }) {
 }
 
 function AO({ label, body }: { label: string; body: string }) {
+  if (!hasText(body)) return null;
+
   return (
     <div className="rounded-md bg-rule/40 p-3">
       <p className="font-mono text-[10px] uppercase tracking-wider text-ink">
@@ -646,6 +668,8 @@ function AO({ label, body }: { label: string; body: string }) {
 }
 
 function Meta({ label, body }: { label: string; body: string }) {
+  if (!hasText(body)) return null;
+
   return (
     <div className="rounded border border-rule p-2">
       <p className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
@@ -657,6 +681,8 @@ function Meta({ label, body }: { label: string; body: string }) {
 }
 
 function Print({ term, def }: { term: string; def: string }) {
+  if (!hasText(def)) return null;
+
   return (
     <>
       <dt className="font-mono uppercase tracking-wider text-ink-muted">
@@ -682,35 +708,35 @@ function formatComparativeRouteExport(row: Row): string {
     parts.push(`Themes: ${readableThemes}`);
   }
   
-  if (row.thesis) {
+  if (hasText(row.thesis)) {
     parts.push(`Thesis:\n${row.thesis}`);
   }
   
-  if (row.hardTimes) {
+  if (hasText(row.hardTimes)) {
     parts.push(`Hard Times:\n${row.hardTimes}`);
   }
   
-  if (row.atonement) {
+  if (hasText(row.atonement)) {
     parts.push(`Atonement:\n${row.atonement}`);
   }
 
-  if (row.divergence) {
+  if (hasText(row.divergence)) {
     parts.push(`Comparative tension:\n${row.divergence}`);
   }
   
-  if (row.ao2) {
+  if (hasText(row.ao2)) {
     parts.push(`AO2 — Method:\n${row.ao2}`);
   }
   
-  if (row.ao3) {
+  if (hasText(row.ao3)) {
     parts.push(`AO3 — Context:\n${row.ao3}`);
   }
   
-  if (row.ao4) {
+  if (hasText(row.ao4)) {
     parts.push(`AO4 — Comparison:\n${row.ao4}`);
   }
   
-  if (row.examFit) {
+  if (hasText(row.examFit)) {
     parts.push(`Exam fit:\n${row.examFit}`);
   }
   
@@ -746,7 +772,7 @@ function createMatrixRouteBuilderHandoff(row: Row): BuilderHandoffItem {
     originModule: "comparison",
     label: "Comparative Route",
     title: row.theme,
-    text: row.thesis || `Comparative route for ${row.theme}.`,
+    text: hasText(row.thesis) ? row.thesis : `Comparative route for ${row.theme}.`,
     sourceText: formatComparativeRouteExport(row),
     family: row.themes && row.themes.length > 0 ? (row.themes[0] as any) : undefined,
     metadata,
