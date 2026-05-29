@@ -9,6 +9,7 @@ import ProseCompass from "./pages/ProseCompass";
 import ParagraphEnginePage from "./pages/ParagraphEnginePage";
 import TimedPractice from "./pages/TimedPractice";
 import RetrievalToolkit from "./pages/RetrievalToolkit";
+import RapidRecall from "./pages/RapidRecall";
 import Library from "./pages/Library";
 import LibraryQuotes from "./pages/library/Quotes";
 import LibraryQuoteBank from "./pages/library/QuoteBank";
@@ -73,6 +74,7 @@ const App = () => (
                   <Route path="/phase4" element={<Phase4Workspace />} />
                   <Route path="/timed" element={<TimedPractice />} />
                   <Route path="/toolkit" element={<RetrievalToolkit />} />
+                  <Route path="/rapid-recall" element={<RapidRecall />} />
                   <Route path="/library" element={<Library />} />
                   <Route path="/library/quotes" element={<LibraryQuotes />} />
                   <Route path="/library/quote-bank" element={<LibraryQuoteBank />} />
