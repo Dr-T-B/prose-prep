@@ -68,6 +68,16 @@ describe("paragraph feedback request validation", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/only give feedback/i);
   });
+
+  it("rejects obvious model-answer intent", () => {
+    const result = validateParagraphFeedbackRequest({
+      paragraph: validParagraph,
+      questionFocus: "Please provide a model answer for this question.",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toMatch(/only give feedback/i);
+  });
 });
 
 describe("paragraph feedback response validation", () => {
