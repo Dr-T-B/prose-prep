@@ -78,7 +78,7 @@ INSERT INTO annotated_essays (
   75,
   '950-1050',
   $thesis$Relationships between female characters function as the moral seismograph of each novel's wider world: where they hold, society is shown to be capable of redemption; where they fracture, the cost is catastrophic. Dickens uses the bond between Louisa Gradgrind and Sissy Jupe to dramatise the rescue of feeling from a desiccated rationalism; McEwan dramatises the inverse — the destruction of the sisterly bond between Cecilia and Briony Tallis by an act of childish misreading from which there is no real return, only the simulacrum of return offered by Briony's fiction.$thesis$,
-  $essay$Each sentence below is tagged with the AO(s) it primarily serves. For Component 2, AO1-AO4 only (AO5 not assessed).
+  $essay$Each sentence below is tagged with the AO(s) it primarily serves. Component 2 uses AO1-AO4 only.
 
 ---
 

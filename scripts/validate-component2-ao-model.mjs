@@ -69,6 +69,25 @@ const REPORT_OR_ARCHIVE_RE = /(?:^|\/)docs\/.*(?:audit|archive|archived|report|v
 const DRAMA_RE = /(?:drama|hamlet|duchess|component\s*1|9ET0\/01)/i;
 const HISTORICAL_MIGRATION_RE = /^supabase\/migrations\//;
 const GENERATED_TYPES_RE = /^src\/integrations\/supabase\/types\.ts$/;
+const COMPONENT2_SEED_DML_TABLES = new Set([
+  "ao_annotations",
+  "ao_readiness",
+  "annotated_essays",
+  "character_cards",
+  "comparative_matrix",
+  "essay_paragraphs",
+  "essay_questions",
+  "library_context_bank",
+  "library_quotes",
+  "library_thesis_bank",
+  "paragraph_jobs",
+  "paragraph_stems",
+  "questions",
+  "quote_methods",
+  "quote_question_links",
+  "quotes",
+  "theses"
+]);
 const VALIDATOR_SELF_FILES = new Set([
   "scripts/validate-component2-ao-model.mjs",
   "scripts/component2-staged-content-utils.mjs",
@@ -79,6 +98,7 @@ const VALIDATOR_SELF_FILES = new Set([
 const FAILING_CATEGORIES = new Set([
   "component2_blocker",
   "component2_import_blocker",
+  "component2_seed_dml_blocker",
   "component2_schema_snapshot_blocker"
 ]);
 const COMPARATIVE_MATRIX_AO_FIELDS = [
@@ -227,7 +247,61 @@ function collectFiles() {
   };
 }
 
-function classifyOccurrence(relPath, lineText, fileText) {
+function normaliseSqlTableName(tableName) {
+  return tableName.replaceAll('"', "").toLowerCase();
+}
+
+function isComponent2SeedDmlTarget(tableName) {
+  const normalised = normaliseSqlTableName(tableName);
+  return COMPONENT2_SEED_DML_TABLES.has(normalised);
+}
+
+function getComponent2SeedDmlTarget(statement) {
+  const compact = statement.replace(/\s+/g, " ").trim();
+  const insertMatch = compact.match(/\binsert\s+into\s+(?:(?:"?public"?|public)\s*\.\s*)?("?[\w]+"?)/i);
+  if (insertMatch && isComponent2SeedDmlTarget(insertMatch[1])) {
+    return normaliseSqlTableName(insertMatch[1]);
+  }
+
+  const updateMatch = compact.match(/\bupdate\s+(?:(?:"?public"?|public)\s*\.\s*)?("?[\w]+"?)/i);
+  if (updateMatch && isComponent2SeedDmlTarget(updateMatch[1])) {
+    return normaliseSqlTableName(updateMatch[1]);
+  }
+
+  return null;
+}
+
+function findComponent2SeedDmlLines(text) {
+  const lines = text.split(/\r?\n/);
+  const dmlLines = new Map();
+  let statementLines = [];
+
+  function flushStatement() {
+    if (statementLines.length === 0) return;
+    const statement = statementLines.map(({ text: line }) => line).join("\n");
+    const target = getComponent2SeedDmlTarget(statement);
+    if (target) {
+      const firstDmlLine = statementLines.find(({ text: line }) => (
+        /\binsert\s+into\b/i.test(line) || /\bupdate\b/i.test(line)
+      ));
+      const startLine = firstDmlLine?.line ?? statementLines[0].line;
+      for (const { line } of statementLines) {
+        if (line >= startLine) dmlLines.set(line, target);
+      }
+    }
+    statementLines = [];
+  }
+
+  lines.forEach((lineText, index) => {
+    statementLines.push({ line: index + 1, text: lineText });
+    if (lineText.trimEnd().endsWith(";")) flushStatement();
+  });
+  flushStatement();
+
+  return dmlLines;
+}
+
+function classifyOccurrence(relPath, lineText, fileText, lineNumber, component2SeedDmlLines) {
   const line = lineText.toLowerCase();
 
   if (VALIDATOR_SELF_FILES.has(relPath)) {
@@ -272,6 +346,9 @@ function classifyOccurrence(relPath, lineText, fileText) {
   if (REPORT_OR_ARCHIVE_RE.test(relPath)) return "archive_or_report";
   if (GENERATED_TYPES_RE.test(relPath)) return "generated_type";
   if (HISTORICAL_MIGRATION_RE.test(relPath)) {
+    if (component2SeedDmlLines.has(lineNumber)) {
+      return "component2_seed_dml_blocker";
+    }
     return DRAMA_RE.test(lineText) || DRAMA_RE.test(relPath)
       ? "component1_drama_migration"
       : "historical_migration";
@@ -302,6 +379,9 @@ function isAllowedCategory(category) {
 function scanFile(filePath) {
   const relPath = toPosix(filePath);
   const text = fs.readFileSync(filePath, "utf8");
+  const component2SeedDmlLines = HISTORICAL_MIGRATION_RE.test(relPath)
+    ? findComponent2SeedDmlLines(text)
+    : new Map();
   const offences = [];
   const allowed = [];
 
@@ -312,7 +392,7 @@ function scanFile(filePath) {
         file: relPath,
         line: index + 1,
         text: lineText.trim().slice(0, 240),
-        category: classifyOccurrence(relPath, lineText, text)
+        category: classifyOccurrence(relPath, lineText, text, index + 1, component2SeedDmlLines)
       };
       if (isAllowedCategory(hit.category)) allowed.push(hit);
       else offences.push(hit);
