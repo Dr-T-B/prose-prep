@@ -78,10 +78,16 @@ The Quotes section currently supports:
 
 ## Running locally
 
+Use Node 22 for local development and CI. The repository pins this with
+`.nvmrc`, and `package.json` intentionally restricts `engines.node` to
+`>=22 <23`. Use the npm version declared by `packageManager`
+(`npm@11.6.2`) and avoid Node 24 until the engine range is deliberately
+updated.
+
 Install dependencies:
 
 ```bash
-npm install
+npm ci
 ```
 
 Start the dev server:
