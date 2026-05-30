@@ -1,5 +1,5 @@
 // Pure helpers for the mark-component2-essay edge function.
-// No Deno-specific imports — also consumed by Vitest tests in src/test/.
+// No Deno-specific imports - also consumed by Vitest tests in src/test/.
 
 export type EssayMode = 'full_essay' | 'paragraph_only' | 'structured_attempt';
 
@@ -13,6 +13,7 @@ export const EXAM_WARNING =
 export type RawInput = {
   mode?: unknown;
   question_id?: unknown;
+  question_stem?: unknown;
   essay_text?: unknown;
   paragraph_attempt_id?: unknown;
 };
@@ -20,13 +21,15 @@ export type RawInput = {
 export type ValidatedInput =
   | {
       mode: 'full_essay';
-      question_id: string;
+      question_id?: string;
+      question_stem?: string;
       essay_text: string;
       word_count: number;
     }
   | {
       mode: 'paragraph_only';
-      question_id: string;
+      question_id?: string;
+      question_stem?: string;
       essay_text: string;
       word_count: number;
     }
@@ -39,16 +42,26 @@ export type ValidationResult =
   | { ok: true; value: ValidatedInput }
   | { ok: false; error: string };
 
+const FORBIDDEN_QUESTION_TEXT = [
+  new RegExp('\\bAO' + '5\\b', 'i'),
+  /\bAO\s*5\b/i,
+  /\b(?:mark|marks|marked|marking)\b/i,
+  /\b(?:score|scores|scored|scoring)\b/i,
+  /\b(?:grade|graded|grading)\b/i,
+  /\b(?:top[-\s]?band|band\s*[1-5]|upper\s+band|lower\s+band|bands?)\b/i,
+  /\blevel\s*[1-5]?\b/i,
+  /model\s+answer/i,
+  /\brewrite\b/i,
+  /rewritten\s+paragraph/i,
+  /full\s+essay/i,
+];
+
 export function countWords(text: string): number {
   const trimmed = text.trim();
   if (!trimmed) return 0;
   return trimmed.split(/\s+/).length;
 }
 
-// Extract the inner text of <section:NAME>…</section:NAME> from a streamed
-// or completed accumulator. Returns null if the section is missing or has
-// no closing tag yet. Used by both the Edge Function post-stream
-// reconstruction and the frontend progressive parser.
 export function extractSection(text: string, name: string): string | null {
   const re = new RegExp(
     `<section:${name}>([\\s\\S]*?)<\\/section:${name}>`,
@@ -58,10 +71,6 @@ export function extractSection(text: string, name: string): string | null {
   return m ? m[1].trim() : null;
 }
 
-// JSON.parse without throwing — used when reconstructing sections from a
-// streamed response where the model may have emitted malformed JSON inside
-// a section tag. Returns the fallback on failure (and does not log; callers
-// decide whether to log).
 export function safeJsonParse<T>(raw: string | null, fallback: T): T {
   if (raw == null) return fallback;
   try {
@@ -69,6 +78,18 @@ export function safeJsonParse<T>(raw: string | null, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function optionalQuestionStem(value: unknown): { ok: true; value?: string } | { ok: false; error: string } {
+  if (value === undefined || value === null || value === '') return { ok: true };
+  if (typeof value !== 'string') return { ok: false, error: 'question_stem must be text' };
+  const trimmed = value.trim();
+  if (!trimmed) return { ok: true };
+  if (trimmed.length > 500) return { ok: false, error: 'question_stem must be 500 characters or fewer' };
+  if (FORBIDDEN_QUESTION_TEXT.some((pattern) => pattern.test(trimmed))) {
+    return { ok: false, error: 'question_stem must be a formative Component 2 practice question' };
+  }
+  return { ok: true, value: trimmed };
 }
 
 export function validateInput(raw: RawInput): ValidationResult {
@@ -90,27 +111,37 @@ export function validateInput(raw: RawInput): ValidationResult {
     };
   }
 
-  if (typeof raw.question_id !== 'string' || !raw.question_id) {
-    return { ok: false, error: 'question_id is required' };
+  const questionId = typeof raw.question_id === 'string' && raw.question_id.trim()
+    ? raw.question_id.trim()
+    : undefined;
+  const questionStem = optionalQuestionStem(raw.question_stem);
+  if (!questionStem.ok) return questionStem;
+
+  if (!questionId && !questionStem.value) {
+    return { ok: false, error: 'question_id or question_stem is required' };
+  }
+  if (questionId && questionStem.value) {
+    return { ok: false, error: 'Provide question_id or question_stem, not both' };
   }
   if (typeof raw.essay_text !== 'string' || !raw.essay_text.trim()) {
     return { ok: false, error: 'essay_text is required' };
   }
+
   const word_count = countWords(raw.essay_text);
   if (mode === 'full_essay') {
     if (word_count < 300 || word_count > 3000) {
-      return { ok: false, error: `essay_text must be 300–3000 words (got ${word_count})` };
+      return { ok: false, error: `essay_text must be 300-3000 words (got ${word_count})` };
     }
-  } else {
-    if (word_count < 150 || word_count > 600) {
-      return { ok: false, error: `essay_text must be 150–600 words for paragraph_only (got ${word_count})` };
-    }
+  } else if (word_count < 150 || word_count > 600) {
+    return { ok: false, error: `essay_text must be 150-600 words for paragraph_only (got ${word_count})` };
   }
+
   return {
     ok: true,
     value: {
       mode,
-      question_id: raw.question_id,
+      ...(questionId ? { question_id: questionId } : {}),
+      ...(questionStem.value ? { question_stem: questionStem.value } : {}),
       essay_text: raw.essay_text,
       word_count,
     },
@@ -135,7 +166,6 @@ export function stripAO5<T>(value: T): T {
     return out as unknown as T;
   }
   if (typeof value === 'string') {
-    // Remove sentences/clauses that mention AO-5.
     return value
       .replace(/(^|[.!?])\s*[^.!?]*\bAO5\b[^.!?]*([.!?]|$)/gi, '$1')
       .replace(/\bAO5\b/gi, '')
@@ -274,7 +304,6 @@ export function validateShape(candidate: unknown): ShapeCheck {
         }
       }
     }
-    // Reject AO-5 leaks at the shape-validation boundary.
     if (('AO' + '5') in (ao as Record<string, unknown>)) {
       errors.push('aoFeedback.AO' + '5 must not be present (Component 2 does not assess AO' + '5)');
     }
