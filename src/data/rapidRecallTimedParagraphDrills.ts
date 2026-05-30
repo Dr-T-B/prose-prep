@@ -377,6 +377,34 @@ const TIMED_PARAGRAPH_DRILL_SEEDS: TimedParagraphDrillSeed[] = [
       "Comparative judgement opening": "Dickens stresses conditioning before the choice, whereas McEwan stresses consequence after the choice.",
     },
   },
+  {
+    itemId: "route-memory-guilt-accountability",
+    theme: "memory",
+    focusPhrase: "memory and guilt",
+    questionFocus: "memory and guilt as judgement of earlier error",
+    hardTimesTopic: "Gradgrind's recognition and Louisa's crisis",
+    atonementTopic: "Briony's retrospective authorship",
+    bestStems: {
+      "Thesis opening": "Both novels use memory and guilt to judge earlier error, but Dickens makes recognition reformist while McEwan makes guilt formally unresolved.",
+      "Hard Times paragraph opening": "Dickens makes Gradgrind's recognition a turning point where memory of error begins to redirect moral judgement.",
+      "Atonement paragraph opening": "McEwan makes Briony's later narration an act of memory that confesses guilt without fully repairing harm.",
+      "Comparative judgement opening": "Dickens gives guilt a clearer reformist direction, whereas McEwan makes guilt persist through the act of storytelling.",
+    },
+  },
+  {
+    itemId: "route-comparison-planning-pressure",
+    theme: "important choices",
+    focusPhrase: "comparison route planning",
+    questionFocus: "planning pressure and consequence across both novels",
+    hardTimesTopic: "Louisa's constrained marriage decision",
+    atonementTopic: "Briony's accusation and Robbie's consequences",
+    bestStems: {
+      "Thesis opening": "A strong comparison weighs pressure and consequence: Dickens stresses social training before choice, while McEwan stresses damage after misjudgement.",
+      "Hard Times paragraph opening": "Dickens gives the planning route a clear pressure point through Louisa's marriage, where education has already narrowed choice.",
+      "Atonement paragraph opening": "McEwan shifts the route towards consequence, because Briony's accusation turns misreading into lasting damage for Robbie and Cecilia.",
+      "Comparative judgement opening": "The strongest judgement compares pressure before the choice in Dickens with consequence after the choice in McEwan.",
+    },
+  },
 ];
 
 export const rapidRecallTimedParagraphDrills: RapidRecallTimedParagraphDrill[] =

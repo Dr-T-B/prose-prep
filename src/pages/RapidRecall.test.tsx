@@ -142,14 +142,14 @@ describe("RapidRecall", () => {
     }
   });
 
-  it("ships at least eight static items for every required drill type", () => {
+  it("ships expanded static items for every required drill type", () => {
     const counts = getRapidRecallWorkbookCountByType();
 
-    expect(rapidRecallWorkbookItems).toHaveLength(33);
-    expect(counts["multiple-choice"]).toBeGreaterThanOrEqual(8);
-    expect(counts["fill-blank"]).toBeGreaterThanOrEqual(8);
-    expect(counts["match-pair"]).toBeGreaterThanOrEqual(8);
-    expect(counts["route-selection"]).toBeGreaterThanOrEqual(8);
+    expect(rapidRecallWorkbookItems).toHaveLength(41);
+    expect(counts["multiple-choice"]).toBe(10);
+    expect(counts["fill-blank"]).toBe(10);
+    expect(counts["match-pair"]).toBe(10);
+    expect(counts["route-selection"]).toBe(11);
   });
 
   it("adds static route plans to route-selection drills and comparative multiple-choice route drills", () => {
@@ -158,7 +158,7 @@ describe("RapidRecall", () => {
       item.type === "multiple-choice" && item.textFocus === "Comparative"
     ));
 
-    expect(routeSelectionItems).toHaveLength(9);
+    expect(routeSelectionItems).toHaveLength(11);
     expect(routeSelectionItems.every((item) => item.routePlan)).toBe(true);
     expect(comparativeMultipleChoiceItems.length).toBeGreaterThanOrEqual(5);
     expect(comparativeMultipleChoiceItems.every((item) => item.routePlan)).toBe(true);
@@ -175,7 +175,7 @@ describe("RapidRecall", () => {
     ));
 
     expect(getRapidRecallTimedParagraphDrillCount()).toBeGreaterThanOrEqual(12);
-    expect(timedRouteSelectionItems).toHaveLength(9);
+    expect(timedRouteSelectionItems).toHaveLength(11);
     expect(timedComparativeMultipleChoiceItems.length).toBeGreaterThanOrEqual(4);
 
     for (const drill of rapidRecallTimedParagraphDrills) {
@@ -257,12 +257,14 @@ describe("RapidRecall", () => {
 
     expect(screen.getByText(/For a question on childhood/i)).toBeInTheDocument();
     expect(screen.queryByText(/Which decision best frames gender/i)).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Session summary")).toHaveTextContent("1");
+    expect(screen.getByText(/Which route best links education to emotional damage/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Session summary")).toHaveTextContent("2");
 
     fireEvent.change(screen.getByLabelText("AO filter"), { target: { value: "AO2" } });
 
     expect(screen.queryByText(/For a question on childhood/i)).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Session summary")).toHaveTextContent("0");
+    expect(screen.getByText(/Which route best links education to emotional damage/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Session summary")).toHaveTextContent("1");
   });
 
   it("shows route-selection coverage for childhood AO1 Hard Times filters", () => {
