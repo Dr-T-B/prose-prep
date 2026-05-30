@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { ArrowRight, ChevronDown, ChevronRight, Copy, Printer } from "lucide-react";
+import { ChevronDown, ChevronRight, Printer } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,7 +28,6 @@ import {
 
 import type {
   AoFeedback,
-  AoLevel,
   MarkerMode,
   MarkerPayload,
   MarkerResult,
@@ -40,43 +38,24 @@ import type {
 // Constants
 // ────────────────────────────────────────────────────────────────────────────
 
-const VALID_APP_ROUTES = new Set<string>([
-  "/builder",
-  "/paragraph-builder",
-  "/paragraph-engine",
-  "/drill",
-  "/flex",
-  "/library/context",
-  "/library/quote-bank",
-  "/library/quotes",
-  "/library/glossary",
-  "/library/stems",
-  "/library/thesis",
-  "/compare",
-  "/matrix",
-  "/routes",
-  "/theme-wheel",
-]);
-
 const HTTP_ERROR_MESSAGES: Record<number, string> = {
   400: "Check your input and try again.",
   401: "Your session has expired. Please sign in again.",
   404: "Question or attempt not found.",
-  422: "The marker returned an unexpected response. Please try again.",
-  429: "You've used your 10 marks for this hour. Try again shortly.",
-  500: "The marker is temporarily unavailable.",
+  422: "The feedback tool returned an unexpected response. Please try again.",
+  429: "You've used your 10 feedback requests for this hour. Try again shortly.",
+  500: "The feedback tool is temporarily unavailable.",
+  503: "The feedback provider is unavailable. No AI feedback was generated.",
 };
 
 const EXAM_WARNING_TEXT =
-  "This is diagnostic guidance only and does not constitute an official Pearson Edexcel mark or grade.";
+  "Formative guidance only: use this as practice feedback, not an official assessment judgement.";
 
 const MODE_LABEL: Record<MarkerMode, string> = {
   full_essay: "Full essay",
   paragraph_only: "Single paragraph",
   structured_attempt: "Saved attempt",
 };
-
-const TARGET_GRADES = ["A/A*", "A", "B"] as const;
 
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -104,22 +83,6 @@ function formatDateTime(iso: string): string {
   return `${day} ${mon} ${yr}, ${hh}:${mm}`;
 }
 
-function levelBadgeClasses(level: AoLevel | string | null | undefined): string {
-  switch (level) {
-    case "Level 5":
-      return "bg-emerald-100 text-emerald-800 border-emerald-200";
-    case "Level 4":
-      return "bg-sky-100 text-sky-800 border-sky-200";
-    case "Level 3":
-      return "bg-amber-100 text-amber-800 border-amber-200";
-    case "Level 2":
-    case "Level 1":
-      return "bg-red-100 text-red-800 border-red-200";
-    default:
-      return "bg-muted text-muted-foreground border-rule";
-  }
-}
-
 function quoteStatusBadgeClasses(status: QuoteDiagnostic["status"]): string {
   switch (status) {
     case "verified":
@@ -137,40 +100,130 @@ function isHttpError(e: unknown): e is MarkerHttpError {
   return !!e && typeof e === "object" && "status" in e && typeof (e as MarkerHttpError).status === "number";
 }
 
+const UNSAFE_FEEDBACK_TEXT_RE = new RegExp(
+  [
+    "\\bAO" + "5\\b",
+    "\\b(?:mark|marks|marked|marking)\\s*(?:[:=]|\\d|\\/|out of)\\b",
+    "\\b(?:score|scores|scored|scoring)\\s*(?:[:=]|\\d|\\/|out of)\\b",
+    "\\b(?:grade|graded|grading)\\b",
+    "\\blevel\\s*[1-5]\\b",
+    "model\\s+upgrade\\s+paragraph",
+    "model\\s+answer",
+    "\\brewrite\\b",
+    "rewritten\\s+paragraph",
+    "full\\s+essay",
+  ].join("|"),
+  "i",
+);
+
+const FORBIDDEN_FEEDBACK_KEYS = new Set([
+  "provisionalLevel",
+  "provisionalMarks",
+  "level",
+  "mark",
+  "marks",
+  "score",
+  "scores",
+  "grade",
+  "modelUpgradeParagraph",
+  "modelAnswer",
+  "rewrittenParagraph",
+  "fullEssay",
+  "AO" + "5",
+]);
+
+function hasUnsafeFeedbackValue(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasUnsafeFeedbackValue);
+  if (value && typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).some(([key, entry]) => (
+      FORBIDDEN_FEEDBACK_KEYS.has(key) ||
+      new RegExp("^ao" + "5$", "i").test(key) ||
+      hasUnsafeFeedbackValue(entry)
+    ));
+  }
+  return typeof value === "string" && UNSAFE_FEEDBACK_TEXT_RE.test(value);
+}
+
+function isAoFeedback(value: unknown): value is AoFeedback {
+  if (!value || typeof value !== "object" || hasUnsafeFeedbackValue(value)) return false;
+  const entry = value as Record<string, unknown>;
+  return (
+    typeof entry.diagnosticLabel === "string" &&
+    typeof entry.strength === "string" &&
+    typeof entry.nextStep === "string"
+  );
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string" && !hasUnsafeFeedbackValue(entry));
+}
+
+function isQuoteDiagnosticArray(value: unknown): value is QuoteDiagnostic[] {
+  if (!Array.isArray(value)) return false;
+  return value.every((item) => {
+    if (!item || typeof item !== "object") return false;
+    const diagnostic = item as Record<string, unknown>;
+    return (
+      typeof diagnostic.quote === "string" &&
+      (diagnostic.status === "verified" || diagnostic.status === "unverified" || diagnostic.status === "paraphrased") &&
+      typeof diagnostic.note === "string" &&
+      !hasUnsafeFeedbackValue(diagnostic.note)
+    );
+  });
+}
+
+function isSafeMarkerResult(value: unknown): value is MarkerResult {
+  if (!value || typeof value !== "object" || hasUnsafeFeedbackValue(value)) return false;
+  const result = value as Record<string, unknown>;
+  const ao = result.aoFeedback as Record<string, unknown> | undefined;
+  return (
+    result.examWarning === EXAM_WARNING_TEXT &&
+    typeof result.summary === "string" &&
+    !!ao &&
+    isAoFeedback(ao.AO1) &&
+    isAoFeedback(ao.AO2) &&
+    isAoFeedback(ao.AO3) &&
+    isAoFeedback(ao.AO4) &&
+    isStringArray(result.strengths) &&
+    isStringArray(result.priorityTargets) &&
+    isQuoteDiagnosticArray(result.quoteMethodDiagnostic) &&
+    isStringArray(result.revisionPrompts) &&
+    typeof result.nextStep === "string"
+  );
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // SSE streaming: progressive section state + parser
 // ────────────────────────────────────────────────────────────────────────────
 
 export type SectionState = {
   examWarning:           string | null;
-  provisionalLevel:      string | null;
-  provisionalMarks:      number | null;
-  overallSummary:        string | null;
+  summary:               string | null;
   AO1:                   AoFeedback | null;
   AO2:                   AoFeedback | null;
   AO3:                   AoFeedback | null;
   AO4:                   AoFeedback | null;
-  topStrengths:          string[] | null;
-  priorityWeaknesses:    string[] | null;
+  strengths:             string[] | null;
+  priorityTargets:       string[] | null;
   quoteMethodDiagnostic: QuoteDiagnostic[] | null;
-  modelUpgradeParagraph: string | null;
-  nextDrill:             MarkerResult["nextDrill"] | null;
+  revisionPrompts:       string[] | null;
+  nextStep:              string | null;
+  teacherNotes:          string | null;
 };
 
 const EMPTY_SECTIONS: SectionState = {
   examWarning: null,
-  provisionalLevel: null,
-  provisionalMarks: null,
-  overallSummary: null,
+  summary: null,
   AO1: null,
   AO2: null,
   AO3: null,
   AO4: null,
-  topStrengths: null,
-  priorityWeaknesses: null,
+  strengths: null,
+  priorityTargets: null,
   quoteMethodDiagnostic: null,
-  modelUpgradeParagraph: null,
-  nextDrill: null,
+  revisionPrompts: null,
+  nextStep: null,
+  teacherNotes: null,
 };
 
 // Pure: scan the accumulated SSE text for closed <section:NAME>…</section:NAME>
@@ -190,31 +243,33 @@ export function parseSectionsDelta(
     try {
       switch (name) {
         case "examWarning":
-        case "overallSummary":
-        case "modelUpgradeParagraph":
-        case "provisionalLevel":
-          delta[name] = content;
+        case "summary":
+        case "nextStep":
+        case "teacherNotes":
+          if (!hasUnsafeFeedbackValue(content)) delta[name] = content;
           break;
-        case "provisionalMarks": {
-          const n = parseInt(content, 10);
-          if (Number.isFinite(n)) delta.provisionalMarks = n;
-          break;
-        }
         case "AO1":
         case "AO2":
         case "AO3":
         case "AO4":
-          delta[name] = JSON.parse(content) as AoFeedback;
+          {
+            const parsed = JSON.parse(content) as unknown;
+            if (isAoFeedback(parsed)) delta[name] = parsed;
+          }
           break;
-        case "topStrengths":
-        case "priorityWeaknesses":
-          delta[name] = JSON.parse(content) as string[];
+        case "strengths":
+        case "priorityTargets":
+        case "revisionPrompts":
+          {
+            const parsed = JSON.parse(content) as unknown;
+            if (isStringArray(parsed)) delta[name] = parsed;
+          }
           break;
         case "quoteMethodDiagnostic":
-          delta.quoteMethodDiagnostic = JSON.parse(content) as QuoteDiagnostic[];
-          break;
-        case "nextDrill":
-          delta.nextDrill = JSON.parse(content) as MarkerResult["nextDrill"];
+          {
+            const parsed = JSON.parse(content) as unknown;
+            if (isQuoteDiagnosticArray(parsed)) delta.quoteMethodDiagnostic = parsed;
+          }
           break;
         default:
           break;
@@ -238,36 +293,18 @@ function mapHttpError(status: number): string {
 
 function ExamWarningCallout() {
   return (
-    <Alert className="border-amber-300 bg-amber-50 text-amber-900">
-      <AlertTitle className="text-sm font-semibold">Diagnostic feedback only</AlertTitle>
+    <Alert className="border-sky-300 bg-sky-50 text-sky-900">
+      <AlertTitle className="text-sm font-semibold">Formative feedback only</AlertTitle>
       <AlertDescription className="text-sm">{EXAM_WARNING_TEXT}</AlertDescription>
     </Alert>
   );
 }
 
-function GradeSummaryCard({ result }: { result: MarkerResult }) {
-  return (
-    <Card className="print:break-inside-avoid">
-      <CardContent className="flex flex-col items-start gap-2 pt-6">
-        <span className="text-xs uppercase tracking-wider text-ink-muted font-mono">Provisional grade</span>
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <Badge className={`text-base px-3 py-1 ${levelBadgeClasses(result.provisionalLevel)}`}>
-            {result.provisionalLevel}
-          </Badge>
-          {typeof result.provisionalMarks === "number" && (
-            <span className="font-serif text-2xl">~{result.provisionalMarks} / 20</span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function OverallSummaryCard({ summary }: { summary: string }) {
+function SummaryCard({ summary }: { summary: string }) {
   return (
     <Card className="print:break-inside-avoid">
       <CardHeader>
-        <CardTitle className="text-base">Overall summary</CardTitle>
+        <CardTitle className="text-base">Summary</CardTitle>
       </CardHeader>
       <CardContent className="text-sm leading-relaxed">{summary}</CardContent>
     </Card>
@@ -279,8 +316,8 @@ function AOFeedbackCard({ aoKey, feedback }: { aoKey: string; feedback: AoFeedba
     <Card className="print:break-inside-avoid">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="text-sm font-semibold">{aoKey}</CardTitle>
-        <Badge variant="outline" className={levelBadgeClasses(feedback.level)}>
-          {feedback.level}
+        <Badge variant="outline" className="bg-paper-dim text-ink border-rule">
+          {feedback.diagnosticLabel}
         </Badge>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
@@ -289,29 +326,25 @@ function AOFeedbackCard({ aoKey, feedback }: { aoKey: string; feedback: AoFeedba
           <p className="leading-relaxed">{feedback.strength}</p>
         </div>
         <div>
-          <div className="text-xs font-mono uppercase tracking-wider text-ink-muted mb-1">Weakness</div>
-          <p className="leading-relaxed">{feedback.weakness}</p>
-        </div>
-        <div>
-          <div className="text-xs font-mono uppercase tracking-wider text-ink-muted mb-1">Next action</div>
-          <p className="leading-relaxed">{feedback.nextAction}</p>
+          <div className="text-xs font-mono uppercase tracking-wider text-ink-muted mb-1">Next step</div>
+          <p className="leading-relaxed">{feedback.nextStep}</p>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function StrengthsWeaknessesCard({
+function StrengthsTargetsCard({
   strengths,
-  weaknesses,
+  targets,
 }: {
   strengths: string[];
-  weaknesses: string[];
+  targets: string[];
 }) {
   return (
     <Card className="print:break-inside-avoid">
       <CardHeader>
-        <CardTitle className="text-base">Top strengths & priority weaknesses</CardTitle>
+        <CardTitle className="text-base">Strengths & Priority Targets</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-2">
         <div>
@@ -326,12 +359,12 @@ function StrengthsWeaknessesCard({
           </ul>
         </div>
         <div>
-          <div className="text-xs font-mono uppercase tracking-wider text-red-700 mb-2">Priority weaknesses</div>
+          <div className="text-xs font-mono uppercase tracking-wider text-sky-700 mb-2">Priority targets</div>
           <ul className="space-y-1.5 text-sm">
-            {weaknesses.map((w, i) => (
+            {targets.map((target, i) => (
               <li key={i} className="flex gap-2">
-                <span className="text-red-600 mt-1">●</span>
-                <span>{w}</span>
+                <span className="text-sky-600 mt-1">●</span>
+                <span>{target}</span>
               </li>
             ))}
           </ul>
@@ -365,53 +398,34 @@ function QuoteDiagnosticCard({ items }: { items: QuoteDiagnostic[] }) {
   );
 }
 
-function ModelUpgradeCard({ paragraph }: { paragraph: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(paragraph);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Could not copy to clipboard");
-    }
-  };
+function RevisionPromptsCard({ prompts }: { prompts: string[] }) {
   return (
     <Card className="print:break-inside-avoid">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">Model upgrade paragraph</CardTitle>
-        <Button variant="outline" size="sm" onClick={copy} className="no-print gap-1.5">
-          <Copy className="h-3.5 w-3.5" />
-          {copied ? "Copied" : "Copy"}
-        </Button>
+      <CardHeader>
+        <CardTitle className="text-base">Revision Prompts</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm leading-relaxed font-serif">{paragraph}</p>
+        <ul className="space-y-1.5 text-sm">
+          {prompts.map((prompt, i) => (
+            <li key={i} className="flex gap-2">
+              <span className="text-primary mt-1">●</span>
+              <span>{prompt}</span>
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   );
 }
 
-function NextDrillCard({ drill }: { drill: MarkerResult["nextDrill"] }) {
-  const navigate = useNavigate();
-  const routeIsValid = VALID_APP_ROUTES.has(drill.appRoute);
+function NextStepCard({ nextStep }: { nextStep: string }) {
   return (
     <Card className="print:break-inside-avoid">
       <CardHeader>
-        <CardTitle className="text-base">Recommended drill</CardTitle>
+        <CardTitle className="text-base">Next Step</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div>
-          <div className="font-semibold text-sm">{drill.title}</div>
-          <div className="text-xs text-ink-muted">{drill.durationMinutes} minutes</div>
-        </div>
-        <p className="text-sm leading-relaxed">{drill.instructions}</p>
-        {routeIsValid && (
-          <Button onClick={() => navigate(drill.appRoute)} className="gap-1.5 no-print">
-            Go to drill
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
-        )}
+      <CardContent>
+        <p className="text-sm leading-relaxed">{nextStep}</p>
       </CardContent>
     </Card>
   );
@@ -433,60 +447,31 @@ function MarkerOutput({ result }: { result: MarkerResult }) {
   return (
     <div className="space-y-4 print:space-y-3">
       <ExamWarningCallout />
-      <GradeSummaryCard result={result} />
-      <OverallSummaryCard summary={result.overallSummary} />
+      <SummaryCard summary={result.summary} />
       <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2 print:gap-3">
         {aoKeys.map((k) => (
           <AOFeedbackCard key={k} aoKey={k} feedback={result.aoFeedback[k]} />
         ))}
       </div>
-      <StrengthsWeaknessesCard
-        strengths={result.topStrengths}
-        weaknesses={result.priorityWeaknesses}
-      />
+      <StrengthsTargetsCard strengths={result.strengths} targets={result.priorityTargets} />
       <QuoteDiagnosticCard items={result.quoteMethodDiagnostic} />
-      <ModelUpgradeCard paragraph={result.modelUpgradeParagraph} />
-      <NextDrillCard drill={result.nextDrill} />
+      <RevisionPromptsCard prompts={result.revisionPrompts} />
+      <NextStepCard nextStep={result.nextStep} />
     </div>
   );
 }
 
 // Progressive renderer: each section is either skeleton (null) or real
 // content (non-null). Render order matches the streaming order produced
-// by the Edge Function. In paragraph_only mode `provisionalMarks` stays
-// null and the grade card renders without the /20 line.
+// by the Edge Function.
 function StreamingMarkerOutput({ sections }: { sections: SectionState }) {
   const aoKeys: Array<"AO1" | "AO2" | "AO3" | "AO4"> = ["AO1", "AO2", "AO3", "AO4"];
-
-  const gradeReady =
-    sections.provisionalLevel !== null || sections.provisionalMarks !== null;
 
   return (
     <div className="space-y-4 print:space-y-3">
       <ExamWarningCallout />
-      {gradeReady ? (
-        <Card className="print:break-inside-avoid">
-          <CardContent className="flex flex-col items-start gap-2 pt-6">
-            <span className="text-xs uppercase tracking-wider text-ink-muted font-mono">
-              Provisional grade
-            </span>
-            <div className="flex items-baseline gap-3 flex-wrap">
-              {sections.provisionalLevel && (
-                <Badge className={`text-base px-3 py-1 ${levelBadgeClasses(sections.provisionalLevel)}`}>
-                  {sections.provisionalLevel}
-                </Badge>
-              )}
-              {typeof sections.provisionalMarks === "number" && (
-                <span className="font-serif text-2xl">~{sections.provisionalMarks} / 20</span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Skeleton className="h-20 w-full" />
-      )}
-      {sections.overallSummary !== null ? (
-        <OverallSummaryCard summary={sections.overallSummary} />
+      {sections.summary !== null ? (
+        <SummaryCard summary={sections.summary} />
       ) : (
         <Skeleton className="h-24 w-full" />
       )}
@@ -499,10 +484,10 @@ function StreamingMarkerOutput({ sections }: { sections: SectionState }) {
           ),
         )}
       </div>
-      {sections.topStrengths !== null && sections.priorityWeaknesses !== null ? (
-        <StrengthsWeaknessesCard
-          strengths={sections.topStrengths}
-          weaknesses={sections.priorityWeaknesses}
+      {sections.strengths !== null && sections.priorityTargets !== null ? (
+        <StrengthsTargetsCard
+          strengths={sections.strengths}
+          targets={sections.priorityTargets}
         />
       ) : (
         <Skeleton className="h-32 w-full" />
@@ -510,15 +495,15 @@ function StreamingMarkerOutput({ sections }: { sections: SectionState }) {
       {sections.quoteMethodDiagnostic !== null && sections.quoteMethodDiagnostic.length > 0 && (
         <QuoteDiagnosticCard items={sections.quoteMethodDiagnostic} />
       )}
-      {sections.modelUpgradeParagraph !== null ? (
-        <ModelUpgradeCard paragraph={sections.modelUpgradeParagraph} />
-      ) : (
-        <Skeleton className="h-40 w-full" />
-      )}
-      {sections.nextDrill !== null ? (
-        <NextDrillCard drill={sections.nextDrill} />
+      {sections.revisionPrompts !== null ? (
+        <RevisionPromptsCard prompts={sections.revisionPrompts} />
       ) : (
         <Skeleton className="h-32 w-full" />
+      )}
+      {sections.nextStep !== null ? (
+        <NextStepCard nextStep={sections.nextStep} />
+      ) : (
+        <Skeleton className="h-24 w-full" />
       )}
     </div>
   );
@@ -532,13 +517,11 @@ type HistoryRow = {
   id: string;
   mode: MarkerMode;
   question_stem: string | null;
-  provisional_level: AoLevel | null;
-  provisional_marks: number | null;
   created_at: string;
   aoFeedback: MarkerResult["aoFeedback"] | null;
 };
 
-type FullHistoryRow = HistoryRow & { result_json: MarkerResult };
+type FullHistoryRow = HistoryRow & { result_json: MarkerResult | null };
 
 function MarkHistoryPanel({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
@@ -550,19 +533,17 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("essay_marker_results")
-        .select("id, mode, question_stem, provisional_level, provisional_marks, created_at, result_json")
+        .select("id, mode, question_stem, created_at, result_json")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(20);
       if (error) throw error;
       return (data ?? []).map((r) => {
-        const json = (r.result_json as MarkerResult | null) ?? null;
+        const json = isSafeMarkerResult(r.result_json) ? r.result_json : null;
         return {
           id: r.id as string,
           mode: r.mode as MarkerMode,
           question_stem: (r.question_stem as string | null) ?? null,
-          provisional_level: (r.provisional_level as AoLevel | null) ?? null,
-          provisional_marks: (r.provisional_marks as number | null) ?? null,
           created_at: r.created_at as string,
           aoFeedback: json?.aoFeedback ?? null,
         };
@@ -577,19 +558,17 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
       if (!expandedId) return null;
       const { data, error } = await supabase
         .from("essay_marker_results")
-        .select("id, mode, question_stem, provisional_level, provisional_marks, created_at, result_json")
+        .select("id, mode, question_stem, created_at, result_json")
         .eq("id", expandedId)
         .single();
       if (error) throw error;
-      const json = data.result_json as MarkerResult;
+      const json = isSafeMarkerResult(data.result_json) ? data.result_json : null;
       return {
         id: data.id as string,
         mode: data.mode as MarkerMode,
         question_stem: (data.question_stem as string | null) ?? null,
-        provisional_level: (data.provisional_level as AoLevel | null) ?? null,
-        provisional_marks: (data.provisional_marks as number | null) ?? null,
         created_at: data.created_at as string,
-        aoFeedback: json.aoFeedback,
+        aoFeedback: json?.aoFeedback ?? null,
         result_json: json,
       };
     },
@@ -600,7 +579,7 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger asChild>
           <Button variant="outline" className="w-full justify-between">
-            <span className="font-medium">Mark history</span>
+            <span className="font-medium">Feedback history</span>
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </Button>
         </CollapsibleTrigger>
@@ -608,11 +587,11 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
           {isLoading && <Skeleton className="h-24 w-full" />}
           {isError && (
             <Alert variant="destructive">
-              <AlertDescription>Could not load mark history.</AlertDescription>
+              <AlertDescription>Could not load feedback history.</AlertDescription>
             </Alert>
           )}
           {rows && rows.length === 0 && (
-            <p className="text-sm text-ink-muted py-4 text-center">No marks yet.</p>
+            <p className="text-sm text-ink-muted py-4 text-center">No feedback yet.</p>
           )}
           {rows?.map((row) => {
             const isExpanded = expandedId === row.id;
@@ -626,12 +605,6 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
                       </span>
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="outline">{MODE_LABEL[row.mode]}</Badge>
-                        {row.provisional_level && (
-                          <Badge className={levelBadgeClasses(row.provisional_level)}>
-                            {row.provisional_level}
-                            {row.provisional_marks != null && ` · ~${row.provisional_marks}/20`}
-                          </Badge>
-                        )}
                       </div>
                       {row.question_stem && (
                         <span className="text-ink-muted">{truncate(row.question_stem, 80)}</span>
@@ -643,9 +616,9 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
                           <Badge
                             key={k}
                             variant="outline"
-                            className={levelBadgeClasses(row.aoFeedback![k].level)}
+                            className="bg-paper-dim text-ink-muted border-rule"
                           >
-                            {k} · {row.aoFeedback![k].level.replace("Level ", "L")}
+                            {k} · {row.aoFeedback![k].diagnosticLabel}
                           </Badge>
                         ))}
                     </div>
@@ -659,8 +632,12 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
                   </Button>
                   {isExpanded && (
                     <div className="pt-3 border-t border-rule mt-2">
-                      {fullRow && fullRow.id === row.id ? (
+                      {fullRow && fullRow.id === row.id && fullRow.result_json ? (
                         <MarkerOutput result={fullRow.result_json} />
+                      ) : fullRow && fullRow.id === row.id ? (
+                        <p className="text-sm text-ink-muted">
+                          This older feedback record uses a retired format and is no longer shown.
+                        </p>
                       ) : (
                         <OutputSkeleton />
                       )}
@@ -703,7 +680,6 @@ function InputPanel({
   const [mode, setMode] = useState<MarkerMode>("full_essay");
   const [questionId, setQuestionId] = useState<string>("");
   const [essayText, setEssayText] = useState<string>("");
-  const [targetGrade, setTargetGrade] = useState<(typeof TARGET_GRADES)[number]>("A/A*");
   const [attemptId, setAttemptId] = useState<string>("");
   const [validation, setValidation] = useState<{ field: string; message: string } | null>(null);
 
@@ -741,11 +717,11 @@ function InputPanel({
   const validate = (): { ok: true; payload: MarkerPayload } | { ok: false; field: string; message: string } => {
     if (mode === "structured_attempt") {
       if (!attemptId) {
-        return { ok: false, field: "attempt", message: "Pick a saved attempt to mark." };
+        return { ok: false, field: "attempt", message: "Pick a saved attempt for feedback." };
       }
       return {
         ok: true,
-        payload: { mode, paragraph_attempt_id: attemptId, target_grade: targetGrade },
+        payload: { mode, paragraph_attempt_id: attemptId },
       };
     }
     if (!questionId) {
@@ -762,7 +738,7 @@ function InputPanel({
     }
     return {
       ok: true,
-      payload: { mode, question_id: questionId, essay_text: essayText, target_grade: targetGrade },
+      payload: { mode, question_id: questionId, essay_text: essayText },
     };
   };
 
@@ -814,21 +790,6 @@ function InputPanel({
               wordCountColour={wordCountColour}
               placeholder="Paste your full essay here…"
             />
-            <div>
-              <Label htmlFor="target-grade" className="text-xs font-mono uppercase tracking-wider text-ink-muted">
-                Target grade
-              </Label>
-              <Select value={targetGrade} onValueChange={(v) => setTargetGrade(v as (typeof TARGET_GRADES)[number])}>
-                <SelectTrigger id="target-grade" className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TARGET_GRADES.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </TabsContent>
 
           <TabsContent value="paragraph_only" className="space-y-4 mt-4">
@@ -898,7 +859,7 @@ function InputPanel({
           disabled={isPending}
           className="w-full"
         >
-          {isPending ? "Marking…" : "Mark my work"}
+          {isPending ? "Generating feedback…" : "Get formative feedback"}
         </Button>
       </CardContent>
     </Card>
@@ -1019,7 +980,7 @@ async function consumeStream(
 
         if (parsed.error) {
           onError(
-            "The marker encountered an error. Partial feedback may be shown.",
+            "The feedback tool encountered an error. Partial feedback may be shown.",
           );
           continue;
         }
@@ -1144,7 +1105,7 @@ export default function EssayMarker() {
       <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-8">
         <Alert>
           <AlertDescription>
-            Please <Link to="/auth" className="underline">sign in</Link> to use the Essay Marker.
+            Please <Link to="/auth" className="underline">sign in</Link> to use Essay Feedback.
           </AlertDescription>
         </Alert>
       </div>
@@ -1157,10 +1118,10 @@ export default function EssayMarker() {
   return (
     <div className="max-w-[1440px] mx-auto px-6 lg:px-10 py-8 print:px-0 print:py-0">
       <header className="mb-6 no-print">
-        <h1 className="font-serif text-2xl">Essay Marker</h1>
+        <h1 className="font-serif text-2xl">Essay Feedback</h1>
         <p className="text-sm text-ink-muted mt-1">
-          Diagnostic AI feedback against AO1–AO4 for Pearson Edexcel A-Level English Literature,
-          Component 2 (Prose).
+          Formative AI guidance against AO1–AO4 for Pearson Edexcel A-Level English Literature,
+          Component 2 (Prose). No official assessment judgement is generated.
         </p>
       </header>
 
@@ -1194,7 +1155,7 @@ export default function EssayMarker() {
           {!showStreaming && !friendlyError && (
             <Card className="no-print">
               <CardContent className="pt-6 text-center text-sm text-ink-muted">
-                Submit your work to receive diagnostic feedback.
+                Submit your work to receive formative feedback.
               </CardContent>
             </Card>
           )}

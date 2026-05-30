@@ -3,35 +3,26 @@ import {
   countWords,
   EXAM_WARNING,
   extractSection,
-  pickDrillRouteForWeakestAO,
   safeJsonParse,
   stripAO5,
   validateInput,
   validateShape,
-  VALID_APP_ROUTES,
   type MarkerResult,
 } from '../../supabase/functions/mark-component2-essay/validation';
 
 const buildResult = (overrides: Partial<MarkerResult> = {}): MarkerResult => ({
-  provisionalLevel: 'Level 4',
-  provisionalMarks: 14,
-  overallSummary: 'Solid argument with sustained comparison; AO3 underdeveloped.',
+  summary: 'The response has a clear comparative direction and needs sharper contextual integration.',
   aoFeedback: {
-    AO1: { level: 'Level 4', strength: 's', weakness: 'w', nextAction: 'n' },
-    AO2: { level: 'Level 4', strength: 's', weakness: 'w', nextAction: 'n' },
-    AO3: { level: 'Level 3', strength: 's', weakness: 'w', nextAction: 'n' },
-    AO4: { level: 'Level 4', strength: 's', weakness: 'w', nextAction: 'n' },
+    AO1: { diagnosticLabel: 'argument clarity', strength: 's', nextStep: 'n' },
+    AO2: { diagnosticLabel: 'method analysis', strength: 's', nextStep: 'n' },
+    AO3: { diagnosticLabel: 'context integration', strength: 's', nextStep: 'n' },
+    AO4: { diagnosticLabel: 'comparison', strength: 's', nextStep: 'n' },
   },
-  topStrengths: ['a', 'b', 'c'],
-  priorityWeaknesses: ['x', 'y'],
+  strengths: ['a', 'b', 'c'],
+  priorityTargets: ['x', 'y', 'z'],
   quoteMethodDiagnostic: [],
-  modelUpgradeParagraph: 'A model paragraph...',
-  nextDrill: {
-    title: 'Drill',
-    durationMinutes: 15,
-    instructions: 'Do the thing',
-    appRoute: '/library/context',
-  },
+  revisionPrompts: ['p1', 'p2', 'p3'],
+  nextStep: 'Revise one topic sentence so the comparison is visible from the start.',
   examWarning: EXAM_WARNING,
   ...overrides,
 });
@@ -92,10 +83,10 @@ describe('validateInput', () => {
     expect(r.ok).toBe(true);
   });
 
-  it('defaults target_grade to A/A*', () => {
+  it('does not carry target grade into the validated student-feedback payload', () => {
     const text = Array(400).fill('word').join(' ');
-    const r = validateInput({ mode: 'full_essay', question_id: 'q1', essay_text: text });
-    expect(r.ok && r.value.target_grade).toBe('A/A*');
+    const r = validateInput({ mode: 'full_essay', question_id: 'q1', essay_text: text, target_grade: 'A*' } as never);
+    expect(r.ok && 'target_grade' in r.value).toBe(false);
   });
 });
 
@@ -118,48 +109,41 @@ describe('stripAO5', () => {
 
 describe('validateShape', () => {
   it('accepts a well-formed result', () => {
-    const r = validateShape(buildResult(), { allowMissingProvisionalMarks: false });
+    const r = validateShape(buildResult());
     expect(r.ok).toBe(true);
   });
 
-  it('rejects when provisionalMarks missing in full_essay mode', () => {
-    const result = buildResult();
-    delete (result as Partial<MarkerResult>).provisionalMarks;
-    const r = validateShape(result, { allowMissingProvisionalMarks: false });
+  it('rejects provisional marks and levels in the student-facing response', () => {
+    const r = validateShape({
+      ...buildResult(),
+      provisionalLevel: 'Level 4',
+      provisionalMarks: 14,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.join('\n')).toMatch(/provisionalLevel|provisionalMarks/);
+    }
+  });
+
+  it('rejects model-answer and rewrite-style fields', () => {
+    const r = validateShape({
+      ...buildResult(),
+      modelUpgradeParagraph: 'A model paragraph...',
+      modelAnswer: 'A complete answer.',
+      rewrittenParagraph: 'A rewritten paragraph.',
+    });
     expect(r.ok).toBe(false);
   });
 
-  it('allows provisionalMarks omitted in paragraph_only mode', () => {
-    const result = buildResult();
-    delete (result as Partial<MarkerResult>).provisionalMarks;
-    const r = validateShape(result, { allowMissingProvisionalMarks: true });
-    expect(r.ok).toBe(true);
-  });
-
-  it('rejects invalid level string', () => {
-    const r = validateShape(buildResult({ provisionalLevel: 'Top Band' as never }), {
-      allowMissingProvisionalMarks: false,
-    });
+  it('rejects unsafe student-facing feedback wording', () => {
+    const r = validateShape(buildResult({
+      summary: 'This would be a grade A response.',
+    }));
     expect(r.ok).toBe(false);
   });
 
   it('rejects examWarning that does not match canonical string', () => {
-    const r = validateShape(buildResult({ examWarning: 'something else' }), {
-      allowMissingProvisionalMarks: false,
-    });
-    expect(r.ok).toBe(false);
-  });
-
-  it('rejects nextDrill.appRoute outside the allowed list', () => {
-    const result = buildResult({
-      nextDrill: {
-        title: 't',
-        durationMinutes: 15,
-        instructions: 'i',
-        appRoute: '/not-a-real-route',
-      },
-    });
-    const r = validateShape(result, { allowMissingProvisionalMarks: false });
+    const r = validateShape(buildResult({ examWarning: 'something else' }));
     expect(r.ok).toBe(false);
   });
 
@@ -170,7 +154,7 @@ describe('validateShape', () => {
         { quote: 'paraphrased thing', status: 'paraphrased', note: 'close but not exact' },
       ],
     });
-    const r = validateShape(result, { allowMissingProvisionalMarks: false });
+    const r = validateShape(result);
     expect(r.ok).toBe(true);
   });
 
@@ -181,7 +165,7 @@ describe('validateShape', () => {
         { quote: 'bad', status: 'made-up' as never, note: '' },
       ],
     });
-    const r = validateShape(result, { allowMissingProvisionalMarks: false });
+    const r = validateShape(result);
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.errors.some((e) => /quoteMethodDiagnostic\[1\]\.status/.test(e))).toBe(true);
@@ -194,7 +178,7 @@ describe('validateShape', () => {
         { quote: '', status: 'verified', note: '' },
       ],
     });
-    const r = validateShape(result, { allowMissingProvisionalMarks: false });
+    const r = validateShape(result);
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.errors.some((e) => /quoteMethodDiagnostic\[0\]\.quote/.test(e))).toBe(true);
@@ -204,37 +188,18 @@ describe('validateShape', () => {
   it('rejects aoFeedback containing an AO5 key', () => {
     const result = buildResult();
     (result.aoFeedback as Record<string, unknown>).AO5 = {
-      level: 'Level 4', strength: 's', weakness: 'w', nextAction: 'n',
+      diagnosticLabel: 'extra AO', strength: 's', nextStep: 'n',
     };
-    const r = validateShape(result, { allowMissingProvisionalMarks: false });
+    const r = validateShape(result);
     expect(r.ok).toBe(false);
-  });
-});
-
-describe('pickDrillRouteForWeakestAO', () => {
-  it('selects the route for the AO with the lowest level', () => {
-    const ao = {
-      AO1: { level: 'Level 4', strength: 's', weakness: 'w', nextAction: 'n' },
-      AO2: { level: 'Level 4', strength: 's', weakness: 'w', nextAction: 'n' },
-      AO3: { level: 'Level 2', strength: 's', weakness: 'w', nextAction: 'n' },
-      AO4: { level: 'Level 4', strength: 's', weakness: 'w', nextAction: 'n' },
-    } as const;
-    expect(pickDrillRouteForWeakestAO(ao as never)).toBe('/library/context');
-  });
-});
-
-describe('VALID_APP_ROUTES', () => {
-  it('only lists routes that exist in App.tsx', () => {
-    // Sanity: the well-formed test result uses one of these.
-    expect((VALID_APP_ROUTES as readonly string[]).includes('/library/context')).toBe(true);
   });
 });
 
 describe('extractSection', () => {
   it('extracts and trims the inner content of a closed section tag', () => {
     const text =
-      'preamble<section:overallSummary>\n  A solid argument.\n</section:overallSummary>tail';
-    expect(extractSection(text, 'overallSummary')).toBe('A solid argument.');
+      'preamble<section:summary>\n  A solid argument.\n</section:summary>tail';
+    expect(extractSection(text, 'summary')).toBe('A solid argument.');
   });
 
   it('returns null when the section is absent', () => {
@@ -242,13 +207,13 @@ describe('extractSection', () => {
   });
 
   it('returns null when only an opening tag has been streamed so far', () => {
-    const text = '<section:AO1>{"level":"Level 4"';
+    const text = '<section:AO1>{"diagnosticLabel":"argument clarity"';
     expect(extractSection(text, 'AO1')).toBeNull();
   });
 
   it('is case-insensitive on the tag name', () => {
-    const text = '<SECTION:provisionalLevel>Level 5</SECTION:provisionalLevel>';
-    expect(extractSection(text, 'provisionalLevel')).toBe('Level 5');
+    const text = '<SECTION:nextStep>Revise the topic sentence.</SECTION:nextStep>';
+    expect(extractSection(text, 'nextStep')).toBe('Revise the topic sentence.');
   });
 
   it('extracts the first occurrence when a section appears twice', () => {
