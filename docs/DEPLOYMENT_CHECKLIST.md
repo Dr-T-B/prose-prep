@@ -65,19 +65,14 @@ Or via `psql` per file:
 
 ## 2. Pre-deployment — app
 
-### 2.1 Resolve dual lockfile
-This worktree has both `package-lock.json` and `bun.lockb` / `bun.lock` checked
-in, while `package.json` declares `"packageManager": "npm@11.6.2"` and both
-`vercel.json` / `netlify.toml` use `npm run build`. Decision needed before the
-next deploy:
+### 2.1 Package manager alignment
+Resolved in favour of npm. `package.json` declares
+`"packageManager": "npm@11.6.2"`, `package-lock.json` is the canonical lockfile,
+CI uses `npm ci`, and deploy configuration should use npm commands.
 
-- **Keep npm (current deploy assumption):** delete `bun.lockb` and `bun.lock`,
-  remove any Bun-specific scripts, and document npm as canonical.
-- **Switch to Bun:** delete `package-lock.json`, update both deploy configs to
-  use `bun install && bun run build`, and update `engines` in `package.json`.
-
-This is left intentionally untouched until the deploy platform decision is
-confirmed — making the wrong choice here breaks CI silently.
+Do not reintroduce Bun lockfiles or Bun install/build commands unless the
+runtime decision is deliberately reopened and `package.json`, CI, and deploy
+configuration are updated together.
 
 ### 2.2 Confirm single deployment platform
 Both `vercel.json` and `netlify.toml` are present. Only one platform should
