@@ -5,9 +5,10 @@ import { ChevronDown, ChevronRight, Printer } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-
+import {
+  CURATED_ESSAY_THEMES,
+  generateEssayQuestionsFromTheme,
+  getQuestionStyleWarning,
+} from "@/lib/essayQuestionGeneration";
 import type {
   AoFeedback,
   MarkerMode,
@@ -33,10 +38,6 @@ import type {
   MarkerResult,
   QuoteDiagnostic,
 } from "@/types/essayMarker";
-
-// ────────────────────────────────────────────────────────────────────────────
-// Constants
-// ────────────────────────────────────────────────────────────────────────────
 
 const HTTP_ERROR_MESSAGES: Record<number, string> = {
   400: "Check your input and try again.",
@@ -52,14 +53,22 @@ const EXAM_WARNING_TEXT =
   "Formative guidance only: use this as practice feedback, not an official assessment judgement.";
 
 const MODE_LABEL: Record<MarkerMode, string> = {
-  full_essay: "Full essay",
+  full_essay: "Complete response",
   paragraph_only: "Single paragraph",
   structured_attempt: "Saved attempt",
 };
 
-// ────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ────────────────────────────────────────────────────────────────────────────
+type Question = { id: string; stem: string; family: string };
+type QuestionSource = "existing" | "custom" | "generated";
+type ValidationState = { field: string; message: string } | null;
+
+type Attempt = {
+  id: string;
+  paragraph_function: string | null;
+  paragraph_position: number | null;
+  created_at: string;
+  exam_question_id: string | null;
+};
 
 function countWords(text: string): number {
   const trimmed = text.trim();
@@ -69,7 +78,7 @@ function countWords(text: string): number {
 
 function truncate(text: string, max: number): string {
   if (!text) return "";
-  return text.length > max ? text.slice(0, max - 1).trimEnd() + "…" : text;
+  return text.length > max ? text.slice(0, max - 1).trimEnd() + "..." : text;
 }
 
 function formatDateTime(iso: string): string {
@@ -196,23 +205,19 @@ function isSafeMarkerResult(value: unknown): value is MarkerResult {
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// SSE streaming: progressive section state + parser
-// ────────────────────────────────────────────────────────────────────────────
-
 export type SectionState = {
-  examWarning:           string | null;
-  summary:               string | null;
-  AO1:                   AoFeedback | null;
-  AO2:                   AoFeedback | null;
-  AO3:                   AoFeedback | null;
-  AO4:                   AoFeedback | null;
-  strengths:             string[] | null;
-  priorityTargets:       string[] | null;
+  examWarning: string | null;
+  summary: string | null;
+  AO1: AoFeedback | null;
+  AO2: AoFeedback | null;
+  AO3: AoFeedback | null;
+  AO4: AoFeedback | null;
+  strengths: string[] | null;
+  priorityTargets: string[] | null;
   quoteMethodDiagnostic: QuoteDiagnostic[] | null;
-  revisionPrompts:       string[] | null;
-  nextStep:              string | null;
-  teacherNotes:          string | null;
+  revisionPrompts: string[] | null;
+  nextStep: string | null;
+  teacherNotes: string | null;
 };
 
 const EMPTY_SECTIONS: SectionState = {
@@ -230,9 +235,6 @@ const EMPTY_SECTIONS: SectionState = {
   teacherNotes: null,
 };
 
-// Pure: scan the accumulated SSE text for closed <section:NAME>…</section:NAME>
-// pairs and return a partial SectionState containing only newly-parsed sections
-// (sections already present in `prev` are skipped). Exported for unit tests.
 export function parseSectionsDelta(
   text: string,
   prev: SectionState,
@@ -255,33 +257,28 @@ export function parseSectionsDelta(
         case "AO1":
         case "AO2":
         case "AO3":
-        case "AO4":
-          {
-            const parsed = JSON.parse(content) as unknown;
-            if (isAoFeedback(parsed)) delta[name] = parsed;
-          }
+        case "AO4": {
+          const parsed = JSON.parse(content) as unknown;
+          if (isAoFeedback(parsed)) delta[name] = parsed;
           break;
+        }
         case "strengths":
         case "priorityTargets":
-        case "revisionPrompts":
-          {
-            const parsed = JSON.parse(content) as unknown;
-            if (isStringArray(parsed)) delta[name] = parsed;
-          }
+        case "revisionPrompts": {
+          const parsed = JSON.parse(content) as unknown;
+          if (isStringArray(parsed)) delta[name] = parsed;
           break;
-        case "quoteMethodDiagnostic":
-          {
-            const parsed = JSON.parse(content) as unknown;
-            if (isQuoteDiagnosticArray(parsed)) delta.quoteMethodDiagnostic = parsed;
-          }
+        }
+        case "quoteMethodDiagnostic": {
+          const parsed = JSON.parse(content) as unknown;
+          if (isQuoteDiagnosticArray(parsed)) delta.quoteMethodDiagnostic = parsed;
           break;
+        }
         default:
           break;
       }
     } catch {
-      // Malformed JSON in a section payload — skip; if the model emits a
-      // corrected version later it still won't re-match because the regex
-      // is non-greedy and only matches closed tags.
+      // Ignore malformed partial sections while streaming.
     }
   }
   return delta;
@@ -290,10 +287,6 @@ export function parseSectionsDelta(
 function mapHttpError(status: number): string {
   return HTTP_ERROR_MESSAGES[status] ?? HTTP_ERROR_MESSAGES[500];
 }
-
-// ────────────────────────────────────────────────────────────────────────────
-// Output sub-components
-// ────────────────────────────────────────────────────────────────────────────
 
 function ExamWarningCallout() {
   return (
@@ -338,13 +331,7 @@ function AOFeedbackCard({ aoKey, feedback }: { aoKey: string; feedback: AoFeedba
   );
 }
 
-function StrengthsTargetsCard({
-  strengths,
-  targets,
-}: {
-  strengths: string[];
-  targets: string[];
-}) {
+function StrengthsTargetsCard({ strengths, targets }: { strengths: string[]; targets: string[] }) {
   return (
     <Card className="print:break-inside-avoid">
       <CardHeader>
@@ -356,7 +343,7 @@ function StrengthsTargetsCard({
           <ul className="space-y-1.5 text-sm">
             {strengths.map((s, i) => (
               <li key={i} className="flex gap-2">
-                <span className="text-emerald-600 mt-1">●</span>
+                <span className="text-emerald-600 mt-1">-</span>
                 <span>{s}</span>
               </li>
             ))}
@@ -367,7 +354,7 @@ function StrengthsTargetsCard({
           <ul className="space-y-1.5 text-sm">
             {targets.map((target, i) => (
               <li key={i} className="flex gap-2">
-                <span className="text-sky-600 mt-1">●</span>
+                <span className="text-sky-600 mt-1">-</span>
                 <span>{target}</span>
               </li>
             ))}
@@ -412,7 +399,7 @@ function RevisionPromptsCard({ prompts }: { prompts: string[] }) {
         <ul className="space-y-1.5 text-sm">
           {prompts.map((prompt, i) => (
             <li key={i} className="flex gap-2">
-              <span className="text-primary mt-1">●</span>
+              <span className="text-primary mt-1">-</span>
               <span>{prompt}</span>
             </li>
           ))}
@@ -453,9 +440,7 @@ function MarkerOutput({ result }: { result: MarkerResult }) {
       <ExamWarningCallout />
       <SummaryCard summary={result.summary} />
       <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2 print:gap-3">
-        {aoKeys.map((k) => (
-          <AOFeedbackCard key={k} aoKey={k} feedback={result.aoFeedback[k]} />
-        ))}
+        {aoKeys.map((k) => <AOFeedbackCard key={k} aoKey={k} feedback={result.aoFeedback[k]} />)}
       </div>
       <StrengthsTargetsCard strengths={result.strengths} targets={result.priorityTargets} />
       <QuoteDiagnosticCard items={result.quoteMethodDiagnostic} />
@@ -465,57 +450,32 @@ function MarkerOutput({ result }: { result: MarkerResult }) {
   );
 }
 
-// Progressive renderer: each section is either skeleton (null) or real
-// content (non-null). Render order matches the streaming order produced
-// by the Edge Function.
 function StreamingMarkerOutput({ sections }: { sections: SectionState }) {
   const aoKeys: Array<"AO1" | "AO2" | "AO3" | "AO4"> = ["AO1", "AO2", "AO3", "AO4"];
 
   return (
-    <div className="space-y-4 print:space-y-3">
+    <div className="space-y-4 print:space-y-3" aria-label="Essay feedback results">
       <ExamWarningCallout />
-      {sections.summary !== null ? (
-        <SummaryCard summary={sections.summary} />
-      ) : (
-        <Skeleton className="h-24 w-full" />
-      )}
+      {sections.summary !== null ? <SummaryCard summary={sections.summary} /> : <Skeleton className="h-24 w-full" />}
       <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2 print:gap-3">
-        {aoKeys.map((k) =>
-          sections[k] !== null ? (
-            <AOFeedbackCard key={k} aoKey={k} feedback={sections[k] as AoFeedback} />
-          ) : (
-            <Skeleton key={k} className="h-40 w-full" />
-          ),
+        {aoKeys.map((k) => sections[k] !== null
+          ? <AOFeedbackCard key={k} aoKey={k} feedback={sections[k] as AoFeedback} />
+          : <Skeleton key={k} className="h-40 w-full" />,
         )}
       </div>
-      {sections.strengths !== null && sections.priorityTargets !== null ? (
-        <StrengthsTargetsCard
-          strengths={sections.strengths}
-          targets={sections.priorityTargets}
-        />
-      ) : (
-        <Skeleton className="h-32 w-full" />
-      )}
+      {sections.strengths !== null && sections.priorityTargets !== null
+        ? <StrengthsTargetsCard strengths={sections.strengths} targets={sections.priorityTargets} />
+        : <Skeleton className="h-32 w-full" />}
       {sections.quoteMethodDiagnostic !== null && sections.quoteMethodDiagnostic.length > 0 && (
         <QuoteDiagnosticCard items={sections.quoteMethodDiagnostic} />
       )}
-      {sections.revisionPrompts !== null ? (
-        <RevisionPromptsCard prompts={sections.revisionPrompts} />
-      ) : (
-        <Skeleton className="h-32 w-full" />
-      )}
-      {sections.nextStep !== null ? (
-        <NextStepCard nextStep={sections.nextStep} />
-      ) : (
-        <Skeleton className="h-24 w-full" />
-      )}
+      {sections.revisionPrompts !== null
+        ? <RevisionPromptsCard prompts={sections.revisionPrompts} />
+        : <Skeleton className="h-32 w-full" />}
+      {sections.nextStep !== null ? <NextStepCard nextStep={sections.nextStep} /> : <Skeleton className="h-24 w-full" />}
     </div>
   );
 }
-
-// ────────────────────────────────────────────────────────────────────────────
-// History panel
-// ────────────────────────────────────────────────────────────────────────────
 
 type HistoryRow = {
   id: string;
@@ -527,7 +487,7 @@ type HistoryRow = {
 
 type FullHistoryRow = HistoryRow & { result_json: MarkerResult | null };
 
-function MarkHistoryPanel({ userId }: { userId: string }) {
+function FeedbackHistoryPanel({ userId }: { userId: string }) {
   const [open, setOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -594,9 +554,7 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
               <AlertDescription>Could not load feedback history.</AlertDescription>
             </Alert>
           )}
-          {rows && rows.length === 0 && (
-            <p className="text-sm text-ink-muted py-4 text-center">No feedback yet.</p>
-          )}
+          {rows && rows.length === 0 && <p className="text-sm text-ink-muted py-4 text-center">No feedback yet.</p>}
           {rows?.map((row) => {
             const isExpanded = expandedId === row.id;
             return (
@@ -604,34 +562,21 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
                 <CardContent className="pt-4 pb-3 space-y-2">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="flex flex-col gap-1">
-                      <span className="text-xs font-mono text-ink-muted">
-                        {formatDateTime(row.created_at)}
-                      </span>
+                      <span className="text-xs font-mono text-ink-muted">{formatDateTime(row.created_at)}</span>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline">{MODE_LABEL[row.mode]}</Badge>
+                        <Badge variant="outline">{MODE_LABEL[row.mode] ?? "Answer"}</Badge>
                       </div>
-                      {row.question_stem && (
-                        <span className="text-ink-muted">{truncate(row.question_stem, 80)}</span>
-                      )}
+                      {row.question_stem && <span className="text-ink-muted">{truncate(row.question_stem, 80)}</span>}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {row.aoFeedback &&
-                        (["AO1", "AO2", "AO3", "AO4"] as const).map((k) => (
-                          <Badge
-                            key={k}
-                            variant="outline"
-                            className="bg-paper-dim text-ink-muted border-rule"
-                          >
-                            {k} · {row.aoFeedback![k].diagnosticLabel}
-                          </Badge>
-                        ))}
+                      {row.aoFeedback && (["AO1", "AO2", "AO3", "AO4"] as const).map((k) => (
+                        <Badge key={k} variant="outline" className="bg-paper-dim text-ink-muted border-rule">
+                          {k} - {row.aoFeedback![k].diagnosticLabel}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setExpandedId(isExpanded ? null : row.id)}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => setExpandedId(isExpanded ? null : row.id)}>
                     {isExpanded ? "Hide feedback" : "View full feedback"}
                   </Button>
                   {isExpanded && (
@@ -639,9 +584,7 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
                       {fullRow && fullRow.id === row.id && fullRow.result_json ? (
                         <MarkerOutput result={fullRow.result_json} />
                       ) : fullRow && fullRow.id === row.id ? (
-                        <p className="text-sm text-ink-muted">
-                          This older feedback record uses a retired format and is no longer shown.
-                        </p>
+                        <p className="text-sm text-ink-muted">This older feedback record uses a retired format and is no longer shown.</p>
                       ) : (
                         <OutputSkeleton />
                       )}
@@ -657,18 +600,248 @@ function MarkHistoryPanel({ userId }: { userId: string }) {
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Input panel — mode tabs and form
-// ────────────────────────────────────────────────────────────────────────────
+function QuestionSourceSelector({
+  value,
+  onChange,
+}: {
+  value: QuestionSource;
+  onChange: (value: QuestionSource) => void;
+}) {
+  const options: Array<{ value: QuestionSource; label: string }> = [
+    { value: "existing", label: "Existing question" },
+    { value: "custom", label: "My own question" },
+    { value: "generated", label: "Generate from theme" },
+  ];
 
-type Question = { id: string; stem: string; family: string };
-type Attempt = {
-  id: string;
-  paragraph_function: string | null;
-  paragraph_position: number | null;
-  created_at: string;
-  exam_question_id: string | null;
-};
+  return (
+    <fieldset className="space-y-2" aria-describedby="question-source-help">
+      <legend className="text-xs font-mono uppercase tracking-wider text-ink-muted">Question source</legend>
+      <p id="question-source-help" className="text-sm text-ink-muted">
+        Choose a practice question, write your own, or generate one from a theme.
+      </p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {options.map((option) => (
+          <label
+            key={option.value}
+            className={`flex min-h-11 cursor-pointer items-center rounded-sm border px-3 py-2 text-sm transition-colors ${
+              value === option.value ? "border-primary bg-paper-dim text-ink" : "border-rule bg-paper hover:bg-paper-dim"
+            }`}
+          >
+            <input
+              type="radio"
+              name="question-source"
+              value={option.value}
+              checked={value === option.value}
+              onChange={() => onChange(option.value)}
+              className="mr-2"
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function PracticeQuestionPicker({
+  value,
+  onChange,
+  questions,
+  loading,
+  validation,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  questions: Question[];
+  loading: boolean;
+  validation: ValidationState;
+}) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-xs font-mono uppercase tracking-wider text-ink-muted">Practice question</legend>
+      <p className="text-sm text-ink-muted">
+        {loading ? "Loading practice questions..." : `${questions.length} sample practice question${questions.length === 1 ? "" : "s"} available.`}
+      </p>
+      {loading && <Skeleton className="h-24 w-full" />}
+      {!loading && questions.length === 0 && (
+        <Alert>
+          <AlertDescription>No practice questions are available right now. You can write your own or generate one from a theme.</AlertDescription>
+        </Alert>
+      )}
+      <div className="space-y-2" role="radiogroup" aria-label="Practice question options">
+        {questions.map((q) => (
+          <label
+            key={q.id}
+            className={`block cursor-pointer rounded-sm border p-3 text-sm transition-colors ${
+              value === q.id ? "border-primary bg-paper-dim" : "border-rule bg-paper hover:bg-paper-dim"
+            }`}
+          >
+            <input
+              type="radio"
+              name="practice-question"
+              value={q.id}
+              checked={value === q.id}
+              onChange={() => onChange(q.id)}
+              className="mr-2 align-middle"
+            />
+            <span className="mr-2 text-xs font-mono text-ink-muted">{q.family}</span>
+            <span>{q.stem}</span>
+          </label>
+        ))}
+      </div>
+      {validation?.field === "question" && <p className="text-xs text-red-600">{validation.message}</p>}
+    </fieldset>
+  );
+}
+
+function CustomQuestionInput({
+  value,
+  onChange,
+  validation,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  validation: ValidationState;
+}) {
+  const warning = getQuestionStyleWarning(value);
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="custom-question" className="text-xs font-mono uppercase tracking-wider text-ink-muted">
+        Essay question
+      </Label>
+      <Textarea
+        id="custom-question"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Paste or type your Component 2 comparative question"
+        className="min-h-[96px] text-sm leading-relaxed"
+      />
+      {validation?.field === "custom_question" && <p className="text-xs text-red-600">{validation.message}</p>}
+      {warning && (
+        <Alert className="border-amber-200 bg-amber-50 text-amber-900">
+          <AlertDescription className="text-sm">{warning}</AlertDescription>
+        </Alert>
+      )}
+    </div>
+  );
+}
+
+function GeneratedQuestionPicker({
+  themeChoice,
+  onThemeChoiceChange,
+  themeText,
+  onThemeTextChange,
+  generatedQuestions,
+  selectedQuestion,
+  onGenerate,
+  onSelectQuestion,
+  validation,
+}: {
+  themeChoice: string;
+  onThemeChoiceChange: (value: string) => void;
+  themeText: string;
+  onThemeTextChange: (value: string) => void;
+  generatedQuestions: string[];
+  selectedQuestion: string;
+  onGenerate: () => void;
+  onSelectQuestion: (value: string) => void;
+  validation: ValidationState;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="theme-select" className="text-xs font-mono uppercase tracking-wider text-ink-muted">
+            Theme
+          </Label>
+          <Select value={themeChoice} onValueChange={onThemeChoiceChange}>
+            <SelectTrigger id="theme-select">
+              <SelectValue placeholder="Choose a theme" />
+            </SelectTrigger>
+            <SelectContent>
+              {CURATED_ESSAY_THEMES.map((theme) => (
+                <SelectItem key={theme} value={theme}>{theme}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="theme-custom" className="text-xs font-mono uppercase tracking-wider text-ink-muted">
+            Or type a theme
+          </Label>
+          <Input
+            id="theme-custom"
+            value={themeText}
+            onChange={(event) => onThemeTextChange(event.target.value)}
+            placeholder="e.g. responsibility"
+          />
+        </div>
+      </div>
+
+      <Button type="button" variant="outline" onClick={onGenerate}>
+        Generate practice questions
+      </Button>
+      {validation?.field === "theme" && <p className="text-xs text-red-600">{validation.message}</p>}
+
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-mono uppercase tracking-wider text-ink-muted">Generated question options</legend>
+        <div className="space-y-2" role="radiogroup" aria-label="Generated question options">
+          {generatedQuestions.map((question) => (
+            <button
+              key={question}
+              type="button"
+              role="radio"
+              aria-checked={selectedQuestion === question}
+              onClick={() => onSelectQuestion(question)}
+              className={`w-full rounded-sm border p-3 text-left text-sm leading-relaxed transition-colors ${
+                selectedQuestion === question ? "border-primary bg-paper-dim" : "border-rule bg-paper hover:bg-paper-dim"
+              }`}
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+        {validation?.field === "generated_question" && <p className="text-xs text-red-600">{validation.message}</p>}
+      </fieldset>
+    </div>
+  );
+}
+
+function EssayTextarea({
+  value,
+  onChange,
+  wordCount,
+  wordCountColour,
+  placeholder,
+  validation,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  wordCount: number;
+  wordCountColour: string;
+  placeholder: string;
+  validation: ValidationState;
+}) {
+  return (
+    <div>
+      <Label htmlFor="essay-text" className="text-xs font-mono uppercase tracking-wider text-ink-muted">
+        Your answer
+      </Label>
+      <Textarea
+        id="essay-text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="mt-1 min-h-[280px] font-serif text-sm leading-relaxed"
+      />
+      <div className="mt-1 flex items-center justify-between gap-3 text-xs">
+        <span className={`font-mono ${wordCountColour}`}>{wordCount} words</span>
+        {validation?.field === "essay_text" && <span className="text-right text-red-600">{validation.message}</span>}
+      </div>
+    </div>
+  );
+}
 
 function InputPanel({
   onSubmit,
@@ -681,11 +854,19 @@ function InputPanel({
   errorMessage: string | null;
   userId: string | null;
 }) {
+  const initialGeneration = generateEssayQuestionsFromTheme(CURATED_ESSAY_THEMES[0]);
+  const initialGeneratedQuestions = initialGeneration.ok ? initialGeneration.questions : [];
   const [mode, setMode] = useState<MarkerMode>("full_essay");
+  const [questionSource, setQuestionSource] = useState<QuestionSource>("existing");
   const [questionId, setQuestionId] = useState<string>("");
+  const [customQuestion, setCustomQuestion] = useState<string>("");
+  const [themeChoice, setThemeChoice] = useState<string>(CURATED_ESSAY_THEMES[0]);
+  const [themeText, setThemeText] = useState<string>("");
+  const [generatedQuestions, setGeneratedQuestions] = useState<string[]>(initialGeneratedQuestions);
+  const [generatedQuestion, setGeneratedQuestion] = useState<string>(initialGeneratedQuestions[0] ?? "");
   const [essayText, setEssayText] = useState<string>("");
   const [attemptId, setAttemptId] = useState<string>("");
-  const [validation, setValidation] = useState<{ field: string; message: string } | null>(null);
+  const [validation, setValidation] = useState<ValidationState>(null);
 
   const wordCount = useMemo(() => countWords(essayText), [essayText]);
 
@@ -718,32 +899,53 @@ function InputPanel({
     },
   });
 
+  const activeQuestionStem = useMemo(() => {
+    if (questionSource === "custom") return customQuestion.trim();
+    if (questionSource === "generated") return generatedQuestion.trim();
+    return "";
+  }, [customQuestion, generatedQuestion, questionSource]);
+
   const validate = (): { ok: true; payload: MarkerPayload } | { ok: false; field: string; message: string } => {
     if (mode === "structured_attempt") {
-      if (!attemptId) {
-        return { ok: false, field: "attempt", message: "Pick a saved attempt for feedback." };
-      }
-      return {
-        ok: true,
-        payload: { mode, paragraph_attempt_id: attemptId },
-      };
+      if (!attemptId) return { ok: false, field: "attempt", message: "Pick a saved attempt for feedback." };
+      return { ok: true, payload: { mode, paragraph_attempt_id: attemptId } };
     }
-    if (!questionId) {
-      return { ok: false, field: "question", message: "Pick a question." };
+
+    if (questionSource === "existing" && !questionId) {
+      return { ok: false, field: "question", message: "Pick a practice question." };
+    }
+    if (questionSource === "custom" && !customQuestion.trim()) {
+      return { ok: false, field: "custom_question", message: "Type or paste your essay question first." };
+    }
+    if (questionSource === "generated" && !generatedQuestion.trim()) {
+      return { ok: false, field: "generated_question", message: "Generate and choose a practice question." };
     }
     if (!essayText.trim()) {
-      return { ok: false, field: "essay_text", message: "Paste your work first." };
+      return { ok: false, field: "essay_text", message: "Paste your answer first." };
     }
     if (mode === "full_essay" && (wordCount < 300 || wordCount > 3000)) {
-      return { ok: false, field: "essay_text", message: `Full essays must be 300–3000 words (currently ${wordCount}).` };
+      return { ok: false, field: "essay_text", message: `Complete responses must be 300-3000 words (currently ${wordCount}).` };
     }
     if (mode === "paragraph_only" && (wordCount < 150 || wordCount > 600)) {
-      return { ok: false, field: "essay_text", message: `Single paragraphs must be 150–600 words (currently ${wordCount}).` };
+      return { ok: false, field: "essay_text", message: `Single paragraphs must be 150-600 words (currently ${wordCount}).` };
     }
-    return {
-      ok: true,
-      payload: { mode, question_id: questionId, essay_text: essayText },
-    };
+
+    if (questionSource === "existing") {
+      return { ok: true, payload: { mode, question_id: questionId, essay_text: essayText } };
+    }
+    return { ok: true, payload: { mode, question_stem: activeQuestionStem, essay_text: essayText } };
+  };
+
+  const handleGenerateQuestions = () => {
+    const theme = themeText.trim() || themeChoice;
+    const result = generateEssayQuestionsFromTheme(theme);
+    if (!result.ok) {
+      setValidation({ field: "theme", message: result.error });
+      return;
+    }
+    setGeneratedQuestions(result.questions);
+    setGeneratedQuestion(result.questions[0] ?? "");
+    setValidation(null);
   };
 
   const handleSubmit = () => {
@@ -756,16 +958,13 @@ function InputPanel({
     onSubmit(r.payload);
   };
 
-  const wordCountColour =
-    mode === "full_essay"
-      ? wordCount < 300 || wordCount > 3000
-        ? "text-red-600"
-        : "text-emerald-700"
-      : mode === "paragraph_only"
-        ? wordCount < 150 || wordCount > 600
-          ? "text-red-600"
-          : "text-emerald-700"
-        : "text-ink-muted";
+  const wordCountColour = mode === "full_essay"
+    ? wordCount < 300 || wordCount > 3000 ? "text-red-600" : "text-emerald-700"
+    : mode === "paragraph_only"
+      ? wordCount < 150 || wordCount > 600 ? "text-red-600" : "text-emerald-700"
+      : "text-ink-muted";
+
+  const answerPlaceholder = mode === "paragraph_only" ? "Paste one paragraph here" : "Write or paste your answer here";
 
   return (
     <Card className="no-print">
@@ -773,42 +972,84 @@ function InputPanel({
         <CardTitle className="text-lg">Your work</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Tabs value={mode} onValueChange={(v) => { setMode(v as MarkerMode); setValidation(null); }}>
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="full_essay">Full essay</TabsTrigger>
+        <Tabs value={mode} onValueChange={(value) => { setMode(value as MarkerMode); setValidation(null); }}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="full_essay">Complete response</TabsTrigger>
             <TabsTrigger value="paragraph_only">Single paragraph</TabsTrigger>
             <TabsTrigger value="structured_attempt">Saved attempt</TabsTrigger>
           </TabsList>
 
           <TabsContent value="full_essay" className="space-y-4 mt-4">
-            <QuestionPicker
-              value={questionId}
-              onChange={setQuestionId}
-              questions={questionsQuery.data ?? []}
-              loading={questionsQuery.isLoading}
-            />
+            <QuestionSourceSelector value={questionSource} onChange={(value) => { setQuestionSource(value); setValidation(null); }} />
+            {questionSource === "existing" && (
+              <PracticeQuestionPicker
+                value={questionId}
+                onChange={(value) => { setQuestionId(value); setValidation(null); }}
+                questions={questionsQuery.data ?? []}
+                loading={questionsQuery.isLoading}
+                validation={validation}
+              />
+            )}
+            {questionSource === "custom" && (
+              <CustomQuestionInput value={customQuestion} onChange={setCustomQuestion} validation={validation} />
+            )}
+            {questionSource === "generated" && (
+              <GeneratedQuestionPicker
+                themeChoice={themeChoice}
+                onThemeChoiceChange={setThemeChoice}
+                themeText={themeText}
+                onThemeTextChange={setThemeText}
+                generatedQuestions={generatedQuestions}
+                selectedQuestion={generatedQuestion}
+                onGenerate={handleGenerateQuestions}
+                onSelectQuestion={(value) => { setGeneratedQuestion(value); setValidation(null); }}
+                validation={validation}
+              />
+            )}
             <EssayTextarea
               value={essayText}
               onChange={setEssayText}
               wordCount={wordCount}
               wordCountColour={wordCountColour}
-              placeholder="Paste your full essay here…"
+              placeholder={answerPlaceholder}
+              validation={validation}
             />
           </TabsContent>
 
           <TabsContent value="paragraph_only" className="space-y-4 mt-4">
-            <QuestionPicker
-              value={questionId}
-              onChange={setQuestionId}
-              questions={questionsQuery.data ?? []}
-              loading={questionsQuery.isLoading}
-            />
+            <QuestionSourceSelector value={questionSource} onChange={(value) => { setQuestionSource(value); setValidation(null); }} />
+            {questionSource === "existing" && (
+              <PracticeQuestionPicker
+                value={questionId}
+                onChange={(value) => { setQuestionId(value); setValidation(null); }}
+                questions={questionsQuery.data ?? []}
+                loading={questionsQuery.isLoading}
+                validation={validation}
+              />
+            )}
+            {questionSource === "custom" && (
+              <CustomQuestionInput value={customQuestion} onChange={setCustomQuestion} validation={validation} />
+            )}
+            {questionSource === "generated" && (
+              <GeneratedQuestionPicker
+                themeChoice={themeChoice}
+                onThemeChoiceChange={setThemeChoice}
+                themeText={themeText}
+                onThemeTextChange={setThemeText}
+                generatedQuestions={generatedQuestions}
+                selectedQuestion={generatedQuestion}
+                onGenerate={handleGenerateQuestions}
+                onSelectQuestion={(value) => { setGeneratedQuestion(value); setValidation(null); }}
+                validation={validation}
+              />
+            )}
             <EssayTextarea
               value={essayText}
               onChange={setEssayText}
               wordCount={wordCount}
               wordCountColour={wordCountColour}
-              placeholder="Paste one paragraph here…"
+              placeholder={answerPlaceholder}
+              validation={validation}
             />
           </TabsContent>
 
@@ -827,28 +1068,20 @@ function InputPanel({
                   key={a.id}
                   onClick={() => { setAttemptId(a.id); setValidation(null); }}
                   className={`w-full text-left border rounded-sm p-3 transition-colors ${
-                    attemptId === a.id
-                      ? "border-primary bg-paper-dim"
-                      : "border-rule bg-paper hover:bg-paper-dim"
+                    attemptId === a.id ? "border-primary bg-paper-dim" : "border-rule bg-paper hover:bg-paper-dim"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm font-medium">
                       {a.paragraph_function ?? "Untitled paragraph"}
-                      {a.paragraph_position != null && (
-                        <span className="ml-2 text-xs font-mono text-ink-muted">#{a.paragraph_position}</span>
-                      )}
+                      {a.paragraph_position != null && <span className="ml-2 text-xs font-mono text-ink-muted">#{a.paragraph_position}</span>}
                     </span>
-                    <span className="text-xs font-mono text-ink-muted shrink-0">
-                      {formatDateTime(a.created_at)}
-                    </span>
+                    <span className="text-xs font-mono text-ink-muted shrink-0">{formatDateTime(a.created_at)}</span>
                   </div>
                 </button>
               ))}
             </div>
-            {validation?.field === "attempt" && (
-              <p className="text-xs text-red-600">{validation.message}</p>
-            )}
+            {validation?.field === "attempt" && <p className="text-xs text-red-600">{validation.message}</p>}
           </TabsContent>
         </Tabs>
 
@@ -858,95 +1091,14 @@ function InputPanel({
           </Alert>
         )}
 
-        <Button
-          onClick={handleSubmit}
-          disabled={isPending}
-          className="w-full"
-        >
-          {isPending ? "Generating feedback…" : "Get formative feedback"}
+        <Button onClick={handleSubmit} disabled={isPending} className="w-full">
+          {isPending ? "Checking your answer..." : "Check my answer"}
         </Button>
       </CardContent>
     </Card>
   );
-
-  function QuestionPicker({
-    value,
-    onChange,
-    questions,
-    loading,
-  }: {
-    value: string;
-    onChange: (v: string) => void;
-    questions: Question[];
-    loading: boolean;
-  }) {
-    return (
-      <div>
-        <Label htmlFor="question" className="text-xs font-mono uppercase tracking-wider text-ink-muted">
-          Question
-        </Label>
-        <Select value={value} onValueChange={onChange} disabled={loading}>
-          <SelectTrigger id="question" className="mt-1">
-            <SelectValue placeholder={loading ? "Loading…" : "Select a question"} />
-          </SelectTrigger>
-          <SelectContent>
-            {questions.map((q) => (
-              <SelectItem key={q.id} value={q.id}>
-                <span className="text-xs text-ink-muted font-mono mr-2">{q.family}</span>
-                {truncate(q.stem, 100)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {validation?.field === "question" && (
-          <p className="mt-1 text-xs text-red-600">{validation.message}</p>
-        )}
-      </div>
-    );
-  }
-
-  function EssayTextarea({
-    value,
-    onChange,
-    wordCount,
-    wordCountColour,
-    placeholder,
-  }: {
-    value: string;
-    onChange: (v: string) => void;
-    wordCount: number;
-    wordCountColour: string;
-    placeholder: string;
-  }) {
-    return (
-      <div>
-        <Label htmlFor="essay-text" className="text-xs font-mono uppercase tracking-wider text-ink-muted">
-          Your work
-        </Label>
-        <Textarea
-          id="essay-text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="mt-1 min-h-[280px] font-serif text-sm leading-relaxed"
-        />
-        <div className="mt-1 flex items-center justify-between text-xs">
-          <span className={`font-mono ${wordCountColour}`}>{wordCount} words</span>
-          {validation?.field === "essay_text" && (
-            <span className="text-red-600">{validation.message}</span>
-          )}
-        </div>
-      </div>
-    );
-  }
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Page
-// ────────────────────────────────────────────────────────────────────────────
-
-// Consume an SSE stream of `data: {chunk}` / `data: {error}` / `data: [DONE]`
-// lines and dispatch parsed sections to the supplied setter.
 async function consumeStream(
   body: ReadableStream<Uint8Array>,
   onSections: (sectionsUpdater: (prev: SectionState) => SectionState) => void,
@@ -983,9 +1135,7 @@ async function consumeStream(
         }
 
         if (parsed.error) {
-          onError(
-            "The feedback tool encountered an error. Partial feedback may be shown.",
-          );
+          onError("The feedback tool encountered an error. Partial feedback may be shown.");
           continue;
         }
 
@@ -1017,7 +1167,6 @@ export default function EssayMarker() {
   const [friendlyError, setFriendlyError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Cancel any in-flight stream on unmount.
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -1058,7 +1207,6 @@ export default function EssayMarker() {
           },
         );
 
-        // Errors raised before the stream opens come back as JSON, not SSE.
         if (!response.ok) {
           await response.json().catch(() => ({}));
           setFriendlyError(mapHttpError(response.status));
@@ -1078,13 +1226,10 @@ export default function EssayMarker() {
           () => {
             setHasResult(true);
             setIsPending(false);
-            // History view is populated by the Edge Function's post-stream
-            // persistence step; nudge React Query to re-fetch.
             queryClient.invalidateQueries({ queryKey: ["essay-marker-history"] });
           },
         );
 
-        // If the server closed without a [DONE] sentinel, settle the UI.
         setIsPending((prev) => (prev ? false : prev));
       } catch (err) {
         if ((err as { name?: string })?.name === "AbortError") return;
@@ -1124,7 +1269,7 @@ export default function EssayMarker() {
       <header className="mb-6 no-print">
         <h1 className="font-serif text-2xl">Essay Feedback</h1>
         <p className="text-sm text-ink-muted mt-1">
-          Formative AI guidance against AO1–AO4 for Pearson Edexcel A-Level English Literature,
+          Formative AI guidance against AO1-AO4 for Pearson Edexcel A-Level English Literature,
           Component 2 (Prose). No official assessment judgement is generated.
         </p>
       </header>
@@ -1142,12 +1287,7 @@ export default function EssayMarker() {
             <>
               {printable && (
                 <div className="mb-3 flex justify-end no-print">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.print()}
-                    className="gap-1.5"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5">
                     <Printer className="h-3.5 w-3.5" />
                     Print feedback
                   </Button>
@@ -1159,14 +1299,14 @@ export default function EssayMarker() {
           {!showStreaming && !friendlyError && (
             <Card className="no-print">
               <CardContent className="pt-6 text-center text-sm text-ink-muted">
-                Submit your work to receive formative feedback.
+                Submit your answer to receive formative feedback.
               </CardContent>
             </Card>
           )}
         </section>
       </div>
 
-      <MarkHistoryPanel userId={user.id} />
+      <FeedbackHistoryPanel userId={user.id} />
     </div>
   );
 }
