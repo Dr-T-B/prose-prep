@@ -1,12 +1,8 @@
 // mark-component2-essay
 //
-// Pearson Edexcel A-Level English Literature, Component 2 (Prose) — formative
-// AI essay feedback. Returns AO1–AO4 guidance only; no marks, grades, bands,
+// Pearson Edexcel A-Level English Literature, Component 2 (Prose) formative
+// AI essay feedback. Returns AO1-AO4 guidance only; no marks, grades, bands,
 // levels, scores, model answers, or rewrite paragraphs.
-//
-// PR 1 (this file): non-streaming. The frontend calls via
-// supabase.functions.invoke('mark-component2-essay', { body: payload }).
-// A later PR introduces SSE for progressive section rendering.
 
 import Anthropic from "npm:@anthropic-ai/sdk@0.30.1";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.95.0";
@@ -41,15 +37,23 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 
 const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
 
+type QuestionContext = {
+  stem: string;
+  family: string;
+  likely_core_methods: string[];
+  primary_route_id: string | null;
+  secondary_route_id: string | null;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
-  // --- Auth: validate JWT before anything else --------------------------------
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.toLowerCase().startsWith("bearer ")) {
     return json(401, { error: "Missing or malformed Authorization header" });
   }
+
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -61,7 +65,6 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // --- Rate limit: 10 successful feedback requests per user per hour ----------
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count: recent, error: rateErr } = await admin
     .from("essay_marker_results")
@@ -76,7 +79,6 @@ Deno.serve(async (req) => {
     return json(429, { error: "Rate limit exceeded. Maximum 10 feedback requests per hour." });
   }
 
-  // --- Input validation -------------------------------------------------------
   let body: unknown;
   try {
     body = await req.json();
@@ -87,12 +89,12 @@ Deno.serve(async (req) => {
   if (!validated.ok) return json(400, { error: validated.error });
   const input = validated.value;
 
-  // --- Resolve mode-specific data --------------------------------------------
   let questionId: string | null = null;
   let attemptId: string | null = null;
   let studentWorkBlock: string;
   let essayTextForPersist: string | null = null;
   let wordCountForPersist: number | null = null;
+  let submittedQuestionStem: string | null = null;
 
   if (input.mode === "structured_attempt") {
     attemptId = input.paragraph_attempt_id;
@@ -107,8 +109,7 @@ Deno.serve(async (req) => {
       console.error("paragraph_attempts lookup failed", attemptErr);
       return json(500, { error: "Database error loading attempt" });
     }
-    if (!attempt) return json(404, { error: "paragraph_attempt not found" });
-    if (attempt.student_id !== userId) {
+    if (!attempt || attempt.student_id !== userId) {
       return json(404, { error: "paragraph_attempt not found" });
     }
     questionId = attempt.exam_question_id ?? null;
@@ -116,21 +117,23 @@ Deno.serve(async (req) => {
     essayTextForPersist = studentWorkBlock;
     wordCountForPersist = wordCountOf(studentWorkBlock);
   } else {
-    questionId = input.question_id;
+    questionId = input.question_id ?? null;
+    submittedQuestionStem = input.question_stem ?? null;
     studentWorkBlock = `STUDENT WORK (${input.mode}):\n\n${input.essay_text}`;
     essayTextForPersist = input.essay_text;
     wordCountForPersist = input.word_count;
   }
 
-  // --- Context block 1: exam question ----------------------------------------
-  let question: {
-    stem: string;
-    family: string;
-    likely_core_methods: string[];
-    primary_route_id: string | null;
-    secondary_route_id: string | null;
-  } | null = null;
-  if (questionId) {
+  let question: QuestionContext | null = null;
+  if (submittedQuestionStem) {
+    question = {
+      stem: submittedQuestionStem,
+      family: "Student practice question",
+      likely_core_methods: [],
+      primary_route_id: null,
+      secondary_route_id: null,
+    };
+  } else if (questionId) {
     const { data, error } = await admin
       .from("questions")
       .select("id, stem, family, likely_core_methods, primary_route_id, secondary_route_id")
@@ -146,7 +149,6 @@ Deno.serve(async (req) => {
   }
   if (!question) console.warn("Proceeding without question context", { questionId });
 
-  // --- Context block 2: argument routes --------------------------------------
   const routeIds = [question?.primary_route_id, question?.secondary_route_id].filter(
     (x): x is string => !!x,
   );
@@ -157,7 +159,6 @@ Deno.serve(async (req) => {
         .in("id", routeIds)
     : { data: [] as never[] };
 
-  // --- Context block 3: comparative matrix -----------------------------------
   const { data: matrix } = await admin
     .from("comparative_matrix")
     .select("axis, hard_times, atonement, divergence, thesis, ao2, ao3, ao4")
@@ -165,7 +166,6 @@ Deno.serve(async (req) => {
     .order("sort_order", { ascending: true, nullsFirst: false })
     .limit(20);
 
-  // --- Context block 4: thesis exemplars -------------------------------------
   const { data: theses } = question?.primary_route_id
     ? await admin
         .from("theses")
@@ -173,7 +173,6 @@ Deno.serve(async (req) => {
         .eq("route_id", question.primary_route_id)
     : { data: [] as never[] };
 
-  // --- Context block 5: glossary + misuse warnings ---------------------------
   const { data: glossary } = await admin
     .from("glossary_terms")
     .select("term, common_misuse_warning, what_to_notice, best_verbs")
@@ -181,7 +180,6 @@ Deno.serve(async (req) => {
     .order("sort_order", { ascending: true, nullsFirst: false })
     .limit(30);
 
-  // --- Context block 6: quote verification bank ------------------------------
   const { data: quotes } = await admin
     .from("quote_methods")
     .select("quote_text, method, speaker_or_narrator, source_text")
@@ -190,7 +188,6 @@ Deno.serve(async (req) => {
     .order("retrieval_priority", { ascending: true, nullsFirst: false })
     .limit(40);
 
-  // --- Context block 7: interpretive tensions --------------------------------
   const { data: tensions } = await admin
     .from("interpretive_tensions")
     .select("focus, dominant_reading, alternative_reading, interpretive_stem")
@@ -212,17 +209,12 @@ Deno.serve(async (req) => {
     return json(503, { error: "Feedback provider unavailable. No feedback was generated." });
   }
 
-  // --- Anthropic streaming call (SSE) ----------------------------------------
-  // All validation above this point returns JSON error responses. Once we
-  // open the SSE response below, HTTP errors can no longer be sent, so any
-  // failure inside the stream is surfaced as a `data: {"error": ...}` event.
-
   const encoder = new TextEncoder();
   const persistCtx: PersistCtx = {
     userId,
     mode: input.mode,
     questionId,
-    questionStem: question?.stem ?? null,
+    questionStem: question?.stem ?? submittedQuestionStem,
     attemptId,
     essayText: essayTextForPersist,
     wordCount: wordCountForPersist,
@@ -290,14 +282,11 @@ Deno.serve(async (req) => {
           );
           controller.close();
         } catch {
-          // controller already closed — nothing to do.
+          // controller already closed
         }
         return;
       }
 
-      // Post-stream: reconstruct, validate, persist. The HTTP response has
-      // already completed from the client's perspective, so failures here
-      // are logged but do not throw.
       try {
         await postStream(accumulated, admin, persistCtx);
       } catch (err) {
@@ -317,8 +306,6 @@ Deno.serve(async (req) => {
   });
 });
 
-// --- Post-stream reconstruction + persistence ---------------------------------
-
 type PersistCtx = {
   userId: string;
   mode: ValidatedInput["mode"];
@@ -335,8 +322,6 @@ async function postStream(
   ctx: PersistCtx,
 ): Promise<void> {
   const reconstructed: Record<string, unknown> = {
-    // Always enforce the canonical exam-warning string regardless of what
-    // the model produced in the <section:examWarning> tag.
     examWarning: EXAM_WARNING,
     summary: extractSection(accumulated, "summary"),
     aoFeedback: {
@@ -367,13 +352,10 @@ async function postStream(
   if (teacherNotes) reconstructed.teacherNotes = teacherNotes;
 
   const stripped = stripAO5(reconstructed) as Record<string, unknown>;
-  // Re-enforce canonical examWarning post-strip in case the regex touched it.
   stripped.examWarning = EXAM_WARNING;
 
   const shape = validateShape(stripped);
   if (!shape.ok) {
-    // Stream has already completed; log and skip persistence. The frontend
-    // has already rendered whatever sections it could parse.
     console.warn("postStream shape validation failed; skipping persist", {
       errors: shape.errors,
     });
@@ -397,11 +379,8 @@ async function postStream(
   });
   if (insertErr) {
     console.error("essay_marker_results insert failed", insertErr);
-    return;
   }
 }
-
-// --- Helpers ---------------------------------------------------------------
 
 function wordCountOf(text: string): number {
   const trimmed = text.trim();
@@ -428,13 +407,7 @@ function formatStructuredAttempt(a: {
 }
 
 type SystemPromptCtx = {
-  question: {
-    stem: string;
-    family: string;
-    likely_core_methods: string[];
-    primary_route_id: string | null;
-    secondary_route_id: string | null;
-  } | null;
+  question: QuestionContext | null;
   routes: Array<Record<string, unknown>>;
   matrix: Array<Record<string, unknown>>;
   theses: Array<Record<string, unknown>>;
@@ -450,9 +423,10 @@ type SystemBlock = {
   cache_control?: { type: "ephemeral" };
 };
 
-// The static block below MUST stay byte-identical across calls for prompt
-// caching to hit. Any interpolation that varies per request (mode or
-// question-specific context) belongs in the dynamic block.
+function promptData(value: unknown): string {
+  return JSON.stringify(value ?? "");
+}
+
 function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
   const staticEnvelope = [
     `ROLE AND AO RULES`,
@@ -463,84 +437,42 @@ function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
     `- Component 2 (Prose) does NOT assess AO` + `5. Treat interpretive sophistication as AO2 precision, never as AO` + `5.`,
     `- Do not give marks, scores, grades, bands, or level labels.`,
     `- Do not produce a model answer, full rewrite, rewritten paragraph, or model upgrade paragraph.`,
-    `- Identify whether comparison between Hard Times and Atonement is sustained using the "Comparative Pivot" technique (weaving comparison throughout, rather than sequential parallel blocks).`,
+    `- Use the submitted practice question as the focus for all feedback.`,
+    `- Identify whether comparison between Hard Times and Atonement is sustained using the Comparative Pivot technique.`,
     `- Never invent quotations. Cross-reference every student quotation against the supplied QUOTE BANK. Flag any quotation not found there in quoteMethodDiagnostic with status "unverified" or "paraphrased".`,
     ``,
     `PEDAGOGICAL CRITERIA FOR STRONG FORMATIVE GUIDANCE:`,
     `- Three-Layer Context Model (AO3): Check whether context is analyzed through method, wider pressure on characters, and comparative context frames showing how eras speak to each other.`,
-    `- Hand-in-Glove Technique (AO3): Penalize "history dumps" or paragraphs starting with historical dates (e.g. "In 1854..."). Context must be introduced through the writer's narrative and thematic intent.`,
-    `- Comparative Pivot (AO4): Look for a synthetic comparative weave. Flag "history sandwiches" or parallel text blocks, then give a concrete revision target.`,
+    `- Hand-in-Glove Technique (AO3): Context must be introduced through the writer's narrative and thematic intent.`,
+    `- Comparative Pivot (AO4): Look for a synthetic comparative weave and give a concrete revision target if the two texts are treated separately.`,
     ``,
-    `NARRATIVE FORM REFERENCE — use these for AO2 next steps:`,
-    `Hard Times (Dickens, 1854): third-person omniscient narrator with satirical intrusion; industrial/mechanical imagery as structural device; nomenclature as characterisation; Circus/Fact binary; repetition of "facts" as rhetorical device.`,
-    `Atonement (McEwan, 2001): free indirect discourse — Briony's focalisation; retrospective unreliable narration — Part 4 reveal as structural irony; writing as redemption and harm; narrative gap and ellipsis as form; 1935/1940/1999 structure; water/light/fragmentation motifs.`,
-    `FLAG: treating narrative form as decoration. Naming free indirect discourse without showing how it shapes meaning needs a targeted method-analysis prompt.`,
-    ``,
-    `REWARD: sustained comparative argument with clear thesis; accurately attributed evidence; method-led AO2; embedded context; recognition of formal/contextual divergence; interpretive tension (two competing readings); conceptual register.`,
-    `FLAG: plot summary; vague/paraphrased quotation; invented quotation; bolt-on context; parallel discussion sold as comparison; unsupported authorial-intent claims; device-spotting without analysis; generic statements about Dickens or McEwan.`,
+    `NARRATIVE FORM REFERENCE - use these for AO2 next steps:`,
+    `Hard Times (Dickens, 1854): third-person omniscient narrator with satirical intrusion; industrial/mechanical imagery as structural device; nomenclature as characterisation; Circus/Fact binary; repetition of facts as rhetorical device.`,
+    `Atonement (McEwan, 2001): free indirect discourse; Briony's focalisation; retrospective unreliable narration; Part 4 reveal as structural irony; writing as redemption and harm; narrative gap and ellipsis as form; 1935/1940/1999 structure; water/light/fragmentation motifs.`,
     ``,
     `--- OUTPUT FORMAT ---`,
-    `Read the student work (in the user message). Output your response as a sequence of`,
-    `tagged sections in EXACTLY this order. Each section is wrapped in`,
-    `XML-style tags. Do NOT output a top-level JSON object. Do NOT output`,
-    `anything outside the section tags. No prose before, between, or after.`,
-    `No markdown fences. Stream the sections in the order shown.`,
+    `Read the student work in the user message. Output your response as a sequence of tagged sections in EXACTLY this order. Do NOT output anything outside the section tags. No markdown fences.`,
     ``,
     `<section:examWarning>${EXAM_WARNING}</section:examWarning>`,
-    ``,
-    `<section:summary>`,
-    `3-5 sentences of holistic feedback here.`,
-    `</section:summary>`,
-    ``,
-    `<section:AO1>`,
-    `{"diagnosticLabel":"argument clarity","strength":"...","nextStep":"..."}`,
-    `</section:AO1>`,
-    ``,
-    `<section:AO2>`,
-    `{"diagnosticLabel":"method analysis","strength":"...","nextStep":"..."}`,
-    `</section:AO2>`,
-    ``,
-    `<section:AO3>`,
-    `{"diagnosticLabel":"context integration","strength":"...","nextStep":"..."}`,
-    `</section:AO3>`,
-    ``,
-    `<section:AO4>`,
-    `{"diagnosticLabel":"comparison","strength":"...","nextStep":"..."}`,
-    `</section:AO4>`,
-    ``,
-    `<section:strengths>`,
-    `["strength one","strength two","strength three"]`,
-    `</section:strengths>`,
-    ``,
-    `<section:priorityTargets>`,
-    `["target one","target two","target three"]`,
-    `</section:priorityTargets>`,
-    ``,
-    `<section:quoteMethodDiagnostic>`,
-    `[]`,
-    `</section:quoteMethodDiagnostic>`,
-    ``,
-    `<section:revisionPrompts>`,
-    `["prompt one","prompt two","prompt three"]`,
-    `</section:revisionPrompts>`,
-    ``,
-    `<section:nextStep>`,
-    `One concise next step for the student's next practice attempt.`,
-    `</section:nextStep>`,
+    `<section:summary>3-5 sentences of holistic feedback here.</section:summary>`,
+    `<section:AO1>{"diagnosticLabel":"argument clarity","strength":"...","nextStep":"..."}</section:AO1>`,
+    `<section:AO2>{"diagnosticLabel":"method analysis","strength":"...","nextStep":"..."}</section:AO2>`,
+    `<section:AO3>{"diagnosticLabel":"context integration","strength":"...","nextStep":"..."}</section:AO3>`,
+    `<section:AO4>{"diagnosticLabel":"comparison","strength":"...","nextStep":"..."}</section:AO4>`,
+    `<section:strengths>["strength one","strength two","strength three"]</section:strengths>`,
+    `<section:priorityTargets>["target one","target two","target three"]</section:priorityTargets>`,
+    `<section:quoteMethodDiagnostic>[]</section:quoteMethodDiagnostic>`,
+    `<section:revisionPrompts>["prompt one","prompt two","prompt three"]</section:revisionPrompts>`,
+    `<section:nextStep>One concise next step for the student's next practice attempt.</section:nextStep>`,
     ``,
     `RULES:`,
     `- examWarning content must always be exactly: ${EXAM_WARNING}`,
-    `- AO1/AO2/AO3/AO4 sections contain a JSON OBJECT ONLY — no surrounding text. Keys: diagnosticLabel, strength, nextStep.`,
-    `- strengths is a JSON array of exactly 3 strings.`,
-    `- priorityTargets is a JSON array of exactly 3 strings.`,
-    `- quoteMethodDiagnostic is a JSON array (possibly empty) of objects { quote, status, note } where status ∈ "verified"|"unverified"|"paraphrased".`,
-    `- revisionPrompts is a JSON array of exactly 3 short prompts the student can use to revise their own work.`,
-    `- nextStep is one concise sentence.`,
+    `- AO1/AO2/AO3/AO4 sections contain a JSON OBJECT ONLY with keys diagnosticLabel, strength, nextStep.`,
+    `- strengths, priorityTargets and revisionPrompts are JSON arrays of exactly 3 strings.`,
+    `- quoteMethodDiagnostic is a JSON array of objects { quote, status, note } where status is "verified", "unverified" or "paraphrased".`,
     `- Do NOT emit sections named provisionalLevel, provisionalMarks, modelUpgradeParagraph, modelAnswer, rewrittenParagraph, or fullEssay.`,
     `- Do NOT use the words mark, marks, score, grade, band, bands, or level in student-facing content.`,
     `- Do NOT emit a <section:AO` + `5> tag anywhere. Do NOT mention AO` + `5.`,
-    `- Do NOT wrap the section tags in a top-level JSON object.`,
-    `- Do NOT use markdown code fences.`,
   ].join("\n");
 
   const dynamicContext = [
@@ -549,19 +481,26 @@ function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
     ``,
     `--- CONTEXT BLOCK 1: EXAM QUESTION ---`,
     ctx.question
-      ? `Stem: ${ctx.question.stem}\nFamily: ${ctx.question.family}\nLikely core methods: ${(ctx.question.likely_core_methods ?? []).join(", ")}`
-      : `(no question loaded — assess generically against the Component 2 criteria)`,
+      ? [
+          `Stem: ${promptData(ctx.question.stem)}`,
+          `Family: ${promptData(ctx.question.family)}`,
+          `Likely core methods: ${promptData(ctx.question.likely_core_methods ?? [])}`,
+        ].join("\n")
+      : `(no question loaded - assess generically against the Component 2 criteria)`,
+    ``,
+    `--- TEXT PAIR ---`,
+    `Hard Times, Charles Dickens; Atonement, Ian McEwan.`,
     ``,
     `--- CONTEXT BLOCK 2: ARGUMENT ROUTES ---`,
     ctx.routes.length
       ? ctx.routes
-          .map((r) => `• ${r.name}: ${r.core_question}\n  HT: ${r.hard_times_emphasis}\n  AT: ${r.atonement_emphasis}\n  Insight: ${r.comparative_insight}\n  Best use: ${r.best_use}`)
+          .map((r) => `- ${r.name}: ${r.core_question}\n  HT: ${r.hard_times_emphasis}\n  AT: ${r.atonement_emphasis}\n  Insight: ${r.comparative_insight}\n  Best use: ${r.best_use}`)
           .join("\n")
       : "(none)",
     ``,
-    `--- CONTEXT BLOCK 3: COMPARATIVE MATRIX (valid arguments) ---`,
+    `--- CONTEXT BLOCK 3: COMPARATIVE MATRIX ---`,
     ctx.matrix.length
-      ? ctx.matrix.map((m) => `• ${m.axis} | HT: ${m.hard_times} | AT: ${m.atonement} | Divergence: ${m.divergence}`).join("\n")
+      ? ctx.matrix.map((m) => `- ${m.axis} | HT: ${m.hard_times} | AT: ${m.atonement} | Divergence: ${m.divergence}`).join("\n")
       : "(none)",
     ``,
     `--- CONTEXT BLOCK 4: THESIS EXEMPLARS ---`,
@@ -571,18 +510,18 @@ function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
     ``,
     `--- CONTEXT BLOCK 5: GLOSSARY + MISUSE WARNINGS ---`,
     ctx.glossary.length
-      ? ctx.glossary.map((g) => `• ${g.term} — misuse: ${g.common_misuse_warning ?? "—"} — notice: ${g.what_to_notice ?? "—"}`).join("\n")
+      ? ctx.glossary.map((g) => `- ${g.term} - misuse: ${g.common_misuse_warning ?? "-"} - notice: ${g.what_to_notice ?? "-"}`).join("\n")
       : "(none)",
     ``,
     `--- CONTEXT BLOCK 6: QUOTE VERIFICATION BANK ---`,
     `Cross-reference EVERY quotation in the student work against this list. Any quotation not found here is unverified.`,
     ctx.quotes.length
-      ? ctx.quotes.map((q) => `[${q.source_text}] "${q.quote_text}" — ${q.method} (${q.speaker_or_narrator ?? "narrator"})`).join("\n")
+      ? ctx.quotes.map((q) => `[${q.source_text}] "${q.quote_text}" - ${q.method} (${q.speaker_or_narrator ?? "narrator"})`).join("\n")
       : "(none)",
     ``,
-    `--- CONTEXT BLOCK 7: INTERPRETIVE TENSIONS (AO2 refinement) ---`,
+    `--- CONTEXT BLOCK 7: INTERPRETIVE TENSIONS ---`,
     ctx.tensions.length
-      ? ctx.tensions.map((t) => `• ${t.focus}: dominant=${t.dominant_reading} / alternative=${t.alternative_reading}`).join("\n")
+      ? ctx.tensions.map((t) => `- ${t.focus}: dominant=${t.dominant_reading} / alternative=${t.alternative_reading}`).join("\n")
       : "(none)",
   ].join("\n");
 

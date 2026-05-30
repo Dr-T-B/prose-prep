@@ -29,9 +29,16 @@ export type MarkerResult = {
 
 export type MarkerMode = 'full_essay' | 'paragraph_only' | 'structured_attempt';
 
-export type MarkerPayload = {
-  mode: MarkerMode;
-  question_id?: string;
-  essay_text?: string;
-  paragraph_attempt_id?: string;
-};
+export type MarkerQuestionPayload =
+  | { question_id: string; question_stem?: never }
+  | { question_id?: never; question_stem: string };
+
+export type MarkerPayload =
+  | ({
+      mode: 'full_essay' | 'paragraph_only';
+      essay_text: string;
+    } & MarkerQuestionPayload)
+  | {
+      mode: 'structured_attempt';
+      paragraph_attempt_id: string;
+    };

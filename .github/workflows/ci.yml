@@ -32,8 +32,19 @@ jobs:
         run: npm run validate:component2-ao
       - name: Check browser source for LLM secrets
         run: npm run check:no-client-llm
+      - name: Install ripgrep for safety searches
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+      - name: Run Essay Feedback safety searches
+        run: |
+          rg -n "AO5|A05|Assessment Objective 5" supabase src scripts src/test || true
+          rg -n "top band|top-band|Band 5|upper band|lower band|marks|scores|levels|grades|model answer|rewrite" src api supabase scripts || true
+          rg -n "mark essay|essay marker|score|grade|level|band" src supabase scripts || true
       - name: Check whitespace errors
         run: git diff --check
+      - name: Build
+        run: npm run build
       - name: Run focused post-merge tests
         run: npm run test -- src/pages/ParagraphFeedback.test.tsx src/lib/paragraphFeedbackContract.test.ts src/pages/RapidRecall.test.tsx src/App.test.tsx src/components/AppShell.test.tsx
 
