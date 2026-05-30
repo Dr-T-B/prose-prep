@@ -20,14 +20,7 @@ export type RawInput = {
 
 export type ValidatedInput =
   | {
-      mode: 'full_essay';
-      question_id?: string;
-      question_stem?: string;
-      essay_text: string;
-      word_count: number;
-    }
-  | {
-      mode: 'paragraph_only';
+      mode: 'full_essay' | 'paragraph_only';
       question_id?: string;
       question_stem?: string;
       essay_text: string;
