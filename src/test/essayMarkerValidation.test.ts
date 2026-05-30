@@ -65,9 +65,26 @@ describe("essay marker validation", () => {
     }
   });
 
-  it("requires exactly one question reference for answer feedback", () => {
+  it("requires at least one question reference for answer feedback", () => {
+    const question = "Compare how Dickens and McEwan present guilt in Hard Times and Atonement. You must relate your discussion to relevant contextual factors.";
+
     expect(validateInput({ mode: "full_essay", essay_text: answer }).ok).toBe(false);
-    expect(validateInput({ mode: "full_essay", question_id: "q-1", question_stem: "Question", essay_text: answer }).ok).toBe(false);
+    expect(validateInput({ mode: "full_essay", question_stem: "   ", essay_text: answer }).ok).toBe(false);
+
+    const both = validateInput({
+      mode: "full_essay",
+      question_id: "q-1",
+      question_stem: question,
+      essay_text: answer,
+    });
+
+    expect(both.ok).toBe(true);
+    if (both.ok) {
+      expect(both.value).toMatchObject({
+        question_id: "q-1",
+        question_stem: question,
+      });
+    }
   });
 
   it("rejects unsafe custom question wording", () => {

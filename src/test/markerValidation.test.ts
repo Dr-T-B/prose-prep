@@ -27,6 +27,9 @@ const buildResult = (overrides: Partial<MarkerResult> = {}): MarkerResult => ({
   ...overrides,
 });
 
+const validQuestionStem =
+  'Compare the ways in which Dickens and McEwan present misunderstanding in Hard Times and Atonement. You must relate your discussion to relevant contextual factors.';
+
 describe('countWords', () => {
   it('counts whitespace-separated tokens', () => {
     expect(countWords('  one two   three  ')).toBe(3);
@@ -71,9 +74,50 @@ describe('validateInput', () => {
     expect(validateInput({ mode: 'paragraph_only', question_id: 'q1', essay_text: big }).ok).toBe(false);
   });
 
-  it('rejects missing question_id for full_essay', () => {
+  it('accepts full_essay with question_stem and no question_id', () => {
+    const text = Array(400).fill('word').join(' ');
+    const r = validateInput({ mode: 'full_essay', question_stem: validQuestionStem, essay_text: text });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.question_id).toBeUndefined();
+      expect(r.value.question_stem).toBe(validQuestionStem);
+    }
+  });
+
+  it('accepts paragraph_only with question_stem and no question_id', () => {
+    const text = Array(180).fill('word').join(' ');
+    const r = validateInput({ mode: 'paragraph_only', question_stem: validQuestionStem, essay_text: text });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.question_id).toBeUndefined();
+      expect(r.value.question_stem).toBe(validQuestionStem);
+    }
+  });
+
+  it('accepts payloads with both question_id and question_stem', () => {
+    const text = Array(400).fill('word').join(' ');
+    const r = validateInput({
+      mode: 'full_essay',
+      question_id: 'q1',
+      question_stem: validQuestionStem,
+      essay_text: text,
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.question_id).toBe('q1');
+      expect(r.value.question_stem).toBe(validQuestionStem);
+    }
+  });
+
+  it('rejects missing question_id and question_stem for full_essay', () => {
     const text = Array(400).fill('word').join(' ');
     const r = validateInput({ mode: 'full_essay', essay_text: text });
+    expect(r.ok).toBe(false);
+  });
+
+  it('rejects whitespace-only question_stem when no question_id is present', () => {
+    const text = Array(400).fill('word').join(' ');
+    const r = validateInput({ mode: 'full_essay', question_stem: '   ', essay_text: text });
     expect(r.ok).toBe(false);
   });
 

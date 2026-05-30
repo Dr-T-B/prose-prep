@@ -130,9 +130,6 @@ export function validateInput(raw: RawInput): ValidationResult {
   if (!questionId && !questionStem.value) {
     return { ok: false, error: 'question_id or question_stem is required' };
   }
-  if (questionId && questionStem.value) {
-    return { ok: false, error: 'Provide question_id or question_stem, not both' };
-  }
   if (typeof raw.essay_text !== 'string' || !raw.essay_text.trim()) {
     return { ok: false, error: 'essay_text is required' };
   }

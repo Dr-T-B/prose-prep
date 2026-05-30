@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
   let studentWorkBlock: string;
   let essayTextForPersist: string | null = null;
   let wordCountForPersist: number | null = null;
-  let submittedQuestionStem: string | null = null;
+  let customStem: string | null = null;
 
   if (input.mode === "structured_attempt") {
     attemptId = input.paragraph_attempt_id;
@@ -118,22 +118,14 @@ Deno.serve(async (req) => {
     wordCountForPersist = wordCountOf(studentWorkBlock);
   } else {
     questionId = input.question_id ?? null;
-    submittedQuestionStem = input.question_stem ?? null;
+    customStem = input.question_stem ?? null;
     studentWorkBlock = `STUDENT WORK (${input.mode}):\n\n${input.essay_text}`;
     essayTextForPersist = input.essay_text;
     wordCountForPersist = input.word_count;
   }
 
   let question: QuestionContext | null = null;
-  if (submittedQuestionStem) {
-    question = {
-      stem: submittedQuestionStem,
-      family: "Student practice question",
-      likely_core_methods: [],
-      primary_route_id: null,
-      secondary_route_id: null,
-    };
-  } else if (questionId) {
+  if (questionId) {
     const { data, error } = await admin
       .from("questions")
       .select("id, stem, family, likely_core_methods, primary_route_id, secondary_route_id")
@@ -146,6 +138,14 @@ Deno.serve(async (req) => {
     } else {
       question = data;
     }
+  } else if (customStem) {
+    question = {
+      stem: customStem,
+      family: "Student practice question",
+      likely_core_methods: [],
+      primary_route_id: null,
+      secondary_route_id: null,
+    };
   }
   if (!question) console.warn("Proceeding without question context", { questionId });
 
@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
     userId,
     mode: input.mode,
     questionId,
-    questionStem: question?.stem ?? submittedQuestionStem,
+    questionStem: question?.stem ?? customStem ?? null,
     attemptId,
     essayText: essayTextForPersist,
     wordCount: wordCountForPersist,

@@ -30,8 +30,8 @@ export type MarkerResult = {
 export type MarkerMode = 'full_essay' | 'paragraph_only' | 'structured_attempt';
 
 export type MarkerQuestionPayload =
-  | { question_id: string; question_stem?: never }
-  | { question_id?: never; question_stem: string };
+  | { question_id: string; question_stem?: string }
+  | { question_id?: string; question_stem: string };
 
 export type MarkerPayload =
   | ({
