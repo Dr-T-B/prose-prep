@@ -32,6 +32,7 @@ const FORBIDDEN_RESPONSE_PATTERNS = [
   new RegExp(`\\b${EXCLUDED_AO_LABEL}\\b`, "i"),
   /\bAO\s*5\b/i,
   /\b(grade|graded|grading|mark|marks|marked|marking|score|scores|scored|scoring)\b/i,
+  /\b(?:top[-\s]?band|band\s*[1-5]|level\s*[1-5]\s+band|upper\s+band|lower\s+band|bands?)\b/i,
   /\b(model\s+(answer|paragraph|response)|perfect\s+version|full\s+essay|rewritten\s+paragraph)\b/i,
   /\b(here(?:'s| is)\s+(a|the)\s+better|rewrite(n|s)?\s+version)\b/i,
 ];

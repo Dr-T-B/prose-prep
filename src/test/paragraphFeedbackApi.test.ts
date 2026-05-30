@@ -181,7 +181,7 @@ describe("paragraph feedback API provider", () => {
     expect(payload.nextTarget).toContain("topic sentence");
     expect(payload.routeMatch).toBeUndefined();
     expect(JSON.stringify(payload)).not.toMatch(new RegExp(excludedAoLabel, "i"));
-    expect(JSON.stringify(payload)).not.toMatch(/\b(grade|score|mark)\b|model answer|rewrite|full essay/i);
+    expect(JSON.stringify(payload)).not.toMatch(/\b(grade|score|mark|band)\b|top[-\s]?band|model answer|rewrite|full essay/i);
   });
 
   it("includes route-match feedback when route context exists", async () => {
@@ -219,6 +219,10 @@ describe("paragraph feedback API provider", () => {
         strength: `The ${excludedAoLabel} point is present.`,
         target: "This target should be rejected.",
       },
+    })],
+    ["unsafe band text", outputTextPayload({
+      ...validFeedback(),
+      nextTarget: "This is moving into top band territory.",
     })],
   ])("fails safely for %s", async (_label, providerPayload) => {
     process.env[serverKeyName] = "test-provider-key";

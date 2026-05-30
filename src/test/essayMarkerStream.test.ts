@@ -82,6 +82,20 @@ describe("parseSectionsDelta", () => {
     expect(delta).not.toHaveProperty("modelUpgradeParagraph");
   });
 
+  it("ignores streamed sections with grading-band wording", () => {
+    const text = [
+      "<section:summary>This is top band work.</section:summary>",
+      '<section:AO1>{"diagnosticLabel":"Band 5","strength":"s","nextStep":"n"}</section:AO1>',
+      '<section:AO2>{"diagnosticLabel":"method analysis","strength":"This is upper band analysis.","nextStep":"n"}</section:AO2>',
+      '<section:AO3>{"diagnosticLabel":"context integration","strength":"s","nextStep":"This remains lower band context."}</section:AO3>',
+    ].join("");
+    const delta = parseSectionsDelta(text, emptySections());
+    expect(delta.summary).toBeUndefined();
+    expect(delta.AO1).toBeUndefined();
+    expect(delta.AO2).toBeUndefined();
+    expect(delta.AO3).toBeUndefined();
+  });
+
   it("parses revision prompts and next step", () => {
     const text = [
       '<section:revisionPrompts>["p1","p2","p3"]</section:revisionPrompts>',
