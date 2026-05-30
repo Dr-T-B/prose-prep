@@ -224,8 +224,8 @@ const FORBIDDEN_STUDENT_OUTPUT_KEYS = [
 ];
 
 const FORBIDDEN_STUDENT_OUTPUT_TEXT = [
-  /\b(?:mark|marks|marked|marking)\s*(?:[:=]|\d|\/|out of)\b/i,
-  /\b(?:score|scores|scored|scoring)\s*(?:[:=]|\d|\/|out of)\b/i,
+  /\b(?:mark|marks|marked|marking)\b/i,
+  /\b(?:score|scores|scored|scoring)\b/i,
   /\b(?:grade|graded|grading)\b/i,
   /\b(?:top[-\s]?band|band\s*[1-5]|level\s*[1-5]\s+band|upper\s+band|lower\s+band|bands?)\b/i,
   /\blevel\s*[1-5]\b/i,
