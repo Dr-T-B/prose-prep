@@ -1,8 +1,8 @@
 // mark-component2-essay
 //
 // Pearson Edexcel A-Level English Literature, Component 2 (Prose) — formative
-// AI essay feedback. Returns AO1–AO4 guidance only; no marks, grades, levels,
-// scores, model answers, or rewrite paragraphs.
+// AI essay feedback. Returns AO1–AO4 guidance only; no marks, grades, bands,
+// levels, scores, model answers, or rewrite paragraphs.
 //
 // PR 1 (this file): non-streaming. The frontend calls via
 // supabase.functions.invoke('mark-component2-essay', { body: payload }).
@@ -537,7 +537,7 @@ function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
     `- revisionPrompts is a JSON array of exactly 3 short prompts the student can use to revise their own work.`,
     `- nextStep is one concise sentence.`,
     `- Do NOT emit sections named provisionalLevel, provisionalMarks, modelUpgradeParagraph, modelAnswer, rewrittenParagraph, or fullEssay.`,
-    `- Do NOT use the words mark, marks, score, grade, or level in student-facing content.`,
+    `- Do NOT use the words mark, marks, score, grade, band, bands, or level in student-facing content.`,
     `- Do NOT emit a <section:AO` + `5> tag anywhere. Do NOT mention AO` + `5.`,
     `- Do NOT wrap the section tags in a top-level JSON object.`,
     `- Do NOT use markdown code fences.`,

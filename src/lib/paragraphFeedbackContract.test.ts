@@ -187,6 +187,24 @@ describe("paragraph feedback response validation", () => {
     }
   });
 
+  it("rejects grading-band wording in feedback output", () => {
+    for (const unsafeText of [
+      "This is top band work.",
+      "This is a Band 5 paragraph.",
+      "This is upper band analysis.",
+      "This remains lower band context.",
+    ]) {
+      const feedback = validFeedback();
+      feedback.nextTarget = unsafeText;
+
+      expect(validateParagraphFeedbackResponse(feedback).ok).toBe(false);
+    }
+  });
+
+  it("still accepts normal formative paragraph feedback", () => {
+    expect(validateParagraphFeedbackResponse(validFeedback()).ok).toBe(true);
+  });
+
   it("rejects model or rewrite style output", () => {
     for (const unsafeText of ["Here is a model paragraph.", "This is a rewritten paragraph."]) {
       const feedback = validFeedback();

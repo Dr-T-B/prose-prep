@@ -142,6 +142,28 @@ describe('validateShape', () => {
     expect(r.ok).toBe(false);
   });
 
+  it('rejects grading-band wording in student-facing feedback', () => {
+    for (const unsafeText of [
+      'This is moving into top band territory.',
+      'This is a Band 5 response.',
+      'This belongs in the upper band.',
+      'This remains a lower band paragraph.',
+    ]) {
+      const r = validateShape(buildResult({
+        summary: unsafeText,
+      }));
+      expect(r.ok).toBe(false);
+    }
+  });
+
+  it('still accepts normal formative feedback wording', () => {
+    const r = validateShape(buildResult({
+      summary: 'The response has a clear comparative direction and needs sharper contextual integration.',
+      nextStep: 'Revise one topic sentence so the comparison is visible from the start.',
+    }));
+    expect(r.ok).toBe(true);
+  });
+
   it('rejects examWarning that does not match canonical string', () => {
     const r = validateShape(buildResult({ examWarning: 'something else' }));
     expect(r.ok).toBe(false);
