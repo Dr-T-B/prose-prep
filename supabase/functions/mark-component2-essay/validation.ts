@@ -49,6 +49,16 @@ const FORBIDDEN_QUESTION_TEXT = [
   /full\s+essay/i,
 ];
 
+const PROMPT_CONTROL_QUESTION_TEXT = [
+  /<\s*\/?\s*section\b/i,
+  /<\s*\/?\s*(system|assistant|user|message|prompt)\b/i,
+  /\b(?:system|developer|assistant|user)\s*:/i,
+  /\b(?:ignore|override|disregard)\s+(?:the\s+)?(?:previous|above|earlier|system|developer)\s+(?:instructions?|rules?|prompt)\b/i,
+  /\b(?:you are now|act as|pretend to be)\b/i,
+  /\b(?:return|output|emit)\s+only\b/i,
+  /```/,
+];
+
 export function countWords(text: string): number {
   const trimmed = text.trim();
   if (!trimmed) return 0;
@@ -73,13 +83,20 @@ export function safeJsonParse<T>(raw: string | null, fallback: T): T {
   }
 }
 
+function normaliseQuestionStem(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
 function optionalQuestionStem(value: unknown): { ok: true; value?: string } | { ok: false; error: string } {
   if (value === undefined || value === null || value === '') return { ok: true };
   if (typeof value !== 'string') return { ok: false, error: 'question_stem must be text' };
-  const trimmed = value.trim();
+  const trimmed = normaliseQuestionStem(value);
   if (!trimmed) return { ok: true };
   if (trimmed.length > 500) return { ok: false, error: 'question_stem must be 500 characters or fewer' };
   if (FORBIDDEN_QUESTION_TEXT.some((pattern) => pattern.test(trimmed))) {
+    return { ok: false, error: 'question_stem must be a formative Component 2 practice question' };
+  }
+  if (PROMPT_CONTROL_QUESTION_TEXT.some((pattern) => pattern.test(trimmed))) {
     return { ok: false, error: 'question_stem must be a formative Component 2 practice question' };
   }
   return { ok: true, value: trimmed };

@@ -423,6 +423,10 @@ type SystemBlock = {
   cache_control?: { type: "ephemeral" };
 };
 
+function promptData(value: unknown): string {
+  return JSON.stringify(value ?? "");
+}
+
 function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
   const staticEnvelope = [
     `ROLE AND AO RULES`,
@@ -477,7 +481,11 @@ function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
     ``,
     `--- CONTEXT BLOCK 1: EXAM QUESTION ---`,
     ctx.question
-      ? `Stem: ${ctx.question.stem}\nFamily: ${ctx.question.family}\nLikely core methods: ${(ctx.question.likely_core_methods ?? []).join(", ")}`
+      ? [
+          `Stem: ${promptData(ctx.question.stem)}`,
+          `Family: ${promptData(ctx.question.family)}`,
+          `Likely core methods: ${promptData(ctx.question.likely_core_methods ?? [])}`,
+        ].join("\n")
       : `(no question loaded - assess generically against the Component 2 criteria)`,
     ``,
     `--- TEXT PAIR ---`,

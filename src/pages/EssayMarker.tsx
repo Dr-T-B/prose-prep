@@ -808,6 +808,18 @@ function GeneratedQuestionPicker({
   );
 }
 
+function SelectedQuestionSummary({ question }: { question: string }) {
+  const selected = question.trim();
+  if (!selected) return null;
+
+  return (
+    <div className="rounded-sm border border-rule bg-paper-dim/40 p-3" aria-live="polite">
+      <p className="text-xs font-mono uppercase tracking-wider text-ink-muted">Selected question</p>
+      <p className="mt-1 text-sm leading-relaxed">{selected}</p>
+    </div>
+  );
+}
+
 function EssayTextarea({
   value,
   onChange,
@@ -904,6 +916,16 @@ function InputPanel({
     if (questionSource === "generated") return generatedQuestion.trim();
     return "";
   }, [customQuestion, generatedQuestion, questionSource]);
+
+  const selectedExistingQuestion = useMemo(
+    () => (questionsQuery.data ?? []).find((question) => question.id === questionId) ?? null,
+    [questionId, questionsQuery.data],
+  );
+
+  const selectedQuestionForAnswer = useMemo(() => {
+    if (questionSource === "existing") return selectedExistingQuestion?.stem ?? "";
+    return activeQuestionStem;
+  }, [activeQuestionStem, questionSource, selectedExistingQuestion]);
 
   const validate = (): { ok: true; payload: MarkerPayload } | { ok: false; field: string; message: string } => {
     if (mode === "structured_attempt") {
@@ -1006,6 +1028,7 @@ function InputPanel({
                 validation={validation}
               />
             )}
+            <SelectedQuestionSummary question={selectedQuestionForAnswer} />
             <EssayTextarea
               value={essayText}
               onChange={setEssayText}
@@ -1043,6 +1066,7 @@ function InputPanel({
                 validation={validation}
               />
             )}
+            <SelectedQuestionSummary question={selectedQuestionForAnswer} />
             <EssayTextarea
               value={essayText}
               onChange={setEssayText}

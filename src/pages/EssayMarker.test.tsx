@@ -120,6 +120,14 @@ async function submittedPayload() {
   return JSON.parse(String(init.body)) as Record<string, string>;
 }
 
+function expectSelectedQuestionAboveAnswer(question: string) {
+  const summary = screen.getByText("Selected question").closest("div");
+  expect(summary).not.toBeNull();
+  expect(summary).toHaveTextContent(question);
+  const answerBox = screen.getByLabelText("Your answer");
+  expect(summary!.compareDocumentPosition(answerBox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+}
+
 describe("EssayMarker question source flow", () => {
   beforeEach(() => {
     mockState.fetchMock.mockReset();
@@ -138,6 +146,7 @@ describe("EssayMarker question source flow", () => {
 
     expect(await screen.findByText("2 sample practice questions available.")).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/present education/i));
+    expectSelectedQuestionAboveAnswer(practiceQuestions[0].stem);
     submitAnswer();
 
     const payload = await submittedPayload();
@@ -151,17 +160,19 @@ describe("EssayMarker question source flow", () => {
 
   it("accepts a user-written custom question", async () => {
     renderPage();
+    const question = "Compare how Dickens and McEwan present guilt in Hard Times and Atonement. You must relate your discussion to relevant contextual factors.";
 
     fireEvent.click(screen.getByLabelText("My own question"));
     fireEvent.change(screen.getByLabelText("Essay question"), {
       target: {
-        value: "Compare how Dickens and McEwan present guilt in Hard Times and Atonement. You must relate your discussion to relevant contextual factors.",
+        value: question,
       },
     });
+    expectSelectedQuestionAboveAnswer(question);
     submitAnswer();
 
     const payload = await submittedPayload();
-    expect(payload.question_stem).toBe("Compare how Dickens and McEwan present guilt in Hard Times and Atonement. You must relate your discussion to relevant contextual factors.");
+    expect(payload.question_stem).toBe(question);
     expect(payload.question_id).toBeUndefined();
   });
 
@@ -198,10 +209,12 @@ describe("EssayMarker question source flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Generate practice questions" }));
     const generatedOptions = screen.getAllByRole("radio", { name: /Compare/i });
     fireEvent.click(generatedOptions[1]);
+    const chosenQuestion = generatedOptions[1].textContent?.trim() ?? "";
+    expectSelectedQuestionAboveAnswer(chosenQuestion);
     submitAnswer();
 
     const payload = await submittedPayload();
-    expect(payload.question_stem).toMatch(/Compare/i);
+    expect(payload.question_stem).toBe(chosenQuestion);
     expect(payload.question_stem).toMatch(/contextual factors/i);
     expect(payload.question_id).toBeUndefined();
   });
