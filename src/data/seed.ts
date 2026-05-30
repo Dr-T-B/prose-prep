@@ -957,12 +957,19 @@ export interface ThemeEntry {
   family: QuestionFamily;
   one_line: string;
 }
+/**
+ * NOTE: The THEMES constant below exports a `ThemeEntry { id, family, one_line }` shape 
+ * which is used inside contentRepo's in-memory registry.
+ * This is DIFFERENT from the database table `themes` which holds the legacy theme-wheel data
+ * (id, label, short, ht_angle, at_angle, ao2, ao3, ao4, sort_order, created_at, synthesis).
+ */
 export const THEMES: ThemeEntry[] = (Object.keys(QUESTION_FAMILY_LABELS) as QuestionFamily[]).map((f) => ({
   id: `t_${f}`,
   family: f,
   one_line: {
     childhood: "Children formed — and deformed — by adult ideas.",
     class: "Class as an active mechanism that decides whose voice counts.",
+    family: "Family and Relationships.",
     guilt: "Guilt as catalyst (Dickens) and as unfinishable labour (McEwan).",
     imagination: "Imagination as moral oxygen and as ungoverned authority.",
     truth: "Whether fiction can tell the truth about a life.",

@@ -37,7 +37,7 @@ import { toast } from "@/hooks/use-toast";
 export type EditableTableKey =
   | "questions"
   | "quote_methods"
-  | "theme_maps"
+  | "themes"
   | "interpretive_tensions";
 
 export type FieldKind = "text" | "textarea" | "tags" | "select";
@@ -133,8 +133,8 @@ export const EDITABLE_TABLE_CONFIG: Record<EditableTableKey, EditableTableConfig
       { field: "best_themes", label: "Best themes", kind: "tags" },
     ],
   },
-  theme_maps: {
-    table: "theme_maps",
+  themes: {
+    table: "themes",
     displayName: "Theme Maps",
     fields: [
       {

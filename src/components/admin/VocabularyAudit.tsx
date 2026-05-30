@@ -109,7 +109,7 @@ function formatStored(v: string): string {
 const PRIORITY_TABLES: AuditableTable[] = [
   "questions",
   "quote_methods",
-  "theme_maps",
+  "themes",
   "interpretive_tensions",
 ];
 

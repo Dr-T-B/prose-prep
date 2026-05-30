@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-interface Theme {
+interface ThemeRow {
   id: string;
   label: string;
   short: string;
@@ -24,7 +24,7 @@ interface Quote {
 }
 
 export default function Component2ThemeWheel() {
-  const [themes, setThemes] = useState<Theme[]>([]);
+  const [themes, setThemes] = useState<ThemeRow[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +58,7 @@ export default function Component2ThemeWheel() {
         setLoading(false);
         return;
       }
-      const mappedThemes: Theme[] = (tRes.data ?? []).map((r) => {
+      const mappedThemes: ThemeRow[] = (tRes.data ?? []).map((r) => {
         const row = r as Record<string, unknown>;
         return {
           id: row.id as string,
@@ -373,7 +373,7 @@ function ThemeDetail({
   atQuotes,
   compact = false,
 }: {
-  theme: Theme;
+  theme: ThemeRow;
   htQuotes: Quote[];
   atQuotes: Quote[];
   compact?: boolean;

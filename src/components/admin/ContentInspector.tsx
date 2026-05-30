@@ -43,7 +43,7 @@ type ContentTableKey =
   | "paragraph_jobs"
   | "quote_methods"
   | "character_cards"
-  | "theme_maps"
+  | "themes"
   | "symbol_entries"
   | "comparative_matrix"
   | "interpretive_tensions";
@@ -176,7 +176,7 @@ const CONFIGS: ContentTableConfig[] = [
     optionalFilterFields: [{ field: "source_text", label: "Text" }],
   },
   {
-    key: "theme_maps",
+    key: "themes",
     displayName: "Theme Maps",
     titleField: "family",
     searchableFields: ["id", "family", "one_line"],

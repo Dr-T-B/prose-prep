@@ -39,7 +39,7 @@ type ContentTableKey =
   | "questions"
   | "quote_methods"
   | "interpretive_tensions"
-  | "theme_maps"
+  | "themes"
   | "theses"
   | "paragraph_jobs"
   | "character_cards"
@@ -96,7 +96,7 @@ const CONFIGS: AuditConfig[] = [
     priority: true,
   },
   {
-    key: "theme_maps",
+    key: "themes",
     displayName: "Theme Maps",
     criticalFields: ["family", "one_line"],
     previewField: "family",
