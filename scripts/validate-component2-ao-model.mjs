@@ -47,6 +47,7 @@ const CORE_SCAN_TARGETS = [
   "src/lib/planCloud.ts",
   "src/lib/planLogic.ts",
   "src/lib/planStore.ts",
+  "src/lib/prose/annotatedEssays.ts",
   "src/lib/tier1LibraryImport.ts",
   "src/pages/EssayBuilder.tsx",
   "src/pages/InterpretiveFlex.tsx",
