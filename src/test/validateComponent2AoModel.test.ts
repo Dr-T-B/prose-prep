@@ -82,6 +82,25 @@ describe("validate-component2-ao-model migration DML scanning", () => {
     }
   });
 
+  it.each([
+    ["public.routes", "20260501000002_bad_public_route_seed.sql"],
+    ["routes", "20260501000003_bad_route_seed.sql"],
+    ["public.themes", "20260501000004_bad_public_theme_seed.sql"],
+    ["themes", "20260501000005_bad_theme_seed.sql"]
+  ])("fails when Component 2 route/theme seed values in %s contain AO5", (tableName, migrationFile) => {
+    const root = createFixtureRepo();
+    try {
+      writeFixtureFile(root, `supabase/migrations/${migrationFile}`, `INSERT INTO ${tableName} (id, label) VALUES ('fixture', 'AO5 should fail inside route and theme seed content');\n`);
+
+      const output = expectValidatorFailure(root);
+
+      expect(output).toContain("component2_seed_dml_blocker");
+      expect(output).toContain(migrationFile);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("passes a clean fixture with explicit guardrail documentation", () => {
     const root = createFixtureRepo();
     try {

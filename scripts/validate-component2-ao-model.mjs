@@ -69,23 +69,35 @@ const REPORT_OR_ARCHIVE_RE = /(?:^|\/)docs\/.*(?:audit|archive|archived|report|v
 const DRAMA_RE = /(?:drama|hamlet|duchess|component\s*1|9ET0\/01)/i;
 const HISTORICAL_MIGRATION_RE = /^supabase\/migrations\//;
 const GENERATED_TYPES_RE = /^src\/integrations\/supabase\/types\.ts$/;
+const LEGACY_INTERPRETIVE_SCHEMA_REMEDIATION = "supabase/migrations/20260517232441_component2_interpretive_schema_remediation.sql";
 const COMPONENT2_SEED_DML_TABLES = new Set([
   "ao_annotations",
   "ao_readiness",
   "annotated_essays",
   "character_cards",
   "comparative_matrix",
+  "essay_plans",
   "essay_paragraphs",
   "essay_questions",
+  "glossary_terms",
   "library_context_bank",
+  "library_comparative_pairings",
+  "library_paragraph_frames",
   "library_quotes",
+  "library_questions",
   "library_thesis_bank",
+  "misconception_upgrades",
   "paragraph_jobs",
   "paragraph_stems",
   "questions",
+  "quote_pairs",
   "quote_methods",
   "quote_question_links",
   "quotes",
+  "routes",
+  "saved_essay_plans",
+  "symbol_entries",
+  "themes",
   "theses"
 ]);
 const VALIDATOR_SELF_FILES = new Set([
@@ -248,7 +260,7 @@ function collectFiles() {
 }
 
 function normaliseSqlTableName(tableName) {
-  return tableName.replaceAll('"', "").toLowerCase();
+  return tableName.replaceAll('"', "").replace(/\s+/g, "").toLowerCase().replace(/^public\./, "");
 }
 
 function isComponent2SeedDmlTarget(tableName) {
@@ -301,6 +313,45 @@ function findComponent2SeedDmlLines(text) {
   return dmlLines;
 }
 
+function sqlStringLiterals(lineText) {
+  const literals = [];
+  let literal = "";
+  let inString = false;
+
+  for (let index = 0; index < lineText.length; index += 1) {
+    const char = lineText[index];
+    if (!inString) {
+      if (char === "'") {
+        inString = true;
+        literal = "";
+      }
+      continue;
+    }
+
+    if (char === "'") {
+      if (lineText[index + 1] === "'") {
+        literal += "'";
+        index += 1;
+        continue;
+      }
+      literals.push(literal);
+      inString = false;
+      literal = "";
+      continue;
+    }
+
+    literal += char;
+  }
+
+  return literals;
+}
+
+function hasBlockedSqlStringLiteral(lineText) {
+  return sqlStringLiterals(lineText).some((literal) => (
+    BLOCKED_PATTERNS.some((pattern) => pattern.test(literal))
+  ));
+}
+
 function classifyOccurrence(relPath, lineText, fileText, lineNumber, component2SeedDmlLines) {
   const line = lineText.toLowerCase();
 
@@ -347,6 +398,9 @@ function classifyOccurrence(relPath, lineText, fileText, lineNumber, component2S
   if (GENERATED_TYPES_RE.test(relPath)) return "generated_type";
   if (HISTORICAL_MIGRATION_RE.test(relPath)) {
     if (component2SeedDmlLines.has(lineNumber)) {
+      if (relPath === LEGACY_INTERPRETIVE_SCHEMA_REMEDIATION && !hasBlockedSqlStringLiteral(lineText)) {
+        return "historical_migration";
+      }
       return "component2_seed_dml_blocker";
     }
     return DRAMA_RE.test(lineText) || DRAMA_RE.test(relPath)
