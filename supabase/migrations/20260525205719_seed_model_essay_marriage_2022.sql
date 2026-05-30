@@ -63,7 +63,7 @@ The deepest comparison, finally, is one of narrative form itself. Dickens's nove
     $$1. The level of conceptual abstraction (marriage as "narrative device") risks losing the texture of specific scenes if a student attempted it under time pressure without prior preparation.$$,
     $$2. The Stephen Blackpool / Lola Marshall parallel in the third body paragraph is dense and depends on the reader recognising both moments quickly.$$,
     $$3. Two quotations are paraphrased rather than verbatim and should be verified before being used in revision: Briony's coda phrasing on "happiness" (the model gives the grammatical sense rather than the exact text), and Dickens's closing direct address (the model gives the recognisable allusion rather than the exact wording).$$,
-    $$4. The model uses one critic-free framing throughout because AO5 is NOT assessed in Component 2 — a student adapting this should resist the urge to drop in critics from Drama habit.$$
+    $$4. The model uses one critic-free framing throughout because Component 2 uses AO1-AO4 only — a student adapting this should resist the urge to drop in critics from Drama habit.$$
   ]::text[],
   ARRAY[
     $$1. Replace the two paraphrased quotations (Briony coda; Dickens direct address) with verbatim text from the editions Neha has at hand.$$,

@@ -49,7 +49,7 @@ const PACK_TITLE = "Annotated Paper 2 Essay Practice Pack — Hard Times / Atone
 const PACK_DESCRIPTION =
   "Live Supabase-backed model essays, paragraph annotations, examiner commentary, stems, quote-method links and upgrade drills.";
 const AO_POLICY_NOTE =
-  "Pearson Edexcel Component 2 Prose assesses AO1, AO2, AO3 and AO4. This pack does not create AO5 scoring fields; interpretive debate is labelled as interpretive nuance or critical perspective only.";
+  "Pearson Edexcel Component 2 Prose uses AO1, AO2, AO3 and AO4 only. Interpretive debate is labelled as interpretive nuance or critical perspective only.";
 
 const warnFallback = (reason: string) => {
   if (import.meta.env.DEV && import.meta.env.MODE !== "test") {
@@ -374,4 +374,3 @@ export async function loadAnnotatedEssayPracticePack(): Promise<AnnotatedEssayPa
     };
   }
 }
-
