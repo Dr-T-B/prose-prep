@@ -1,10 +1,3 @@
-export type AoLevel =
-  | 'Level 1'
-  | 'Level 2'
-  | 'Level 3'
-  | 'Level 4'
-  | 'Level 5';
-
 export type QuoteDiagnostic = {
   quote: string;
   status: 'verified' | 'unverified' | 'paraphrased';
@@ -12,32 +5,25 @@ export type QuoteDiagnostic = {
 };
 
 export type AoFeedback = {
-  level: AoLevel;
+  diagnosticLabel: string;
   strength: string;
-  weakness: string;
-  nextAction: string;
+  nextStep: string;
 };
 
 export type MarkerResult = {
-  provisionalLevel: AoLevel;
-  provisionalMarks?: number;
-  overallSummary: string;
+  summary: string;
   aoFeedback: {
     AO1: AoFeedback;
     AO2: AoFeedback;
     AO3: AoFeedback;
     AO4: AoFeedback;
   };
-  topStrengths: string[];
-  priorityWeaknesses: string[];
+  strengths: string[];
+  priorityTargets: string[];
   quoteMethodDiagnostic: QuoteDiagnostic[];
-  modelUpgradeParagraph: string;
-  nextDrill: {
-    title: string;
-    durationMinutes: number;
-    instructions: string;
-    appRoute: string;
-  };
+  revisionPrompts: string[];
+  nextStep: string;
+  teacherNotes?: string;
   examWarning: string;
 };
 
@@ -47,6 +33,5 @@ export type MarkerPayload = {
   mode: MarkerMode;
   question_id?: string;
   essay_text?: string;
-  target_grade?: string;
   paragraph_attempt_id?: string;
 };

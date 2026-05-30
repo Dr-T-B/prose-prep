@@ -1,7 +1,8 @@
 // mark-component2-essay
 //
-// Pearson Edexcel A-Level English Literature, Component 2 (Prose) — diagnostic
-// AI essay marker. Returns structured JSON feedback against AO1–AO4 only.
+// Pearson Edexcel A-Level English Literature, Component 2 (Prose) — formative
+// AI essay feedback. Returns AO1–AO4 guidance only; no marks, grades, levels,
+// scores, model answers, or rewrite paragraphs.
 //
 // PR 1 (this file): non-streaming. The frontend calls via
 // supabase.functions.invoke('mark-component2-essay', { body: payload }).
@@ -10,19 +11,12 @@
 import Anthropic from "npm:@anthropic-ai/sdk@0.30.1";
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.95.0";
 import {
-  AO_KEYS,
   EXAM_WARNING,
   extractSection,
-  LEVEL_TO_MARKS,
-  LEVEL_TO_READINESS_SCORE,
-  pickDrillRouteForWeakestAO,
   safeJsonParse,
   stripAO5,
   validateInput,
   validateShape,
-  VALID_APP_ROUTES,
-  type AOKey,
-  type LevelLabel,
   type MarkerResult,
   type ValidatedInput,
 } from "./validation.ts";
@@ -43,9 +37,9 @@ const json = (status: number, body: unknown) =>
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -67,7 +61,7 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // --- Rate limit: 10 successful marks per user per hour ----------------------
+  // --- Rate limit: 10 successful feedback requests per user per hour ----------
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count: recent, error: rateErr } = await admin
     .from("essay_marker_results")
@@ -79,7 +73,7 @@ Deno.serve(async (req) => {
     return json(500, { error: "Rate-limit check failed" });
   }
   if ((recent ?? 0) >= 10) {
-    return json(429, { error: "Rate limit exceeded. Maximum 10 marks per hour." });
+    return json(429, { error: "Rate limit exceeded. Maximum 10 feedback requests per hour." });
   }
 
   // --- Input validation -------------------------------------------------------
@@ -171,13 +165,12 @@ Deno.serve(async (req) => {
     .order("sort_order", { ascending: true, nullsFirst: false })
     .limit(20);
 
-  // --- Context block 4: levelled thesis exemplars ----------------------------
+  // --- Context block 4: thesis exemplars -------------------------------------
   const { data: theses } = question?.primary_route_id
     ? await admin
         .from("theses")
-        .select("level, thesis_text")
+        .select("thesis_text")
         .eq("route_id", question.primary_route_id)
-        .order("level", { ascending: true })
     : { data: [] as never[] };
 
   // --- Context block 5: glossary + misuse warnings ---------------------------
@@ -212,9 +205,12 @@ Deno.serve(async (req) => {
     glossary: glossary ?? [],
     quotes: quotes ?? [],
     tensions: tensions ?? [],
-    targetGrade: input.target_grade,
     mode: input.mode,
   });
+
+  if (!anthropic) {
+    return json(503, { error: "Feedback provider unavailable. No feedback was generated." });
+  }
 
   // --- Anthropic streaming call (SSE) ----------------------------------------
   // All validation above this point returns JSON error responses. Once we
@@ -222,7 +218,6 @@ Deno.serve(async (req) => {
   // failure inside the stream is surfaced as a `data: {"error": ...}` event.
 
   const encoder = new TextEncoder();
-  const allowMissingMarks = input.mode === "paragraph_only";
   const persistCtx: PersistCtx = {
     userId,
     mode: input.mode,
@@ -231,8 +226,6 @@ Deno.serve(async (req) => {
     attemptId,
     essayText: essayTextForPersist,
     wordCount: wordCountForPersist,
-    targetGrade: input.target_grade,
-    allowMissingMarks,
   };
 
   const readable = new ReadableStream({
@@ -334,8 +327,6 @@ type PersistCtx = {
   attemptId: string | null;
   essayText: string | null;
   wordCount: number | null;
-  targetGrade: string;
-  allowMissingMarks: boolean;
 };
 
 async function postStream(
@@ -347,74 +338,39 @@ async function postStream(
     // Always enforce the canonical exam-warning string regardless of what
     // the model produced in the <section:examWarning> tag.
     examWarning: EXAM_WARNING,
-    provisionalLevel: extractSection(accumulated, "provisionalLevel"),
-    overallSummary: extractSection(accumulated, "overallSummary"),
+    summary: extractSection(accumulated, "summary"),
     aoFeedback: {
       AO1: safeJsonParse(extractSection(accumulated, "AO1"), {}),
       AO2: safeJsonParse(extractSection(accumulated, "AO2"), {}),
       AO3: safeJsonParse(extractSection(accumulated, "AO3"), {}),
       AO4: safeJsonParse(extractSection(accumulated, "AO4"), {}),
     },
-    topStrengths: safeJsonParse<unknown[]>(
-      extractSection(accumulated, "topStrengths"),
+    strengths: safeJsonParse<unknown[]>(
+      extractSection(accumulated, "strengths"),
       [],
     ),
-    priorityWeaknesses: safeJsonParse<unknown[]>(
-      extractSection(accumulated, "priorityWeaknesses"),
+    priorityTargets: safeJsonParse<unknown[]>(
+      extractSection(accumulated, "priorityTargets"),
       [],
     ),
     quoteMethodDiagnostic: safeJsonParse<unknown[]>(
       extractSection(accumulated, "quoteMethodDiagnostic"),
       [],
     ),
-    modelUpgradeParagraph: extractSection(accumulated, "modelUpgradeParagraph"),
-    nextDrill: safeJsonParse(extractSection(accumulated, "nextDrill"), {}),
+    revisionPrompts: safeJsonParse<unknown[]>(
+      extractSection(accumulated, "revisionPrompts"),
+      [],
+    ),
+    nextStep: extractSection(accumulated, "nextStep"),
   };
-
-  if (!ctx.allowMissingMarks) {
-    const rawMarks = extractSection(accumulated, "provisionalMarks");
-    const parsedMarks = rawMarks != null ? parseInt(rawMarks, 10) : NaN;
-    if (Number.isFinite(parsedMarks)) {
-      reconstructed.provisionalMarks = parsedMarks;
-    } else if (
-      typeof reconstructed.provisionalLevel === "string" &&
-      reconstructed.provisionalLevel in LEVEL_TO_MARKS
-    ) {
-      reconstructed.provisionalMarks =
-        LEVEL_TO_MARKS[reconstructed.provisionalLevel as LevelLabel];
-    }
-  }
+  const teacherNotes = extractSection(accumulated, "teacherNotes");
+  if (teacherNotes) reconstructed.teacherNotes = teacherNotes;
 
   const stripped = stripAO5(reconstructed) as Record<string, unknown>;
   // Re-enforce canonical examWarning post-strip in case the regex touched it.
   stripped.examWarning = EXAM_WARNING;
 
-  // Coerce appRoute into the allowed set if the model hallucinated one.
-  if (
-    stripped.nextDrill &&
-    typeof stripped.nextDrill === "object" &&
-    stripped.aoFeedback &&
-    typeof stripped.aoFeedback === "object"
-  ) {
-    const nd = stripped.nextDrill as Record<string, unknown>;
-    if (
-      typeof nd.appRoute !== "string" ||
-      !(VALID_APP_ROUTES as readonly string[]).includes(nd.appRoute)
-    ) {
-      try {
-        nd.appRoute = pickDrillRouteForWeakestAO(
-          stripped.aoFeedback as Parameters<typeof pickDrillRouteForWeakestAO>[0],
-        );
-      } catch {
-        // aoFeedback may be malformed; fall back to a safe default.
-        nd.appRoute = "/paragraph-builder";
-      }
-    }
-  }
-
-  const shape = validateShape(stripped, {
-    allowMissingProvisionalMarks: ctx.allowMissingMarks,
-  });
+  const shape = validateShape(stripped);
   if (!shape.ok) {
     // Stream has already completed; log and skip persistence. The frontend
     // has already rendered whatever sections it could parse.
@@ -433,9 +389,9 @@ async function postStream(
     paragraph_attempt_id: ctx.attemptId,
     essay_text: ctx.essayText,
     word_count: ctx.wordCount,
-    target_grade: ctx.targetGrade,
-    provisional_level: result.provisionalLevel,
-    provisional_marks: result.provisionalMarks ?? null,
+    target_grade: null,
+    provisional_level: null,
+    provisional_marks: null,
     result_json: result,
     model: "claude-opus-4-7",
   });
@@ -443,34 +399,6 @@ async function postStream(
     console.error("essay_marker_results insert failed", insertErr);
     return;
   }
-
-  await Promise.all(
-    AO_KEYS.map(async (ao: AOKey) => {
-      const level = result.aoFeedback[ao].level;
-      const newScore = LEVEL_TO_READINESS_SCORE[level];
-      if (!newScore) return;
-      const { data: current } = await admin
-        .from("ao_readiness")
-        .select("score")
-        .eq("ao", ao)
-        .eq("user_id", ctx.userId)
-        .maybeSingle();
-      const trend = current ? newScore - current.score : 0;
-      const { error: upsertErr } = await admin
-        .from("ao_readiness")
-        .upsert(
-          {
-            ao,
-            user_id: ctx.userId,
-            score: newScore,
-            trend,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "ao,user_id" },
-        );
-      if (upsertErr) console.error("ao_readiness upsert failed", { ao, upsertErr });
-    }),
-  );
 }
 
 // --- Helpers ---------------------------------------------------------------
@@ -513,7 +441,6 @@ type SystemPromptCtx = {
   glossary: Array<Record<string, unknown>>;
   quotes: Array<Record<string, unknown>>;
   tensions: Array<Record<string, unknown>>;
-  targetGrade: string;
   mode: ValidatedInput["mode"];
 };
 
@@ -524,40 +451,33 @@ type SystemBlock = {
 };
 
 // The static block below MUST stay byte-identical across calls for prompt
-// caching to hit. Any interpolation that varies per request (target grade,
-// mode, question-specific context) belongs in the dynamic block.
+// caching to hit. Any interpolation that varies per request (mode or
+// question-specific context) belongs in the dynamic block.
 function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
   const staticEnvelope = [
     `ROLE AND AO RULES`,
-    `You are a strict Pearson Edexcel A-Level English Literature examiner-coach operating against the Component 2: Prose mark scheme.`,
+    `You are a Pearson Edexcel A-Level English Literature formative feedback coach for Component 2: Prose.`,
     ``,
     `CRITICAL RULES:`,
     `- Assess AO1, AO2, AO3 and AO4 only. Never mention AO` + `5.`,
-    `- Component 2 (Prose) does NOT assess AO` + `5. Reward interpretive sophistication as AO2 precision, never as AO` + `5.`,
+    `- Component 2 (Prose) does NOT assess AO` + `5. Treat interpretive sophistication as AO2 precision, never as AO` + `5.`,
+    `- Do not give marks, scores, grades, bands, or level labels.`,
+    `- Do not produce a model answer, full rewrite, rewritten paragraph, or model upgrade paragraph.`,
     `- Identify whether comparison between Hard Times and Atonement is sustained using the "Comparative Pivot" technique (weaving comparison throughout, rather than sequential parallel blocks).`,
     `- Never invent quotations. Cross-reference every student quotation against the supplied QUOTE BANK. Flag any quotation not found there in quoteMethodDiagnostic with status "unverified" or "paraphrased".`,
-    `- Never produce a complete replacement essay. Produce one model upgrade paragraph only — the weakest paragraph in the submitted work.`,
-    `- Provisional marks are out of 20. Level→marks: L1→3, L2→7, L3→11, L4→15, L5→19.`,
     ``,
-    `PEDAGOGICAL CRITERIA FOR A* (LEVEL 5):`,
-    `- Three-Layer Context Model (AO3): Verify that context is analyzed at three levels: (1) Micro close-reading of method, (2) Macro integration showing context as the socio-political "pressure" acting on characters, and (3) Comparative context frames showing how eras speak to each other.`,
+    `PEDAGOGICAL CRITERIA FOR STRONG FORMATIVE GUIDANCE:`,
+    `- Three-Layer Context Model (AO3): Check whether context is analyzed through method, wider pressure on characters, and comparative context frames showing how eras speak to each other.`,
     `- Hand-in-Glove Technique (AO3): Penalize "history dumps" or paragraphs starting with historical dates (e.g. "In 1854..."). Context must be introduced through the writer's narrative and thematic intent.`,
-    `- Comparative Pivot (AO4): Level 5 requires a synthetic comparative weave. Penalize "history sandwiches" or parallel text blocks. The student must place both texts in continuous dialogue within analytical sentences.`,
+    `- Comparative Pivot (AO4): Look for a synthetic comparative weave. Flag "history sandwiches" or parallel text blocks, then give a concrete revision target.`,
     ``,
-    `EDEXCEL COMPONENT 2 MARK SCHEME — LEVEL DESCRIPTORS`,
-    `Level 1 (1–4): AO1 simple/narrative; AO2 features without analysis; AO3 absent; AO4 no comparison.`,
-    `Level 2 (5–8): AO1 some relevant comment; AO2 explanatory not analytical; AO3 mentioned not integrated; AO4 superficial comparison.`,
-    `Level 3 (9–12): AO1 explained response; AO2 methods with some development; AO3 linked to meaning in places; AO4 some comparison but may drift to parallel.`,
-    `Level 4 (13–16): AO1 perceptive detailed argument; AO2 methods analysed with precision; AO3 integrated; AO4 sustained comparison with divergence.`,
-    `Level 5 (17–20): AO1 convincing critical argument; AO2 illuminating precise analysis with interpretive tension; AO3 embedded; AO4 perceptive nuanced comparison.`,
-    ``,
-    `NARRATIVE FORM REFERENCE — reward these at Level 4/5 AO2:`,
+    `NARRATIVE FORM REFERENCE — use these for AO2 next steps:`,
     `Hard Times (Dickens, 1854): third-person omniscient narrator with satirical intrusion; industrial/mechanical imagery as structural device; nomenclature as characterisation; Circus/Fact binary; repetition of "facts" as rhetorical device.`,
     `Atonement (McEwan, 2001): free indirect discourse — Briony's focalisation; retrospective unreliable narration — Part 4 reveal as structural irony; writing as redemption and harm; narrative gap and ellipsis as form; 1935/1940/1999 structure; water/light/fragmentation motifs.`,
-    `PENALISE: treating narrative form as decoration. Naming free indirect discourse without showing how it shapes meaning is Level 2–3.`,
+    `FLAG: treating narrative form as decoration. Naming free indirect discourse without showing how it shapes meaning needs a targeted method-analysis prompt.`,
     ``,
-    `REWARD: sustained comparative argument with clear thesis; accurately attributed evidence; method-led AO2; embedded context; recognition of formal/contextual divergence; interpretive tension (two competing readings) for L5; conceptual register.`,
-    `PENALISE AND FLAG: plot summary; vague/paraphrased quotation; invented quotation; bolt-on context; parallel discussion sold as comparison; unsupported authorial-intent claims; device-spotting without analysis; generic statements about Dickens or McEwan.`,
+    `REWARD: sustained comparative argument with clear thesis; accurately attributed evidence; method-led AO2; embedded context; recognition of formal/contextual divergence; interpretive tension (two competing readings); conceptual register.`,
+    `FLAG: plot summary; vague/paraphrased quotation; invented quotation; bolt-on context; parallel discussion sold as comparison; unsupported authorial-intent claims; device-spotting without analysis; generic statements about Dickens or McEwan.`,
     ``,
     `--- OUTPUT FORMAT ---`,
     `Read the student work (in the user message). Output your response as a sequence of`,
@@ -568,78 +488,69 @@ function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
     ``,
     `<section:examWarning>${EXAM_WARNING}</section:examWarning>`,
     ``,
-    `<section:provisionalLevel>Level N</section:provisionalLevel>`,
-    ``,
-    `<section:provisionalMarks>N</section:provisionalMarks>`,
-    ``,
-    `<section:overallSummary>`,
+    `<section:summary>`,
     `3-5 sentences of holistic feedback here.`,
-    `</section:overallSummary>`,
+    `</section:summary>`,
     ``,
     `<section:AO1>`,
-    `{"level":"Level N","strength":"...","weakness":"...","nextAction":"..."}`,
+    `{"diagnosticLabel":"argument clarity","strength":"...","nextStep":"..."}`,
     `</section:AO1>`,
     ``,
     `<section:AO2>`,
-    `{"level":"Level N","strength":"...","weakness":"...","nextAction":"..."}`,
+    `{"diagnosticLabel":"method analysis","strength":"...","nextStep":"..."}`,
     `</section:AO2>`,
     ``,
     `<section:AO3>`,
-    `{"level":"Level N","strength":"...","weakness":"...","nextAction":"..."}`,
+    `{"diagnosticLabel":"context integration","strength":"...","nextStep":"..."}`,
     `</section:AO3>`,
     ``,
     `<section:AO4>`,
-    `{"level":"Level N","strength":"...","weakness":"...","nextAction":"..."}`,
+    `{"diagnosticLabel":"comparison","strength":"...","nextStep":"..."}`,
     `</section:AO4>`,
     ``,
-    `<section:topStrengths>`,
+    `<section:strengths>`,
     `["strength one","strength two","strength three"]`,
-    `</section:topStrengths>`,
+    `</section:strengths>`,
     ``,
-    `<section:priorityWeaknesses>`,
-    `["weakness one","weakness two"]`,
-    `</section:priorityWeaknesses>`,
+    `<section:priorityTargets>`,
+    `["target one","target two","target three"]`,
+    `</section:priorityTargets>`,
     ``,
     `<section:quoteMethodDiagnostic>`,
     `[]`,
     `</section:quoteMethodDiagnostic>`,
     ``,
-    `<section:modelUpgradeParagraph>`,
-    `One complete model upgrade paragraph here.`,
-    `</section:modelUpgradeParagraph>`,
+    `<section:revisionPrompts>`,
+    `["prompt one","prompt two","prompt three"]`,
+    `</section:revisionPrompts>`,
     ``,
-    `<section:nextDrill>`,
-    `{"title":"...","durationMinutes":15,"instructions":"...","appRoute":"/compare"}`,
-    `</section:nextDrill>`,
+    `<section:nextStep>`,
+    `One concise next step for the student's next practice attempt.`,
+    `</section:nextStep>`,
     ``,
     `RULES:`,
     `- examWarning content must always be exactly: ${EXAM_WARNING}`,
-    `- provisionalLevel: one of "Level 1","Level 2","Level 3","Level 4","Level 5".`,
-    `- AO1/AO2/AO3/AO4 sections contain a JSON OBJECT ONLY — no surrounding text. Keys: level, strength, weakness, nextAction.`,
-    `- topStrengths is a JSON array of exactly 3 strings.`,
-    `- priorityWeaknesses is a JSON array of exactly 2 strings.`,
+    `- AO1/AO2/AO3/AO4 sections contain a JSON OBJECT ONLY — no surrounding text. Keys: diagnosticLabel, strength, nextStep.`,
+    `- strengths is a JSON array of exactly 3 strings.`,
+    `- priorityTargets is a JSON array of exactly 3 strings.`,
     `- quoteMethodDiagnostic is a JSON array (possibly empty) of objects { quote, status, note } where status ∈ "verified"|"unverified"|"paraphrased".`,
-    `- modelUpgradeParagraph is ONE rewritten paragraph (the weakest in the student work). Not a full essay.`,
-    `- nextDrill is a JSON object: { title, durationMinutes, instructions, appRoute }. appRoute MUST be one of: ${[...VALID_APP_ROUTES].join(", ")}.`,
+    `- revisionPrompts is a JSON array of exactly 3 short prompts the student can use to revise their own work.`,
+    `- nextStep is one concise sentence.`,
+    `- Do NOT emit sections named provisionalLevel, provisionalMarks, modelUpgradeParagraph, modelAnswer, rewrittenParagraph, or fullEssay.`,
+    `- Do NOT use the words mark, marks, score, grade, or level in student-facing content.`,
     `- Do NOT emit a <section:AO` + `5> tag anywhere. Do NOT mention AO` + `5.`,
     `- Do NOT wrap the section tags in a top-level JSON object.`,
     `- Do NOT use markdown code fences.`,
   ].join("\n");
 
-  const marksSectionLine = ctx.mode === "paragraph_only"
-    ? "DO NOT emit a <section:provisionalMarks> tag. Paragraph-only marking does not map to /20."
-    : "Emit <section:provisionalMarks>N</section:provisionalMarks> where N is an integer 1–20 mapped from provisionalLevel.";
-
   const dynamicContext = [
     `--- PER-CALL CONTEXT ---`,
-    `Student target grade: ${ctx.targetGrade}`,
-    `Marking mode: ${ctx.mode}`,
-    `Mode-specific marks rule (overrides the generic provisionalMarks template above): ${marksSectionLine}`,
+    `Feedback mode: ${ctx.mode}`,
     ``,
     `--- CONTEXT BLOCK 1: EXAM QUESTION ---`,
     ctx.question
       ? `Stem: ${ctx.question.stem}\nFamily: ${ctx.question.family}\nLikely core methods: ${(ctx.question.likely_core_methods ?? []).join(", ")}`
-      : `(no question loaded — assess generically against the mark scheme)`,
+      : `(no question loaded — assess generically against the Component 2 criteria)`,
     ``,
     `--- CONTEXT BLOCK 2: ARGUMENT ROUTES ---`,
     ctx.routes.length
@@ -653,9 +564,9 @@ function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
       ? ctx.matrix.map((m) => `• ${m.axis} | HT: ${m.hard_times} | AT: ${m.atonement} | Divergence: ${m.divergence}`).join("\n")
       : "(none)",
     ``,
-    `--- CONTEXT BLOCK 4: LEVELLED THESIS EXEMPLARS ---`,
+    `--- CONTEXT BLOCK 4: THESIS EXEMPLARS ---`,
     ctx.theses.length
-      ? ctx.theses.map((t) => `${t.level}: ${t.thesis_text}`).join("\n")
+      ? ctx.theses.map((t) => `${t.thesis_text}`).join("\n")
       : "(none)",
     ``,
     `--- CONTEXT BLOCK 5: GLOSSARY + MISUSE WARNINGS ---`,
@@ -669,7 +580,7 @@ function buildSystemPrompt(ctx: SystemPromptCtx): SystemBlock[] {
       ? ctx.quotes.map((q) => `[${q.source_text}] "${q.quote_text}" — ${q.method} (${q.speaker_or_narrator ?? "narrator"})`).join("\n")
       : "(none)",
     ``,
-    `--- CONTEXT BLOCK 7: INTERPRETIVE TENSIONS (AO2 L5 markers) ---`,
+    `--- CONTEXT BLOCK 7: INTERPRETIVE TENSIONS (AO2 refinement) ---`,
     ctx.tensions.length
       ? ctx.tensions.map((t) => `• ${t.focus}: dominant=${t.dominant_reading} / alternative=${t.alternative_reading}`).join("\n")
       : "(none)",
