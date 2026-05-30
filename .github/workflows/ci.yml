@@ -32,6 +32,10 @@ jobs:
         run: npm run validate:component2-ao
       - name: Check browser source for LLM secrets
         run: npm run check:no-client-llm
+      - name: Install ripgrep for safety searches
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
       - name: Run Essay Feedback safety searches
         run: |
           rg -n "AO5|A05|Assessment Objective 5" supabase src scripts src/test || true
