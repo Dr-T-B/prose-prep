@@ -142,14 +142,27 @@ describe("RapidRecall", () => {
     }
   });
 
-  it("ships at least eight static items for every required drill type", () => {
+  it("ships at least twelve static items for every required drill type", () => {
     const counts = getRapidRecallWorkbookCountByType();
 
-    expect(rapidRecallWorkbookItems).toHaveLength(33);
-    expect(counts["multiple-choice"]).toBeGreaterThanOrEqual(8);
-    expect(counts["fill-blank"]).toBeGreaterThanOrEqual(8);
-    expect(counts["match-pair"]).toBeGreaterThanOrEqual(8);
-    expect(counts["route-selection"]).toBeGreaterThanOrEqual(8);
+    expect(rapidRecallWorkbookItems).toHaveLength(48);
+    expect(counts["multiple-choice"]).toBeGreaterThanOrEqual(12);
+    expect(counts["fill-blank"]).toBeGreaterThanOrEqual(12);
+    expect(counts["match-pair"]).toBeGreaterThanOrEqual(12);
+    expect(counts["route-selection"]).toBeGreaterThanOrEqual(12);
+  });
+
+  it("covers all four AOs, both texts and comparative items", () => {
+    const allAos = new Set(rapidRecallWorkbookItems.flatMap((item) => item.aoFocus));
+    const textFoci = new Set(rapidRecallWorkbookItems.map((item) => item.textFocus));
+
+    expect(allAos.has("AO1")).toBe(true);
+    expect(allAos.has("AO2")).toBe(true);
+    expect(allAos.has("AO3")).toBe(true);
+    expect(allAos.has("AO4")).toBe(true);
+    expect(textFoci.has("Hard Times")).toBe(true);
+    expect(textFoci.has("Atonement")).toBe(true);
+    expect(textFoci.has("Comparative")).toBe(true);
   });
 
   it("adds static route plans to route-selection drills and comparative multiple-choice route drills", () => {
@@ -158,7 +171,7 @@ describe("RapidRecall", () => {
       item.type === "multiple-choice" && item.textFocus === "Comparative"
     ));
 
-    expect(routeSelectionItems).toHaveLength(9);
+    expect(routeSelectionItems).toHaveLength(12);
     expect(routeSelectionItems.every((item) => item.routePlan)).toBe(true);
     expect(comparativeMultipleChoiceItems.length).toBeGreaterThanOrEqual(5);
     expect(comparativeMultipleChoiceItems.every((item) => item.routePlan)).toBe(true);
@@ -175,7 +188,7 @@ describe("RapidRecall", () => {
     ));
 
     expect(getRapidRecallTimedParagraphDrillCount()).toBeGreaterThanOrEqual(12);
-    expect(timedRouteSelectionItems).toHaveLength(9);
+    expect(timedRouteSelectionItems).toHaveLength(12);
     expect(timedComparativeMultipleChoiceItems.length).toBeGreaterThanOrEqual(4);
 
     for (const drill of rapidRecallTimedParagraphDrills) {
@@ -579,11 +592,11 @@ describe("RapidRecall", () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("tab", { name: "Fill blanks" }));
-    fireEvent.change(screen.getByLabelText(/Short answer for In Hard Times/i), {
+    fireEvent.change(screen.getByLabelText(/Short answer for In Hard Times, Gradgrind's demand for/i), {
       target: { value: "Facts" },
     });
     fireEvent.click(screen.getByRole("button", {
-      name: /Check answer for In Hard Times/i,
+      name: /Check answer for In Hard Times, Gradgrind's demand for/i,
     }));
 
     expect(screen.getByRole("status")).toHaveTextContent("Correct");

@@ -377,6 +377,48 @@ const TIMED_PARAGRAPH_DRILL_SEEDS: TimedParagraphDrillSeed[] = [
       "Comparative judgement opening": "Dickens stresses conditioning before the choice, whereas McEwan stresses consequence after the choice.",
     },
   },
+  {
+    itemId: "route-education-suppression",
+    theme: "education",
+    focusPhrase: "education and its consequences",
+    questionFocus: "education shaping perception and producing damaging certainty",
+    hardTimesTopic: "Gradgrind's schoolroom and utilitarian suppression of feeling",
+    atonementTopic: "Briony's self-taught certainty and its irreversible consequences",
+    bestStems: {
+      "Thesis opening": "Both writers show education shaping perception, but Dickens attacks formal systems that crush feeling while McEwan shows self-directed learning becoming dangerously overconfident.",
+      "Hard Times paragraph opening": "Dickens presents Gradgrind's schoolroom as a system of suppression, turning children into fact-reciting outputs rather than feeling subjects.",
+      "Atonement paragraph opening": "McEwan presents Briony's self-education through fiction as a private danger, because her certainty about what she has seen and read shapes her devastating accusation.",
+      "Comparative judgement opening": "Dickens attacks institutional education for excluding feeling, while McEwan shows self-taught certainty becoming equally destructive when left unchecked.",
+    },
+  },
+  {
+    itemId: "route-family-expectations",
+    theme: "family",
+    focusPhrase: "family and social expectation",
+    questionFocus: "family shaping emotional development and social judgement",
+    hardTimesTopic: "the Gradgrind family and utilitarian emotional training",
+    atonementTopic: "the Tallis family and class-shaped domestic judgement",
+    bestStems: {
+      "Thesis opening": "Both writers use family to expose social pressure, but Dickens presents family as a site of emotional damage while McEwan presents it as a site of class prejudice and misreading.",
+      "Hard Times paragraph opening": "Dickens presents the Gradgrind family as a domestic extension of utilitarian ideology, where emotional development is systematically suppressed.",
+      "Atonement paragraph opening": "McEwan presents the Tallis family as a class-coded household where reputation and domestic hierarchy shape who can be trusted or believed.",
+      "Comparative judgement opening": "Dickens shows family damaging through ideology, while McEwan shows family damaging through the social codes that govern interpretation and accusation.",
+    },
+  },
+  {
+    itemId: "route-narrative-perspective",
+    theme: "narrative perspective",
+    focusPhrase: "narrative perspective and reliability",
+    questionFocus: "how narrative perspective shapes moral judgement",
+    hardTimesTopic: "Dickens's omniscient reformist narration",
+    atonementTopic: "McEwan's shifting focalisation and Briony's retrospective authorship",
+    bestStems: {
+      "Thesis opening": "Both writers use narrative perspective to shape moral judgement, but Dickens guides readers toward clear social critique while McEwan makes judgement itself ethically unstable.",
+      "Hard Times paragraph opening": "Dickens uses his omniscient narrator to direct the reader's moral response, making satire a vehicle for social reform.",
+      "Atonement paragraph opening": "McEwan uses shifting focalisation and Briony's retrospective authorship to show that any narrative account is compromised by the teller's desire and guilt.",
+      "Comparative judgement opening": "Dickens trusts the narrator as a moral guide; McEwan makes the narrator's authority the central problem of the novel.",
+    },
+  },
 ];
 
 export const rapidRecallTimedParagraphDrills: RapidRecallTimedParagraphDrill[] =
