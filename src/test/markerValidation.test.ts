@@ -71,9 +71,31 @@ describe('validateInput', () => {
     expect(validateInput({ mode: 'paragraph_only', question_id: 'q1', essay_text: big }).ok).toBe(false);
   });
 
-  it('rejects missing question_id for full_essay', () => {
+  it('rejects when neither question_id nor question_stem provided', () => {
     const text = Array(400).fill('word').join(' ');
     const r = validateInput({ mode: 'full_essay', essay_text: text });
+    expect(r.ok).toBe(false);
+  });
+
+  it('accepts full_essay with question_stem when question_id absent', () => {
+    const text = Array(400).fill('word').join(' ');
+    const r = validateInput({ mode: 'full_essay', question_stem: 'Compare how both writers present guilt.', essay_text: text });
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect((r.value as { question_stem?: string }).question_stem).toBe('Compare how both writers present guilt.');
+      expect((r.value as { question_id?: string }).question_id).toBeUndefined();
+    }
+  });
+
+  it('accepts paragraph_only with question_stem when question_id absent', () => {
+    const text = Array(200).fill('word').join(' ');
+    const r = validateInput({ mode: 'paragraph_only', question_stem: 'Compare childhood in both texts.', essay_text: text });
+    expect(r.ok).toBe(true);
+  });
+
+  it('rejects when both question_id and question_stem are provided', () => {
+    const text = Array(400).fill('word').join(' ');
+    const r = validateInput({ mode: 'full_essay', question_id: 'q1', question_stem: 'Extra context.', essay_text: text });
     expect(r.ok).toBe(false);
   });
 
