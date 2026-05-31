@@ -10,13 +10,19 @@ export type RapidRecallTextFocus = "Hard Times" | "Atonement" | "Comparative";
 
 export type RapidRecallTheme =
   | "childhood"
+  | "education"
   | "gender"
   | "class"
+  | "family"
+  | "guilt"
   | "memory"
+  | "power"
+  | "social control"
   | "violence"
   | "place"
   | "settings"
   | "misunderstanding"
+  | "narrative perspective"
   | "relationships"
   | "important choices"
   | "roles of children";
