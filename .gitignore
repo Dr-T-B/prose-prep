@@ -35,6 +35,13 @@ supabase/.temp/
 # Generated quote bank output — do not commit, Supabase is source of truth
 prompts/out/
 
+# Local PDF search inputs and generated indexes.
+# Keep private/copyrighted PDFs and extracted text out of git.
+local-pdfs/**
+!local-pdfs/
+!local-pdfs/README.md
+!local-pdfs/.gitkeep
+
 # Local Component 2 Drive exports. Keep raw staged content out of git unless
 # explicitly reviewed and intended for commit.
 staging/component2/**/*.csv
