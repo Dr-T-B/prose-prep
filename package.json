@@ -27,6 +27,8 @@
     "questions:import:local": "tsx scripts/questions-bank-import-local.ts",
     "import-quotes": "npx tsx scripts/importQuotes.ts",
     "import-quotes:write": "npx tsx scripts/importQuotes.ts --write",
+    "pdf:index": "tsx scripts/pdf-index.ts",
+    "pdf:search": "tsx scripts/pdf-search.ts",
     "check:no-client-llm": "node scripts/check-no-client-llm-secrets.mjs"
   },
   "dependencies": {
@@ -70,6 +72,7 @@
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "papaparse": "^5.4.1",
+    "pdfjs-dist": "^6.0.227",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",

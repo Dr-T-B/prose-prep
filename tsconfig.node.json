@@ -21,5 +21,11 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["vite.config.ts", "api/**/*.ts"]
+  "include": [
+    "vite.config.ts",
+    "api/**/*.ts",
+    "scripts/pdf-index.ts",
+    "scripts/pdf-search.ts",
+    "scripts/pdf-search/**/*.ts"
+  ]
 }

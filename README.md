@@ -114,6 +114,45 @@ Run tests:
 npm run test
 ```
 
+## Local PDF search
+
+This repo includes a local-first PDF search tool for A-Level English Literature revision documents, worksheets, mark schemes, and exam-board materials.
+
+Put authorised local PDFs in:
+
+```text
+local-pdfs/
+```
+
+Then build or rebuild the local index:
+
+```bash
+npm run pdf:index
+```
+
+Search the index from the command line:
+
+```bash
+npm run pdf:search -- "AO2 methods in Atonement"
+npm run pdf:search -- "context industrialisation Hard Times" --limit 5
+```
+
+Example output:
+
+```text
+Found 2 result(s) for "AO2 methods in Atonement":
+
+1. atonement-notes.pdf p. 12 (score 4.18)
+   local-pdfs/atonement-notes.pdf · chunk 3
+   ... McEwan uses free indirect discourse and Briony's focalisation ...
+```
+
+The index is stored locally at `local-pdfs/.index/pdf-index.json`. It contains extracted snippets/chunks, filenames, relative paths, page numbers where text extraction provides them, chunk indexes, and ranking metadata. The PDFs and generated index are ignored by git so private or copyrighted documents are not committed.
+
+Privacy and copyright: only place PDFs in `local-pdfs/` if you have the right to use them locally. Do not commit exam-board PDFs, private student work, worksheets, mark schemes, or generated indexes containing extracted text.
+
+Limitations: this first version performs deterministic local keyword search and does not call paid APIs or browser-side LLMs. It extracts embedded PDF text only; scanned/image-only PDFs need OCR before indexing.
+
 ## Environment variables
 
 This app expects a Supabase connection via Vite environment variables.
